@@ -3,7 +3,7 @@
     <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Taxonomy Editor</h2>
-        <button 
+        <button
           @click="createNewTaxonomy"
           class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
         >
@@ -15,22 +15,31 @@
       <!-- Taxonomy Form -->
       <div v-if="editingTaxonomy" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          {{ editingTaxonomy.id ? 'Edit Taxonomy' : 'Create Taxonomy' }}
+          {{ isEditingExisting ? 'Edit Taxonomy' : 'Create Taxonomy' }}
         </h3>
-        
+
         <div class="grid grid-cols-1 gap-6">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">ID</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              ID
+              <span v-if="isEditingExisting" class="ml-2 text-xs text-gray-500 dark:text-gray-400">(read-only when editing)</span>
+            </label>
             <input
-              v-model="editingTaxonomy.id"
+              :value="editingTaxonomy.id"
+              @input="editingTaxonomy.id = $event.target.value"
               type="text"
-              :disabled="!!editingTaxonomy.id"
-              class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+              :disabled="isEditingExisting"
+              :class="[
+                'mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm',
+                isEditingExisting
+                  ? 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  : 'border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+              ]"
               placeholder="e.g., customer, env, product"
             />
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Unique identifier for this taxonomy level</p>
           </div>
-          
+
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
             <input
@@ -40,7 +49,7 @@
               placeholder="e.g., Customer, Environment, Product"
             />
           </div>
-          
+
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
             <input
@@ -51,7 +60,7 @@
             />
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Lower numbers are processed first (higher priority)</p>
           </div>
-          
+
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regex Pattern</label>
             <textarea
@@ -61,12 +70,12 @@
               placeholder="e.g., customer:(?P<customer>[^\\s]+)"
             ></textarea>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Use named capture groups (?P&lt;name&gt;pattern) to extract values. 
+              Use named capture groups (?P&lt;name&gt;pattern) to extract values.
               The group name should match the taxonomy ID.
             </p>
           </div>
         </div>
-        
+
         <!-- Regex Tester -->
         <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Test Regex Pattern</h4>
@@ -80,7 +89,7 @@
                 placeholder="e.g., customer:acme env:production product:webapp"
               />
             </div>
-            
+
             <div>
               <button
                 @click="testRegex"
@@ -90,7 +99,7 @@
                 Test Pattern
               </button>
             </div>
-            
+
             <div v-if="regexTestResult" class="mt-3">
               <div v-if="regexTestResult.match" class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
                 <p class="text-sm font-medium text-green-800 dark:text-green-200">✅ Match Found</p>
@@ -103,7 +112,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="mt-6 flex justify-end space-x-3">
           <button
             @click="cancelEdit"
@@ -129,7 +138,7 @@
             Taxonomies are processed in priority order (lower numbers first)
           </p>
         </div>
-        
+
         <ul class="divide-y divide-gray-200 dark:divide-gray-700">
           <li v-for="taxonomy in sortedTaxonomies" :key="taxonomy.id">
             <div class="px-4 py-4 flex items-center justify-between">
@@ -164,7 +173,7 @@
             </div>
           </li>
         </ul>
-        
+
         <div v-if="taxonomies.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
           No taxonomies defined yet. Create your first taxonomy to get started.
         </div>
@@ -196,11 +205,16 @@ export default {
     })
 
     const isFormValid = computed(() => {
-      return editingTaxonomy.value && 
-             editingTaxonomy.value.id && 
-             editingTaxonomy.value.name && 
+      return editingTaxonomy.value &&
+             editingTaxonomy.value.id &&
+             editingTaxonomy.value.name &&
              editingTaxonomy.value.regex_pattern !== undefined &&
              editingTaxonomy.value.priority !== undefined
+    })
+
+    const isEditingExisting = computed(() => {
+      return editingTaxonomy.value &&
+             taxonomies.value.some(t => t.id === editingTaxonomy.value.id)
     })
 
     const loadTaxonomies = async () => {
@@ -244,7 +258,7 @@ export default {
           // Create new
           await axios.post('/api/taxonomies', editingTaxonomy.value)
         }
-        
+
         await loadTaxonomies()
         cancelEdit()
       } catch (error) {
@@ -257,7 +271,7 @@ export default {
       if (!confirm('Are you sure you want to delete this taxonomy?')) {
         return
       }
-      
+
       try {
         await axios.delete(`/api/taxonomies/${id}`)
         await loadTaxonomies()
@@ -271,11 +285,11 @@ export default {
       if (!editingTaxonomy.value.regex_pattern || !testTags.value) {
         return
       }
-      
+
       try {
         const regex = new RegExp(editingTaxonomy.value.regex_pattern)
         const match = testTags.value.match(regex)
-        
+
         if (match) {
           regexTestResult.value = {
             match: true,
@@ -307,6 +321,7 @@ export default {
       regexTestResult,
       sortedTaxonomies,
       isFormValid,
+      isEditingExisting,
       createNewTaxonomy,
       editTaxonomy,
       cancelEdit,
