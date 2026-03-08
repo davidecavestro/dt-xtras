@@ -1,0 +1,84 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start All Services",
+      "type": "shell",
+      "command": "./scripts/start-services.sh",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": [],
+      "detail": "Start both backend and frontend services",
+      "icon": "$(play)"
+    },
+    {
+      "label": "Start Backend Only",
+      "type": "shell",
+      "command": "./scripts/start-backend.sh",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": [],
+      "detail": "Start FastAPI backend service only",
+      "icon": "$(server)"
+    },
+    {
+      "label": "Start Frontend Only",
+      "type": "shell",
+      "command": "./scripts/start-frontend.sh",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": [],
+      "detail": "Start Vue.js frontend service only",
+      "icon": "$(browser)"
+    },
+    {
+      "label": "Stop All Services",
+      "type": "shell",
+      "command": "./scripts/stop-services.sh",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": [],
+      "detail": "Stop all running services",
+      "icon": "$(stop)"
+    },
+    {
+      "label": "Restart All Services",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Stop All Services",
+        "Start All Services"
+      ],
+      "group": "build",
+      "detail": "Stop and restart all services",
+      "icon": "$(debug-restart)"
+    }
+  ]
+}
