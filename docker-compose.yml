@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DT_API_URL=${DT_API_URL:-http://dtrack-apiserver:8080}
+      - DT_API_KEY=${DT_API_KEY}
+    volumes:
+      - ./api:/app/api
+      - ./backend:/app/backend
+    depends_on:
+      - dtrack-apiserver
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app/frontend
+    depends_on:
+      - backend
+
+  # --- OFFICIAL DEPENDENCY-TRACK STACK ---
+  dtrack-apiserver:
+    image: dependencytrack/apiserver
+    environment:
+      - ALPINE_DATABASE_MODE=external
+      - ALPINE_DATABASE_URL=jdbc:postgresql://dtrack-db:5432/dtrack
+      - ALPINE_DATABASE_DRIVER=org.postgresql.Driver
+      - ALPINE_DATABASE_USERNAME=dtrack
+      - ALPINE_DATABASE_PASSWORD=dtrack
+    ports:
+      - "8081:8080"
+    depends_on:
+      dtrack-db:
+        condition: service_healthy
+
+  dtrack-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=dtrack
+      - POSTGRES_PASSWORD=dtrack
+      - POSTGRES_DB=dtrack
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtrack"]
+
+  dtrack-frontend:
+    image: dependencytrack/frontend
+    environment:
+      - API_BASE_URL=http://localhost:8081
+    ports:
+      - "8080:8080"

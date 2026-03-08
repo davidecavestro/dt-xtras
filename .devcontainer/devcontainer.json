@@ -1,0 +1,47 @@
+{
+  "name": "dt-xtras",
+  "dockerComposeFile": "compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "Vue.volar",
+        "ms-azuretools.vscode-docker",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-json"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        }
+      }
+    }
+  },
+  "forwardPorts": [8000, 5173, 8080, 8081],
+  "portsAttributes": {
+    "8000": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "5173": {
+      "label": "Frontend Dev Server",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "DT Frontend",
+      "onAutoForward": "silent"
+    },
+    "8081": {
+      "label": "DT API",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "bash -c 'echo \"Devcontainer ready! Run ./.devcontainer/start.sh to see available commands\"'",
+  "remoteUser": "vscode"
+}

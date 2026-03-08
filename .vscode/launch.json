@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Backend",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/main.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend"
+      },
+      "presentation": {
+        "hidden": false,
+        "group": "DT Aggregator",
+        "order": 1
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": ["Debug Backend"],
+      "preLaunchTask": "Start Frontend Only",
+      "presentation": {
+        "hidden": false,
+        "group": "DT Aggregator",
+        "order": 2
+      }
+    }
+  ]
+}
