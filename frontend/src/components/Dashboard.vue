@@ -3,8 +3,8 @@
     <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Security Dashboard</h2>
-        <button 
-          @click="refreshData" 
+        <button
+          @click="refreshData"
           :disabled="loading"
           class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
@@ -36,7 +36,7 @@
               Security metrics rolled up by taxonomy hierarchy
             </p>
           </div>
-          
+
           <div class="border-t border-gray-200 dark:border-gray-700">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-700">
@@ -60,8 +60,8 @@
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <template v-for="node in securityData" :key="node.id">
-                  <SecurityRow 
-                    :node="node" 
+                  <SecurityRow
+                    :node="node"
                     :level="0"
                     :expanded-nodes="expandedNodes"
                     @toggle="toggleNode"
@@ -98,7 +98,7 @@ export default {
     const refreshData = async () => {
       loading.value = true
       error.value = ''
-      
+
       try {
         const response = await axios.get('/api/aggregate')
         securityData.value = response.data
