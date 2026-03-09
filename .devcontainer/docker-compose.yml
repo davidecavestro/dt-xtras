@@ -24,6 +24,8 @@ services:
       - ./dtrack_db_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U dtrack" ]
+    ports:
+      - "5432:5432"
 
   dtrack-apiserver:
     image: dependencytrack/apiserver
@@ -44,6 +46,6 @@ services:
     ports:
       - "3000:8080"
     environment:
-      - API_BASE_URL=http://dtrack-apiserver:8080
+      - API_BASE_URL=http://localhost:8080
     depends_on:
       - dtrack-apiserver

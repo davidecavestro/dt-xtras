@@ -71,13 +71,19 @@
     },
     {
       "label": "Restart All Services",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "Stop All Services",
-        "Start All Services"
-      ],
+      "type": "shell",
+      "command": "./scripts/restart-services.sh",
       "group": "build",
-      "detail": "Stop and restart all services",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": [],
+      "detail": "Stop and restart all DT Aggregator services (DT, backend, frontend)",
       "icon": "$(debug-restart)"
     }
   ]
