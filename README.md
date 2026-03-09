@@ -16,20 +16,69 @@ A comprehensive security aggregation system that extends Dependency-Track with c
 - **DT-style Visualizations**: Vulnerability severity bars and risk score badges
 - **Taxonomy Editor**: Interactive regex pattern testing and taxonomy management
 - **Real-time Updates**: Live data refresh with loading states
+- **Dark Theme Support**: Complete dark mode implementation with user preference persistence
+
+## Code Quality & Maintenance
+
+### Linting & Formatting
+The project includes comprehensive code quality tools:
+
+- **VS Code Settings**: Automatic formatting on save, trailing whitespace cleanup
+- **Prettier**: Code formatting for Vue, JavaScript, TypeScript, JSON, YAML, Markdown
+- **Black**: Python code formatting
+- **Pre-commit Hooks**: Automatic whitespace cleanup and formatting checks
+- **Custom Scripts**: Manual cleanup commands for trailing whitespaces
+
+### Cleanup Commands
+```bash
+# Clean all trailing whitespaces
+npm run cleanup
+# or
+./scripts/cleanup-whitespace.sh
+
+# Run all linting checks
+npm run lint
+# or
+pre-commit run --all-files
+
+# Format all files
+npm run format
+```
 
 ## Architecture
 
 ### Taxonomy System
-Taxonomies define hierarchical levels using regex patterns with named capture groups:
+Taxonomies define hierarchical levels using regex patterns with named capture groups. The system supports both basic and relational taxonomy definitions:
 
-```json
-{
-  "id": "customer",
-  "name": "Customer",
-  "regex_pattern": "customer:(?P<customer>[^\\s]+)",
-  "priority": 1
-}
+#### Basic Taxonomy
+```yaml
+taxonomies:
+  - id: "customer"
+    name: "Customer"
+    pattern: '^cust:(?P<id>\w+)$'
+    priority: 1
 ```
+
+#### Relational Taxonomy
+```yaml
+taxonomies:
+  - id: "environment"
+    name: "Deploy Environment"
+    pattern: '^env:(?P<env_type>\w+):(?P<customer>cust:\w+)$'
+    priority: 2
+    relations:
+      - group: "customer"
+        targets: "customer"
+```
+
+#### Format Specification
+- **`id`**: Unique identifier for the taxonomy level
+- **`name`**: Display name for the UI
+- **`pattern`**: Regex pattern with named capture groups
+- **`priority`**: Processing order (lower numbers = higher priority)
+- **`relations`**: Optional parent-child relationship definitions
+  - **`group`**: Capture group name to match
+  - **`targets`**: Target taxonomy ID for parent relationship
 
 ### Hierarchy Building
 1. Projects are fetched from Dependency-Track API

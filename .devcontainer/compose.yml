@@ -26,6 +26,10 @@ services:
       - ALPINE_DATABASE_PASSWORD=dtrack
     ports:
       - "8081:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 3g
     depends_on:
       dtrack-db:
         condition: service_healthy
@@ -37,7 +41,7 @@ services:
       - POSTGRES_PASSWORD=dtrack
       - POSTGRES_DB=dtrack
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dtrack"]
+      test: [ "CMD-SHELL", "pg_isready -U dtrack" ]
 
   dtrack-frontend:
     image: dependencytrack/frontend
