@@ -1,0 +1,17 @@
+{
+  "name": "dt-aggregator",
+  "version": "1.0.0",
+  "description": "Dependency-Track Taxonomy & Security Aggregator",
+  "scripts": {
+    "cleanup": "./scripts/cleanup-whitespace.sh",
+    "lint": "pre-commit run --all-files",
+    "format": "pre-commit run --all-files",
+    "start": "./scripts/start-services.sh",
+    "stop": "./scripts/stop-services.sh",
+    "dev": "npm run dev",
+    "install-deps": "cd backend && pip install -r requirements.txt && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "pre-commit": "^3.0.0"
+  }
+}

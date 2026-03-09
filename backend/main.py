@@ -24,7 +24,7 @@ app.add_middleware(
 # Configuration
 DT_API_URL = os.getenv("DT_API_URL", "http://localhost:8081")
 DT_API_KEY = os.getenv("DT_API_KEY", "")
-TAXONOMIES_FILE = "api/taxonomies.yaml"
+TAXONOMIES_FILE = "../api/taxonomies.yaml"
 
 # Models
 class TaxonomyRelation(BaseModel):
@@ -37,9 +37,9 @@ class Taxonomy(BaseModel):
     regex_pattern: str
     priority: int
     relations: Optional[List[TaxonomyRelation]] = None
-    
+
     # For backward compatibility with new YAML format
-    @property 
+    @property
     def pattern(self) -> str:
         return self.regex_pattern
 
@@ -74,11 +74,11 @@ def load_taxonomies() -> List[Taxonomy]:
             with open(TAXONOMIES_FILE, 'w') as f:
                 yaml.dump({"taxonomies": []}, f)
             return []
-        
+
         with open(TAXONOMIES_FILE, 'r') as f:
             data = yaml.safe_load(f)
             print(f"Loaded YAML data: {data}")
-            
+
             # Handle both new format (with taxonomies key) and old format (direct array)
             if isinstance(data, dict) and "taxonomies" in data:
                 print(f"Loading {len(data['taxonomies'])} taxonomies from new format")
@@ -136,27 +136,27 @@ async def get_dt_projects() -> List[DTProject]:
             response.raise_for_status()
             projects_data = response.json()
             print(f"Successfully fetched {len(projects_data)} projects from DT API")
-            
+
             projects = []
             for project in projects_data:
                 # Get metrics for each project
                 try:
                     metrics_response = await client.get(
-                        f"{DT_API_URL}/api/v1/project/{project['uuid']}/metrics", 
+                        f"{DT_API_URL}/api/v1/project/{project['uuid']}/metrics",
                         headers=headers
                     )
                     metrics = metrics_response.json() if metrics_response.status_code == 200 else {}
                 except Exception as e:
                     print(f"Warning: Could not fetch metrics for project {project['uuid']}: {e}")
                     metrics = {}
-                
+
                 projects.append(DTProject(
                     uuid=project['uuid'],
                     name=project['name'],
                     tags=project.get('tags', []),
                     metrics=metrics
                 ))
-            
+
             return projects
         except httpx.HTTPError as e:
             print(f"Error connecting to DT API at {DT_API_URL}: {e}")
@@ -177,7 +177,7 @@ async def create_taxonomy(taxonomy: Taxonomy):
     # Check if ID already exists
     if any(t.id == taxonomy.id for t in taxonomies):
         raise HTTPException(status_code=400, detail="Taxonomy ID already exists")
-    
+
     taxonomies.append(taxonomy)
     save_taxonomies(taxonomies)
     return taxonomy
@@ -186,10 +186,10 @@ async def create_taxonomy(taxonomy: Taxonomy):
 async def update_taxonomy(taxonomy_id: str, taxonomy: Taxonomy):
     taxonomies = load_taxonomies()
     index = next((i for i, t in enumerate(taxonomies) if t.id == taxonomy_id), None)
-    
+
     if index is None:
         raise HTTPException(status_code=404, detail="Taxonomy not found")
-    
+
     taxonomies[index] = taxonomy
     save_taxonomies(taxonomies)
     return taxonomy
@@ -198,10 +198,10 @@ async def update_taxonomy(taxonomy_id: str, taxonomy: Taxonomy):
 async def delete_taxonomy(taxonomy_id: str):
     taxonomies = load_taxonomies()
     index = next((i for i, t in enumerate(taxonomies) if t.id == taxonomy_id), None)
-    
+
     if index is None:
         raise HTTPException(status_code=404, detail="Taxonomy not found")
-    
+
     taxonomies.pop(index)
     save_taxonomies(taxonomies)
     return {"message": "Taxonomy deleted successfully"}
@@ -211,43 +211,43 @@ async def delete_taxonomy(taxonomy_id: str):
 async def aggregate_security_data():
     try:
         print("Starting security data aggregation...")
-        
+
         # Load taxonomies and DT projects
         taxonomies = load_taxonomies()
         print(f"Loaded {len(taxonomies)} taxonomies")
-        
+
         projects = await get_dt_projects()
         print(f"Loaded {len(projects)} projects")
-        
+
         # If no projects, return empty list
         if not projects:
             print("No projects found - returning empty security hierarchy")
             return []
-        
+
         # Sort taxonomies by priority
         taxonomies.sort(key=lambda x: x.priority)
-        
+
         # Build hierarchy
         root_nodes = defaultdict(list)
         all_nodes = {}
-        
+
         # Process each project through taxonomies
         for project in projects:
             project_tags = " ".join(project.tags)
             project_path = []
-            
+
             # Apply taxonomies in priority order
             for taxonomy in taxonomies:
                 match = re.match(taxonomy.regex_pattern, project_tags)
                 if match:
                     groups = match.groupdict()
                     project_path.append((taxonomy.id, groups.get(taxonomy.id, project.name)))
-            
+
             # Create or update nodes in hierarchy
             parent_id = None
             for taxonomy_id, name in project_path:
                 node_id = f"{taxonomy_id}:{name}"
-                
+
                 if node_id not in all_nodes:
                     node = SecurityNode(
                         id=node_id,
@@ -257,14 +257,14 @@ async def aggregate_security_data():
                         children=[]
                     )
                     all_nodes[node_id] = node
-                    
+
                     if parent_id:
                         all_nodes[parent_id].children.append(node)
                     else:
                         root_nodes[taxonomy_id].append(node)
-                
+
                 parent_id = node_id
-            
+
             # Add project as leaf node
             project_node = SecurityNode(
                 id=f"project:{project.uuid}",
@@ -279,23 +279,23 @@ async def aggregate_security_data():
                 low=project.metrics.get("low", 0),
                 inheritedRiskScore=project.metrics.get("inheritedRiskScore", 0.0)
             )
-            
+
             all_nodes[project_node.id] = project_node
             if parent_id:
                 all_nodes[parent_id].children.append(project_node)
             else:
                 root_nodes["project"].append(project_node)
-        
+
         # Apply relations after all nodes are created
         for taxonomy in taxonomies:
             if taxonomy.relations:
                 for relation in taxonomy.relations:
                     # Find all nodes that match this taxonomy
                     matching_nodes = [
-                        node for node_id, node in all_nodes.items() 
+                        node for node_id, node in all_nodes.items()
                         if node.type == taxonomy.id and node_id.startswith(f"{taxonomy.id}:")
                     ]
-                    
+
                     for node in matching_nodes:
                         # Extract the group value from node_id
                         node_value = node.id.split(":", 1)[1] if ":" in node.id else node.name
@@ -310,39 +310,39 @@ async def aggregate_security_data():
                                     # Update parent relationship
                                     old_parent_id = node.parent_id
                                     node.parent_id = target_node_id
-                                    
+
                                     # Remove from old parent
                                     if old_parent_id and old_parent_id in all_nodes:
                                         all_nodes[old_parent_id].children = [
-                                            child for child in all_nodes[old_parent_id].children 
+                                            child for child in all_nodes[old_parent_id].children
                                             if child.id != node.id
                                         ]
-                                    
+
                                     # Add to new parent
                                     all_nodes[target_node_id].children.append(node)
-                                    
+
                                     # Remove from root if it was there
                                     if node.id in [n.id for n in root_nodes.get(taxonomy.id, [])]:
                                         root_nodes[taxonomy.id] = [
-                                            n for n in root_nodes.get(taxonomy.id, []) 
+                                            n for n in root_nodes.get(taxonomy.id, [])
                                             if n.id != node.id
                                         ]
-        
+
         # Calculate roll-up metrics
         def calculate_rollup(node):
             if not node.children:
                 return node
-            
+
             total_vulns = node.vulnerabilities
             total_critical = node.critical
             total_high = node.high
             total_medium = node.medium
             total_low = node.low
             total_risk_scores = []
-            
+
             if node.inheritedRiskScore > 0:
                 total_risk_scores.append(node.inheritedRiskScore)
-            
+
             for child in node.children:
                 child_metrics = calculate_rollup(child)
                 total_vulns += child_metrics.vulnerabilities
@@ -352,26 +352,26 @@ async def aggregate_security_data():
                 total_low += child_metrics.low
                 if child_metrics.inheritedRiskScore > 0:
                     total_risk_scores.append(child_metrics.inheritedRiskScore)
-            
+
             node.vulnerabilities = total_vulns
             node.critical = total_critical
             node.high = total_high
             node.medium = total_medium
             node.low = total_low
             node.inheritedRiskScore = sum(total_risk_scores) / len(total_risk_scores) if total_risk_scores else 0.0
-            
+
             return node
-        
+
         # Apply roll-up calculations
         all_root_nodes = []
         for taxonomy_nodes in root_nodes.values():
             for node in taxonomy_nodes:
                 calculate_rollup(node)
                 all_root_nodes.append(node)
-        
+
         print(f"Successfully aggregated {len(all_nodes)} security nodes")
         return all_root_nodes
-        
+
     except Exception as e:
         print(f"Error in aggregate_security_data: {e}")
         import traceback
@@ -382,39 +382,39 @@ async def aggregate_security_data():
 @app.api_route("/api/v1/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy_dt_api(path: str, request):
     headers = {"X-Api-Key": DT_API_KEY} if DT_API_KEY else {}
-    
+
     # Remove host header to avoid conflicts
     if "host" in request.headers:
         headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
-    
+
     async with httpx.AsyncClient() as client:
         try:
             if request.method == "GET":
                 response = await client.get(
-                    f"{DT_API_URL}/api/v1/{path}", 
+                    f"{DT_API_URL}/api/v1/{path}",
                     headers=headers,
                     params=request.query_params
                 )
             elif request.method == "POST":
                 data = await request.json()
                 response = await client.post(
-                    f"{DT_API_URL}/api/v1/{path}", 
+                    f"{DT_API_URL}/api/v1/{path}",
                     headers=headers,
                     json=data
                 )
             elif request.method == "PUT":
                 data = await request.json()
                 response = await client.put(
-                    f"{DT_API_URL}/api/v1/{path}", 
+                    f"{DT_API_URL}/api/v1/{path}",
                     headers=headers,
                     json=data
                 )
             elif request.method == "DELETE":
                 response = await client.delete(
-                    f"{DT_API_URL}/api/v1/{path}", 
+                    f"{DT_API_URL}/api/v1/{path}",
                     headers=headers
                 )
-            
+
             return JSONResponse(
                 content=response.json(),
                 status_code=response.status_code,
