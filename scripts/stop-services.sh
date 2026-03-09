@@ -2,11 +2,16 @@
 
 echo "🛑 Stopping DT Aggregator Services"
 
+# Stop DT services
+echo "🐳 Stopping DT services..."
+cd .devcontainer && docker compose down
+cd ..
+
 # Kill any running Python backend processes
 echo "🔧 Stopping backend..."
 pkill -f "python.*main.py" 2>/dev/null && echo "✅ Backend stopped" || echo "ℹ️ Backend not running"
 
-# Kill any running Vite frontend processes  
+# Kill any running Vite frontend processes
 echo "🎨 Stopping frontend..."
 pkill -f "vite" 2>/dev/null && echo "✅ Frontend stopped" || echo "ℹ️ Frontend not running"
 

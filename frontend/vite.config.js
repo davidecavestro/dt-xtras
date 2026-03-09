@@ -7,9 +7,15 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
+      '/api/v1': {
+        target: 'http://dtrack-apiserver:8080',
+        changeOrigin: true,
+        secure: false
+      },
       '/api': {
         target: 'http://localhost:8000',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false
       }
     }
   }
