@@ -27,11 +27,21 @@ DT_API_KEY = os.getenv("DT_API_KEY", "")
 TAXONOMIES_FILE = "api/taxonomies.yaml"
 
 # Models
+class TaxonomyRelation(BaseModel):
+    group: str
+    targets: str
+
 class Taxonomy(BaseModel):
     id: str
     name: str
     regex_pattern: str
     priority: int
+    relations: Optional[List[TaxonomyRelation]] = None
+    
+    # For backward compatibility with new YAML format
+    @property 
+    def pattern(self) -> str:
+        return self.regex_pattern
 
 class DTProject(BaseModel):
     uuid: str
@@ -62,21 +72,57 @@ def load_taxonomies() -> List[Taxonomy]:
         if not os.path.exists(TAXONOMIES_FILE):
             os.makedirs(os.path.dirname(TAXONOMIES_FILE), exist_ok=True)
             with open(TAXONOMIES_FILE, 'w') as f:
-                yaml.dump([], f)
+                yaml.dump({"taxonomies": []}, f)
             return []
         
         with open(TAXONOMIES_FILE, 'r') as f:
             data = yaml.safe_load(f)
-            return [Taxonomy(**item) for item in data]
+            print(f"Loaded YAML data: {data}")
+            
+            # Handle both new format (with taxonomies key) and old format (direct array)
+            if isinstance(data, dict) and "taxonomies" in data:
+                print(f"Loading {len(data['taxonomies'])} taxonomies from new format")
+                # Map 'pattern' field to 'regex_pattern' for Pydantic model
+                taxonomies = []
+                for item in data["taxonomies"]:
+                    item_data = item.copy()
+                    if 'pattern' in item_data:
+                        item_data['regex_pattern'] = item_data.pop('pattern')
+                    taxonomies.append(Taxonomy(**item_data))
+                return taxonomies
+            elif isinstance(data, list):
+                # Backward compatibility for old format
+                print(f"Loading {len(data)} taxonomies from old format")
+                # Map 'pattern' field to 'regex_pattern' for Pydantic model
+                taxonomies = []
+                for item in data:
+                    item_data = item.copy()
+                    if 'pattern' in item_data:
+                        item_data['regex_pattern'] = item_data.pop('pattern')
+                    taxonomies.append(Taxonomy(**item_data))
+                return taxonomies
+            else:
+                print(f"Unknown taxonomy format in file: {type(data)}")
+                return []
     except Exception as e:
         print(f"Error loading taxonomies: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def save_taxonomies(taxonomies: List[Taxonomy]):
     try:
         os.makedirs(os.path.dirname(TAXONOMIES_FILE), exist_ok=True)
         with open(TAXONOMIES_FILE, 'w') as f:
-            yaml.dump([t.dict() for t in taxonomies], f, default_flow_style=False)
+            # Save in new format with taxonomies key, mapping regex_pattern back to pattern
+            taxonomy_data = []
+            for t in taxonomies:
+                item = t.dict()
+                # Map regex_pattern back to pattern for YAML format
+                if 'regex_pattern' in item:
+                    item['pattern'] = item.pop('regex_pattern')
+                taxonomy_data.append(item)
+            yaml.dump({"taxonomies": taxonomy_data}, f, default_flow_style=False)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving taxonomies: {e}")
 
@@ -239,6 +285,48 @@ async def aggregate_security_data():
                 all_nodes[parent_id].children.append(project_node)
             else:
                 root_nodes["project"].append(project_node)
+        
+        # Apply relations after all nodes are created
+        for taxonomy in taxonomies:
+            if taxonomy.relations:
+                for relation in taxonomy.relations:
+                    # Find all nodes that match this taxonomy
+                    matching_nodes = [
+                        node for node_id, node in all_nodes.items() 
+                        if node.type == taxonomy.id and node_id.startswith(f"{taxonomy.id}:")
+                    ]
+                    
+                    for node in matching_nodes:
+                        # Extract the group value from node_id
+                        node_value = node.id.split(":", 1)[1] if ":" in node.id else node.name
+                        match = re.match(taxonomy.regex_pattern, " ".join(project.tags))
+                        if match:
+                            groups = match.groupdict()
+                            relation_value = groups.get(relation.group)
+                            if relation_value:
+                                # Find target parent node
+                                target_node_id = f"{relation.targets}:{relation_value}"
+                                if target_node_id in all_nodes:
+                                    # Update parent relationship
+                                    old_parent_id = node.parent_id
+                                    node.parent_id = target_node_id
+                                    
+                                    # Remove from old parent
+                                    if old_parent_id and old_parent_id in all_nodes:
+                                        all_nodes[old_parent_id].children = [
+                                            child for child in all_nodes[old_parent_id].children 
+                                            if child.id != node.id
+                                        ]
+                                    
+                                    # Add to new parent
+                                    all_nodes[target_node_id].children.append(node)
+                                    
+                                    # Remove from root if it was there
+                                    if node.id in [n.id for n in root_nodes.get(taxonomy.id, [])]:
+                                        root_nodes[taxonomy.id] = [
+                                            n for n in root_nodes.get(taxonomy.id, []) 
+                                            if n.id != node.id
+                                        ]
         
         # Calculate roll-up metrics
         def calculate_rollup(node):

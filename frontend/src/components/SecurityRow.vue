@@ -2,21 +2,21 @@
   <tr>
     <td class="px-6 py-4 whitespace-nowrap">
       <div class="flex items-center">
-        <button 
+        <button
           v-if="node.children && node.children.length > 0"
           @click="$emit('toggle', node.id)"
           class="mr-2 text-gray-400 hover:text-gray-600"
         >
-          <ChevronRight 
-            :class="{ 'rotate-90': isExpanded }" 
+          <ChevronRight
+            :class="{ 'rotate-90': isExpanded }"
             class="w-4 h-4 transition-transform"
           />
         </button>
-        <div 
-          v-else 
+        <div
+          v-else
           class="w-6 mr-2"
         ></div>
-        <div 
+        <div
           class="text-sm font-medium text-gray-900"
           :style="{ marginLeft: level * 20 + 'px' }"
         >
@@ -24,26 +24,26 @@
         </div>
       </div>
     </td>
-    
+
     <td class="px-6 py-4 whitespace-nowrap">
-      <span 
+      <span
         class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
         :class="getTypeClass(node.type)"
       >
         {{ node.type }}
       </span>
     </td>
-    
+
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
       {{ node.vulnerabilities.toLocaleString() }}
     </td>
-    
+
     <td class="px-6 py-4 whitespace-nowrap">
       <RiskScoreBadge :score="node.inheritedRiskScore" />
     </td>
-    
+
     <td class="px-6 py-4 whitespace-nowrap">
-      <VulnerabilityBar 
+      <VulnerabilityBar
         :critical="node.critical"
         :high="node.high"
         :medium="node.medium"
@@ -52,7 +52,7 @@
       />
     </td>
   </tr>
-  
+
   <!-- Child rows -->
   <template v-if="isExpanded && node.children">
     <SecurityRow

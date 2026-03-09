@@ -64,15 +64,58 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regex Pattern</label>
             <textarea
-              v-model="editingTaxonomy.regex_pattern"
+              v-model="editingTaxonomy.pattern"
               rows="3"
               class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
-              placeholder="e.g., customer:(?P<customer>[^\\s]+)"
+              placeholder="e.g., ^cust:(?P<id>\w+)$"
             ></textarea>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Use named capture groups (?P&lt;name&gt;pattern) to extract values.
-              The group name should match the taxonomy ID.
+              The group name should match the taxonomy ID for relations.
             </p>
+          </div>
+
+          <!-- Relations Section -->
+          <div class="mt-6">
+            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Relations (Optional)</h4>
+            <div class="space-y-4">
+              <div v-for="(relation, index) in editingTaxonomy.relations" :key="index" class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <div class="grid grid-cols-1 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Group Name</label>
+                    <input
+                      v-model="relation.group"
+                      type="text"
+                      class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+                      placeholder="e.g., customer"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Taxonomy</label>
+                    <input
+                      v-model="relation.targets"
+                      type="text"
+                      class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+                      placeholder="e.g., customer"
+                    />
+                  </div>
+                  <div class="mt-2">
+                    <button
+                      @click="removeRelation(index)"
+                      class="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+                    >
+                      Remove Relation
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <button
+                @click="addRelation"
+                class="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
+              >
+                Add Relation
+              </button>
+            </div>
           </div>
         </div>
 
@@ -208,7 +251,7 @@ export default {
       return editingTaxonomy.value &&
              editingTaxonomy.value.id &&
              editingTaxonomy.value.name &&
-             editingTaxonomy.value.regex_pattern !== undefined &&
+             editingTaxonomy.value.pattern !== undefined &&
              editingTaxonomy.value.priority !== undefined
     })
 
@@ -230,17 +273,35 @@ export default {
       editingTaxonomy.value = {
         id: '',
         name: '',
-        regex_pattern: '',
-        priority: taxonomies.value.length + 1
+        pattern: '',
+        priority: taxonomies.value.length + 1,
+        relations: []
       }
       testTags.value = ''
       regexTestResult.value = null
     }
 
     const editTaxonomy = (taxonomy) => {
-      editingTaxonomy.value = { ...taxonomy }
+      editingTaxonomy.value = {
+        ...taxonomy,
+        relations: taxonomy.relations || []
+      }
       testTags.value = ''
       regexTestResult.value = null
+    }
+
+    const addRelation = () => {
+      if (!editingTaxonomy.value.relations) {
+        editingTaxonomy.value.relations = []
+      }
+      editingTaxonomy.value.relations.push({
+        group: '',
+        targets: ''
+      })
+    }
+
+    const removeRelation = (index) => {
+      editingTaxonomy.value.relations.splice(index, 1)
     }
 
     const cancelEdit = () => {
@@ -282,12 +343,12 @@ export default {
     }
 
     const testRegex = () => {
-      if (!editingTaxonomy.value.regex_pattern || !testTags.value) {
+      if (!editingTaxonomy.value.pattern || !testTags.value) {
         return
       }
 
       try {
-        const regex = new RegExp(editingTaxonomy.value.regex_pattern)
+        const regex = new RegExp(editingTaxonomy.value.pattern)
         const match = testTags.value.match(regex)
 
         if (match) {
@@ -327,7 +388,9 @@ export default {
       cancelEdit,
       saveTaxonomy,
       deleteTaxonomy,
-      testRegex
+      testRegex,
+      addRelation,
+      removeRelation
     }
   }
 }
