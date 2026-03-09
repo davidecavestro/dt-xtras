@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: mixed-line-ending
+      - id: requirements-txt-fixer
+      - id: black
+        language_version: python3
+      - id: isort
+        args: ["--profile", "black"]
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, json, vue, yaml, markdown]
