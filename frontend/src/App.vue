@@ -7,15 +7,15 @@
             <h1 class="text-xl font-semibold text-gray-900 dark:text-white">DT Taxonomy & Security Aggregator</h1>
           </div>
           <div class="flex items-center space-x-4">
-            <router-link 
-              to="/" 
+            <router-link
+              to="/"
               class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/' }"
             >
               Dashboard
             </router-link>
-            <router-link 
-              to="/taxonomies" 
+            <router-link
+              to="/taxonomies"
               class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/taxonomies' }"
             >
@@ -37,7 +37,7 @@
         </div>
       </div>
     </nav>
-    
+
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <router-view />
     </main>
