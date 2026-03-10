@@ -17,7 +17,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from urllib.parse import urlencode
 
-app = FastAPI(title="DT Taxonomy & Security Aggregator", version="1.0.0")
+app = FastAPI(title="dt-xtras", version="1.0.0")
 
 # CORS middleware
 app.add_middleware(
@@ -1029,12 +1029,134 @@ async def test_proxy_post(request: Request):
 @app.api_route("/api/v1/{path:path}", methods=["GET"])
 async def proxy_dt_api_get(path: str, request: Request):
     print(f"Proxy GET request: /api/v1/{path}")
-    return {"message": "GET proxy working", "path": path}
+
+    # Prepare headers for DT API
+    headers = {}
+
+    # Check for Authorization header first (from frontend)
+    auth_header = request.headers.get("Authorization")
+    print(f"GET Auth header from request: {auth_header}")
+
+    if auth_header:
+        # Extract token from Bearer header and send as X-Api-Key to DT API
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]  # Remove "Bearer " prefix
+            headers["X-Api-Key"] = token
+            print(f"GET Using X-Api-Key from Bearer token: {token}")
+        else:
+            headers["X-Api-Key"] = auth_header
+            print(f"GET Using X-Api-Key directly: {auth_header}")
+    else:
+        # Fall back to cookie-based token
+        dt_token = request.cookies.get("dt_token")
+        print(f"GET Cookie dt_token: {dt_token}")
+        if dt_token:
+            headers["X-Api-Key"] = dt_token
+            print(f"GET Using X-Api-Key from cookie: {dt_token}")
+        elif DT_API_KEY:
+            headers["X-Api-Key"] = DT_API_KEY
+            print(f"GET Using DT_API_KEY: {DT_API_KEY}")
+
+    # Forward query parameters
+    params = dict(request.query_params)
+
+    try:
+        target_url = f"{DT_API_URL}/api/v1/{path}"
+        print(f"GET Target URL: {target_url}")
+        print(f"GET Request headers: {headers}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{DT_API_URL}/api/v1/{path}",
+                headers=headers,
+                params=params
+            )
+
+            print(f"GET DT API Response status: {response.status_code}")
+
+            # Return response with same status and headers
+            return Response(
+                content=response.content,
+                status_code=response.status_code,
+                headers=dict(response.headers)
+            )
+    except httpx.HTTPError as e:
+        print(f"Error proxying GET request to {path}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error proxying request: {e}")
 
 @app.api_route("/api/v1/{path:path}", methods=["POST", "PUT", "DELETE"])
 async def proxy_dt_api(path: str, request: Request):
-    print(f"Proxy request: {request.method} /api/v1/{path}")
-    return {"message": "Proxy working", "method": request.method, "path": path}
+    print(f"Proxy {request.method} request: /api/v1/{path}")
+
+    # Prepare headers for DT API
+    headers = {"Content-Type": "application/json"}
+
+    # Check for Authorization header first (from frontend)
+    auth_header = request.headers.get("Authorization")
+    print(f"Auth header from request: {auth_header}")
+
+    if auth_header:
+        # Extract token from Bearer header and send as X-Api-Key to DT API
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]  # Remove "Bearer " prefix
+            headers["X-Api-Key"] = token
+            print(f"Using X-Api-Key from Bearer token: {token}")
+        else:
+            headers["X-Api-Key"] = auth_header
+            print(f"Using X-Api-Key directly: {auth_header}")
+    else:
+        # Fall back to cookie-based token
+        dt_token = request.cookies.get("dt_token")
+        print(f"Cookie dt_token: {dt_token}")
+        if dt_token:
+            headers["X-Api-Key"] = dt_token
+            print(f"Using X-Api-Key from cookie: {dt_token}")
+        elif DT_API_KEY:
+            headers["X-Api-Key"] = DT_API_KEY
+            print(f"Using DT_API_KEY: {DT_API_KEY}")
+
+    # Forward query parameters
+    params = dict(request.query_params)
+
+    try:
+        # Get request body
+        body = await request.body()
+        print(f"Request body: {body}")
+
+        target_url = f"{DT_API_URL}/api/v1/{path}"
+        print(f"Target URL: {target_url}")
+        print(f"Request headers: {headers}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.request(
+                method=request.method,
+                url=target_url,
+                headers=headers,
+                params=params,
+                content=body
+            )
+
+            print(f"DT API Response status: {response.status_code}")
+            print(f"DT API Response headers: {dict(response.headers)}")
+
+            # Handle specific authentication errors
+            if response.status_code == 401:
+                print("DT API returned 401 Unauthorized - token is invalid or expired")
+                return Response(
+                    content=b'{"detail": "DT API authentication failed. Please check your credentials or login again."}',
+                    status_code=401,
+                    headers={"Content-Type": "application/json"}
+                )
+
+            # Return response with same status and headers
+            return Response(
+                content=response.content,
+                status_code=response.status_code,
+                headers=dict(response.headers)
+            )
+    except httpx.HTTPError as e:
+        print(f"Error proxying {request.method} request to {path}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error proxying request: {e}")
 
 if __name__ == "__main__":
     import uvicorn

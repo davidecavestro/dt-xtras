@@ -4,6 +4,9 @@ import App from './App.vue'
 import Dashboard from './components/Dashboard.vue'
 import TaxonomyEditor from './components/TaxonomyEditor.vue'
 import TagManager from './components/TagManager.vue'
+import ComponentsList from './components/ComponentsList.vue'
+import ProjectsList from './components/ProjectsList.vue'
+import VulnerabilitiesList from './components/VulnerabilitiesList.vue'
 import Login from './components/Login.vue'
 import authService from './services/auth'
 
@@ -28,6 +31,21 @@ const routes = [
   {
     path: '/tags',
     component: TagManager,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/projects',
+    component: ProjectsList,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/components',
+    component: ComponentsList,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/vulnerabilities',
+    component: VulnerabilitiesList,
     meta: { requiresAuth: true }
   }
 ]
