@@ -4,7 +4,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">DT Taxonomy & Security Aggregator</h1>
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">dt-xtras</h1>
           </div>
           <div class="flex items-center space-x-4">
             <router-link
@@ -20,6 +20,27 @@
               :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/taxonomies' }"
             >
               Taxonomy Editor
+            </router-link>
+            <router-link
+              to="/projects"
+              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/projects' }"
+            >
+              Projects
+            </router-link>
+            <router-link
+              to="/components"
+              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/components' }"
+            >
+              Components
+            </router-link>
+            <router-link
+              to="/vulnerabilities"
+              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/vulnerabilities' }"
+            >
+              Vulnerabilities
             </router-link>
             <router-link
               to="/tags"

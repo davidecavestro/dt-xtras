@@ -8,13 +8,13 @@
           </svg>
         </div>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-          Sign in to DT Taxonomy & Security
+          Sign in to dt-xtras
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
           Use your DT credentials to access the dashboard
         </p>
       </div>
-      
+
       <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
         <div class="rounded-md shadow-sm -space-y-px">
           <div>
@@ -99,7 +99,7 @@ export default {
 
       try {
         const result = await authService.login(username.value, password.value)
-        
+
         if (result.success) {
           router.push('/')
         } else {
