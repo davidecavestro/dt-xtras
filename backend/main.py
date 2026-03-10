@@ -9,6 +9,8 @@ import yaml
 import json
 import uuid
 import base64
+from typing import Dict, List, Optional
+from collections import defaultdict
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 from typing import List, Dict, Any, Optional
@@ -240,19 +242,20 @@ async def login(username: str = Form(...), password: str = Form(...)):
                 # DT API might not have authentication enabled
                 # Fall back to using API key if available, or return helpful error
                 if DT_API_KEY:
-                    # Generate app token anyway for consistency
+                    print("DT API authentication not available, falling back to API key")
+                    # Fall back to using API key if available
                     app_token = f"token_{uuid.uuid4().hex}"
                     token_store[app_token] = {
-                        "dt_token": None,  # Will use API key instead
+                        "dt_token": None,
                         "username": username,
-                        "permissions": [],  # No permissions when using API key
+                        "permissions": ['VIEW_PORTFOLIO'],
                         "created_at": datetime.now()
                     }
                     return app_token
                 else:
                     raise HTTPException(
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail="DT API authentication not available. Please configure DT to enable authentication or set DT_API_KEY."
+                        detail="DT API authentication not available and no API key configured"
                     )
             else:
                 raise HTTPException(
@@ -328,48 +331,20 @@ async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
     return {"message": "Successfully logged out"}
 
 # DT API Client
-async def get_dt_projects(dt_token: str = None) -> List[DTProject]:
+async def get_dt_projects(dt_token: str) -> List[Dict]:
+    """Get projects from DT API with proper authentication"""
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
+
     async with httpx.AsyncClient() as client:
-        try:
-            print(f"Attempting to connect to DT API at: {DT_API_URL}")
-            response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers)
-            response.raise_for_status()
-            projects_data = response.json()
-            print(f"Successfully fetched {len(projects_data)} projects from DT API")
+        response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers)
+        response.raise_for_status()
 
-            projects = []
-            for project in projects_data:
-                # Get metrics for each project
-                try:
-                    metrics_response = await client.get(
-                        f"{DT_API_URL}/api/v1/project/{project['uuid']}/metrics",
-                        headers=headers
-                    )
-                    metrics = metrics_response.json() if metrics_response.status_code == 200 else {}
-                except Exception as e:
-                    print(f"Warning: Could not fetch metrics for project {project['uuid']}: {e}")
-                    metrics = {}
-
-                projects.append(DTProject(
-                    uuid=project['uuid'],
-                    name=project['name'],
-                    tags=project.get('tags', []),
-                    metrics=metrics
-                ))
-
-            return projects
-        except httpx.HTTPError as e:
-            print(f"Error connecting to DT API at {DT_API_URL}: {e}")
-            print("Returning empty project list - please ensure DT API is running")
-            return []  # Return empty list instead of raising exception
-        except Exception as e:
-            print(f"Unexpected error fetching DT projects: {e}")
-            return []  # Return empty list instead of raising exception
+        # DT API returns plain dicts, not objects
+        return response.json()
 
 # Taxonomy CRUD Operations
 @app.get("/api/taxonomies", response_model=List[Taxonomy])
@@ -418,18 +393,11 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
     project_versions = []
 
     for project in projects:
-        project_tags = " ".join(project.tags)
+        project_tags = " ".join(project.get('tags', []))
+        version_info = {}
         taxonomies_list = load_taxonomies()
 
-        # Apply taxonomies to extract project version info
-        version_info = {
-            'project_uuid': project.uuid,
-            'name': project.name,
-            'tags': project.tags,
-            'metrics': project.metrics or {}
-        }
-
-        # Extract taxonomy relationships
+        # Apply taxonomies in priority order
         for taxonomy in taxonomies_list:
             match = re.match(taxonomy.regex_pattern, project_tags)
             if match:
@@ -440,19 +408,29 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
 
         # Create ProjectVersion object
         project_version = ProjectVersion(
-            id=f"{project.uuid}:{version_info.get('product_version_name', project.name)}",
-            name=version_info.get('product_version_name', project.name),
-            version=version_info.get('product_version_version', 'latest'),
+            id=f"{project['uuid']}",
+            name=project['name'],
+            version=version_info.get('product_version_version', project.get('version', 'latest')),
             customer_id=version_info.get('customer_id'),
             environment_id=version_info.get('environment_id'),
-            project_uuid=project.uuid,
-            tags=project.tags,
-            metrics=project.metrics
+            project_uuid=project['uuid'],
+            tags=project.get('tags', []),
+            metrics=project.get('metrics', {})
         )
 
         project_versions.append(project_version)
 
     return project_versions
+
+@app.get("/api/projects", response_model=List[DTProject])
+async def get_projects(dt_token: str = Depends(get_dt_token_from_request)):
+    """Get all projects from DT API"""
+    try:
+        projects = await get_dt_projects(dt_token)
+        return projects
+    except Exception as e:
+        print(f"Error getting projects: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching projects: {e}")
 
 @app.get("/api/project-versions", response_model=List[ProjectVersion])
 async def get_project_versions(dt_token: str = Depends(get_dt_token_from_request)):
@@ -954,14 +932,14 @@ async def get_dt_token(credentials: HTTPAuthorizationCredentials = Depends(secur
     """Get DT API token for frontend to use"""
     try:
         app_token = credentials.credentials
-        dt_token = token_store.get(app_token)
+        dt_token = token_store.get(app_token, {}).get("dt_token")
 
         if dt_token:
-            return {"token": dt_token}
+            return {"token": {"dt_token": dt_token}}
         else:
             # If no DT token stored, use DT API key as fallback
             if DT_API_KEY:
-                return {"token": DT_API_KEY}
+                return {"token": {"dt_token": DT_API_KEY}}
             else:
                 raise HTTPException(status_code=401, detail="No DT API token available")
 
@@ -970,27 +948,11 @@ async def get_dt_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         raise HTTPException(status_code=500, detail="Error getting DT token")
 
 @app.post("/api/v1/tag/{tag_name}/project")
-async def tag_projects_direct(tag_name: str):
+async def tag_projects_direct(tag_name: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
     """Direct implementation for tagging projects"""
-    return {"message": f"Would tag projects with tag '{tag_name}'"}
-
-@app.delete("/api/v1/tag/{tag_name}/project")
-async def untag_projects_direct(tag_name: str, request: Request):
-    """Direct implementation for untagging projects"""
     try:
         data = await request.json()
-        print(f"Untagging projects with tag '{tag_name}': {data}")
-
-        # Get DT token
-        dt_token = None
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            app_token = auth_header[7:]  # Remove "Bearer "
-            dt_token = token_store.get(app_token)
-
-        if not dt_token:
-            # Fallback to API key
-            dt_token = DT_API_KEY
+        print(f"Tagging projects with tag '{tag_name}': {data}")
 
         headers = {}
         if dt_token:
@@ -998,7 +960,41 @@ async def untag_projects_direct(tag_name: str, request: Request):
         elif DT_API_KEY:
             headers["X-Api-Key"] = DT_API_KEY
 
-        # Call DT API directly
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{DT_API_URL}/api/v1/tag/{tag_name}/project",
+                json=data,
+                headers=headers
+            )
+
+            if response.status_code == 204:
+                return {"message": f"Successfully tagged projects with '{tag_name}'"}
+            else:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to tag projects: {response.text}"
+                )
+
+    except httpx.HTTPError as e:
+        print(f"Error tagging projects: {e}")
+        raise HTTPException(status_code=500, detail=f"Error tagging projects: {e}")
+    except Exception as e:
+        print(f"Unexpected error tagging projects: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error tagging projects")
+
+@app.delete("/api/v1/tag/{tag_name}/project")
+async def untag_projects_direct(tag_name: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
+    """Direct implementation for untagging projects"""
+    try:
+        data = await request.json()
+        print(f"Untagging projects with tag '{tag_name}': {data}")
+
+        headers = {}
+        if dt_token:
+            headers["Authorization"] = f"Bearer {dt_token}"
+        elif DT_API_KEY:
+            headers["X-Api-Key"] = DT_API_KEY
+
         async with httpx.AsyncClient() as client:
             response = await client.delete(
                 f"{DT_API_URL}/api/v1/tag/{tag_name}/project",
@@ -1007,13 +1003,19 @@ async def untag_projects_direct(tag_name: str, request: Request):
             )
 
             if response.status_code == 204:
-                return {"status": "success", "message": "Projects untagged successfully"}
+                return {"message": f"Successfully untagged projects from '{tag_name}'"}
             else:
-                return response.json()
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to untag projects: {response.text}"
+                )
 
-    except Exception as e:
-        print(f"Error in untag_projects_direct: {e}")
+    except httpx.HTTPError as e:
+        print(f"Error untagging projects: {e}")
         raise HTTPException(status_code=500, detail=f"Error untagging projects: {e}")
+    except Exception as e:
+        print(f"Unexpected error untagging projects: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error untagging projects")
 
 # Proxy endpoints for DT API
 @app.get("/api/v1/test")

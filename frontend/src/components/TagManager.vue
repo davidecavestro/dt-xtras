@@ -307,6 +307,7 @@
 <script>
 import axios from 'axios'
 import { ref, onMounted, computed } from 'vue'
+import auth from '../services/auth.js'
 import { useRouter } from 'vue-router'
 
 export default {
@@ -378,35 +379,20 @@ export default {
 
     const loadProjects = async () => {
       try {
-        const response = await axios.get('/api/project-versions')
-        const projectVersions = response.data
-        // Convert to project format with tags and version
-        projects.value = projectVersions.map(pv => ({
-          id: pv.id,
-          uuid: pv.project_uuid,
-          name: pv.name,
-          version: pv.version,
-          displayName: `${pv.name}:${pv.version}`,
-          tags: pv.tags || []
+        // Load projects from our backend - auth service handles token automatically
+        const response = await axios.get('/api/projects')
+
+        projects.value = response.data.map(project => ({
+          id: project.uuid, // Use uuid as id
+          uuid: project.uuid,
+          name: project.name,
+          version: project.version || 'latest',
+          displayName: project.version ? `${project.name}:${project.version}` : `${project.name}:latest`,
+          tags: project.tags || []
         }))
       } catch (error) {
         console.error('Error loading projects:', error)
-        // If project-versions fails, try loading from DT API directly
-        try {
-          const dtResponse = await axios.get('/api/v1/project')
-          // DT API projects have version info, use the actual version
-          projects.value = dtResponse.data.map(project => ({
-            id: project.uuid, // Use uuid as id for DT API projects
-            uuid: project.uuid,
-            name: project.name,
-            version: project.version || 'latest',
-            displayName: project.version ? `${project.name}:${project.version}` : `${project.name}:latest`,
-            tags: project.tags || []
-          }))
-        } catch (dtError) {
-          console.error('Error loading projects from DT API:', dtError)
-          projects.value = []
-        }
+        projects.value = []
       }
     }
 
@@ -529,16 +515,8 @@ export default {
         ).filter(Boolean)
 
         for (const tagName of tagNames) {
-          // Get DT API token from our backend
-          const tokenResponse = await axios.get('/api/dt-token')
-          const dtToken = tokenResponse.data.token
-
-          // Direct call to DT API with proper authentication
-          const response = await axios.post(`/api/v1/tag/${tagName}/project`, selectedProjects.value, {
-            headers: {
-              'Authorization': `Bearer ${dtToken}`
-            }
-          })
+          // Call our backend endpoint - auth service handles authentication automatically
+          const response = await axios.post(`/api/v1/tag/${tagName}/project`, selectedProjects.value)
 
           if (response.status === 204) {
             // Success - update local project tags
@@ -570,7 +548,7 @@ export default {
         ).filter(Boolean)
 
         for (const tagName of tagNames) {
-          // Use DT API endpoint to untag projects
+          // Call our backend endpoint - auth service handles authentication automatically
           const response = await axios.delete(`/api/v1/tag/${tagName}/project`, {
             data: selectedProjects.value
           })
