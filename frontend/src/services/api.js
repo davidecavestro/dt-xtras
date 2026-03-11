@@ -60,7 +60,7 @@ class ApiService {
     }
 
     try {
-      const response = await axios.get(`${this.baseURL}/api/v1${endpoint}`, { params })
+      const response = await axios.get(`/api/${endpoint}`, { params })
 
       // Extract pagination metadata from response
       const paginationMetadata = this.extractPaginationMetadata(response, pagination)
@@ -206,43 +206,24 @@ class ApiService {
     }
   }
 
-  // DT API specific endpoints with pagination support
-  // All endpoints are now proxied through the backend
+  async getLicenses(pagination = {}, filters = {}) {
+    return this.getPaginated('/license', pagination, filters)
+  }
 
   /**
    * Get projects with pagination
-   * Endpoint: /project
+   * Endpoint: /projects
    * Operation: getProjects
    * @param {Object} pagination - Pagination configuration
    * @param {Object} filters - Additional filters
    * @returns {Promise} - Paginated projects data
    */
   async getProjects(pagination = {}, filters = {}) {
-    return this.getPaginated('/project', pagination, filters)
+    return this.getPaginated('projects', pagination, filters)
   }
 
-  /**
-   * Get vulnerabilities with pagination
-   * Endpoint: /vulnerability
-   * Operation: getVulnerabilities
-   * @param {Object} pagination - Pagination configuration
-   * @param {Object} filters - Additional filters
-   * @returns {Promise} - Paginated vulnerabilities data
-   */
   async getVulnerabilities(pagination = {}, filters = {}) {
-    return this.getPaginated('/vulnerability', pagination, filters)
-  }
-
-  /**
-   * Get licenses with pagination
-   * Endpoint: /license
-   * Operation: getLicenses
-   * @param {Object} pagination - Pagination configuration
-   * @param {Object} filters - Additional filters
-   * @returns {Promise} - Paginated licenses data
-   */
-  async getLicenses(pagination = {}, filters = {}) {
-    return this.getPaginated('/license', pagination, filters)
+    return this.getPaginated('vulnerabilities', pagination, filters)
   }
 
   /**

@@ -64,7 +64,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regex Pattern</label>
             <textarea
-              v-model="editingTaxonomy.pattern"
+              v-model="editingTaxonomy.regex_pattern"
               rows="3"
               class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
               placeholder="e.g., ^cust:(?P<id>\w+)$"
@@ -251,7 +251,7 @@ export default {
       return editingTaxonomy.value &&
              editingTaxonomy.value.id &&
              editingTaxonomy.value.name &&
-             editingTaxonomy.value.pattern !== undefined &&
+             editingTaxonomy.value.regex_pattern !== undefined &&
              editingTaxonomy.value.priority !== undefined
     })
 
@@ -273,7 +273,7 @@ export default {
       editingTaxonomy.value = {
         id: '',
         name: '',
-        pattern: '',
+        regex_pattern: '^.*$', // Default pattern - matches anything
         priority: taxonomies.value.length + 1,
         relations: []
       }
@@ -343,30 +343,35 @@ export default {
     }
 
     const testRegex = () => {
-      if (!editingTaxonomy.value.pattern || !testTags.value) {
+      if (!editingTaxonomy.value.regex_pattern || !testTags.value) {
         return
       }
 
       try {
-        const regex = new RegExp(editingTaxonomy.value.pattern)
+        const regex = new RegExp(editingTaxonomy.value.regex_pattern)
         const match = testTags.value.match(regex)
 
         if (match) {
           regexTestResult.value = {
-            match: true,
-            groups: match.groups || {}
+            success: true,
+            match: match[0],
+            groups: match.slice(1),
+            message: '✅ Pattern matches!'
           }
         } else {
           regexTestResult.value = {
-            match: false,
-            groups: null
+            success: false,
+            match: null,
+            groups: [],
+            message: '❌ Pattern does not match test string'
           }
         }
       } catch (error) {
         regexTestResult.value = {
-          match: false,
-          groups: null,
-          error: error.message
+          success: false,
+          match: null,
+          groups: [],
+          message: `❌ Invalid regex: ${error.message}`
         }
       }
     }

@@ -62,7 +62,7 @@ def decode_jwt_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired"
         )
-    except jwt.JWTError:
+    except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
@@ -360,7 +360,7 @@ async def get_dt_projects(dt_token: str) -> List[Dict]:
     print(f"Headers: {headers}")
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers)
+        response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, timeout=30.0)
         print(f"DT API response status: {response.status_code}")
         print(f"DT API response: {response.text[:200]}...")
 
@@ -692,13 +692,23 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
         if not tag_name:
             raise HTTPException(status_code=400, detail="Tag name is required")
 
+        # Check if tag matches any existing taxonomy
+        taxonomies = load_taxonomies()
+        is_custom_tag = True
+
+        for taxonomy in taxonomies:
+            if re.match(taxonomy.regex_pattern, tag_name):
+                is_custom_tag = False
+                print(f"Tag '{tag_name}' matches taxonomy '{taxonomy.id}'")
+                break
+
         headers = {}
         if dt_token:
             headers["Authorization"] = f"Bearer {dt_token}"
         elif DT_API_KEY:
             headers["X-Api-Key"] = DT_API_KEY
-        print(f"Creating tag '{tag_name}' in DT at {DT_API_URL}")
 
+        print(f"Creating tag '{tag_name}' in DT at {DT_API_URL} (custom: {is_custom_tag})")
         async with httpx.AsyncClient() as client:
             response = await client.put(
                 f"{DT_API_URL}/api/v1/tag",
@@ -708,7 +718,7 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
 
             if response.status_code == 201:
                 print(f"Successfully created tag '{tag_name}'")
-                return {'name': tag_name, 'projectsCount': 0}
+                return {'name': tag_name, 'projectsCount': 0, 'custom': is_custom_tag}
             elif response.status_code == 401:
                 raise HTTPException(
                     status_code=401,
@@ -725,7 +735,6 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
                 error_detail = f"Failed to create tag (DT API status: {response.status_code})"
                 print(error_detail)
                 raise HTTPException(status_code=500, detail=error_detail)
-
     except HTTPException:
         raise
     except Exception as e:
@@ -742,19 +751,19 @@ async def delete_tag(tag_name: str, dt_token: str = Depends(get_dt_token_from_re
             headers["Authorization"] = f"Bearer {dt_token}"
         elif DT_API_KEY:
             headers["X-Api-Key"] = DT_API_KEY
-        async with httpx.AsyncClient() as client:
-            response = await client.delete(
-                f"{DT_API_URL}/api/v1/tag",
-                headers=headers,
-                json=[tag_name]
-            )
+        response = httpx.request(
+            method="DELETE",
+            url=f"{DT_API_URL}/api/v1/tag",
+            headers={**headers, "Content-Type": "application/json"},
+            content=json.dumps([tag_name])
+        )
 
-            if response.status_code == 204:
-                return {"message": "Tag deleted successfully"}
-            elif response.status_code == 400:
-                raise HTTPException(status_code=400, detail="Cannot delete tag - it may be in use")
-            else:
-                raise HTTPException(status_code=500, detail="Failed to delete tag")
+        if response.status_code == 204:
+            return {"message": "Tag deleted successfully"}
+        elif response.status_code == 400:
+            raise HTTPException(status_code=400, detail="Cannot delete tag - it may be in use")
+        else:
+            raise HTTPException(status_code=response.status_code, detail="Failed to delete tag")
 
     except HTTPException:
         raise
@@ -794,12 +803,23 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
     try:
         print("Starting security data aggregation...")
 
-        # Load taxonomies and project versions
+        # Set a timeout for the entire operation
+        import asyncio
+
+        # Load taxonomies and project versions with timeout
         taxonomies = load_taxonomies()
         print(f"Loaded {len(taxonomies)} taxonomies")
 
-        # Get project versions with taxonomy relationships
-        project_versions = await get_project_versions_internal(dt_token)
+        # Get project versions with timeout
+        try:
+            project_versions = await asyncio.wait_for(
+                get_project_versions_internal(dt_token),
+                timeout=30.0
+            )
+        except asyncio.TimeoutError:
+            print("Timeout getting project versions")
+            raise HTTPException(status_code=504, detail="Timeout getting project data")
+
         print(f"Loaded {len(project_versions)} project versions")
 
         # If no project versions, return empty list
@@ -964,6 +984,9 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
         return all_root_nodes
 
     except Exception as e:
+        print(f"Error in aggregate_security_data: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error aggregating security data: {e}") from e
 
 @app.get("/api/dt-token")
@@ -1070,6 +1093,25 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0"
     }
+
+@app.get("/api/health")
+async def api_health_check():
+    """API health check with dependencies"""
+    try:
+        # Test basic functionality
+        taxonomies = load_taxonomies()
+        return {
+            "status": "healthy",
+            "service": "dt-xtras-api",
+            "taxonomies_loaded": len(taxonomies),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }, 500
 
 # Proxy endpoints for DT API
 @app.get("/api/v1/test")
