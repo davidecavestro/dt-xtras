@@ -29,13 +29,6 @@
               Projects
             </router-link>
             <router-link
-              to="/components"
-              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-              :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/components' }"
-            >
-              Components
-            </router-link>
-            <router-link
               to="/vulnerabilities"
               class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/vulnerabilities' }"

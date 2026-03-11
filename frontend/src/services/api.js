@@ -210,18 +210,6 @@ class ApiService {
   // All endpoints are now proxied through the backend
 
   /**
-   * Get all components with pagination
-   * Endpoint: /component
-   * Operation: getAllComponents
-   * @param {Object} pagination - Pagination configuration
-   * @param {Object} filters - Additional filters
-   * @returns {Promise} - Paginated components data
-   */
-  async getComponents(pagination = {}, filters = {}) {
-    return this.getPaginated('/component', pagination, filters)
-  }
-
-  /**
    * Get projects with pagination
    * Endpoint: /project
    * Operation: getProjects
@@ -292,33 +280,6 @@ class ApiService {
    */
   async getTeamProjects(teamUuid, pagination = {}, filters = {}) {
     return this.getPaginated(`/acl/team/${teamUuid}`, pagination, filters)
-  }
-
-  /**
-   * Get component by hash with pagination
-   * Endpoint: /component/hash/{hash}
-   * Operation: getComponentByHash
-   * @param {string} hash - Component hash
-   * @param {Object} pagination - Pagination configuration
-   * @param {Object} filters - Additional filters
-   * @returns {Promise} - Paginated components data
-   */
-  async getComponentByHash(hash, pagination = {}, filters = {}) {
-    return this.getPaginated(`/component/hash/${hash}`, pagination, filters)
-  }
-
-  /**
-   * Get component by identity with pagination
-   * Endpoint: /component/identity/{name}/{version}
-   * Operation: getComponentByIdentity
-   * @param {string} name - Component name
-   * @param {string} version - Component version
-   * @param {Object} pagination - Pagination configuration
-   * @param {Object} filters - Additional filters
-   * @returns {Promise} - Paginated components data
-   */
-  async getComponentByIdentity(name, version, pagination = {}, filters = {}) {
-    return this.getPaginated(`/component/identity/${encodeURIComponent(name)}/${encodeURIComponent(version)}`, pagination, filters)
   }
 }
 
