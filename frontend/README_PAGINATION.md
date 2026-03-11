@@ -66,14 +66,11 @@ Based on the DT OpenAPI specification, the API supports two pagination methods:
 The following DT endpoints support pagination:
 
 1. **Projects** - `/v1/project` (`getProjects`)
-2. **Components** - `/v1/component` (`getAllComponents`)
-3. **Vulnerabilities** - `/v1/vulnerability` (`getVulnerabilities`)
-4. **Licenses** - `/v1/license` (`getLicenses`)
-5. **CWEs** - `/v1/cwe` (`getCwes`)
-6. **License Groups** - `/v1/licenseGroup` (`getLicenseGroups`)
-7. **Team Projects** - `/v1/acl/team/{uuid}` (`retrieveProjects`)
-8. **Component by Hash** - `/v1/component/hash/{hash}` (`getComponentByHash`)
-9. **Component by Identity** - `/v1/component/identity/{name}/{version}` (`getComponentByIdentity`)
+2. **Vulnerabilities** - `/v1/vulnerability` (`getVulnerabilities`)
+3. **Licenses** - `/v1/license` (`getLicenses`)
+4. **CWEs** - `/v1/cwe` (`getCwes`)
+5. **License Groups** - `/v1/licenseGroup` (`getLicenseGroups`)
+6. **Team Projects** - `/v1/acl/team/{uuid}` (`retrieveProjects`)
 
 ## Implementation Examples
 
@@ -86,7 +83,7 @@ The following DT endpoints support pagination:
     <div v-for="item in data" :key="item.id">
       {{ item.name }}
     </div>
-    
+
     <!-- Pagination controls -->
     <Pagination
       :current-page="pagination.currentPage"
@@ -151,13 +148,6 @@ The API service automatically detects pagination metadata from:
 - Response data structure
 - Inferred from array length when total is unknown
 
-### 2. Flexible Sorting
-Support for sorting on any field supported by the DT API:
-```javascript
-apiService.getComponents(
-  { page: 1, pageSize: 20, sortName: 'name', sortOrder: 'asc' }
-)
-```
 
 ### 3. Filter Integration
 Easily combine pagination with filters:
@@ -202,7 +192,6 @@ Automatic loading state management during:
 - `src/composables/usePagination.js` - Pagination composables
 - `src/services/api.js` - API service with pagination support
 - `src/components/ProjectsList.vue` - Projects list with pagination
-- `src/components/ComponentsList.vue` - Components list with pagination
 - `src/components/VulnerabilitiesList.vue` - Vulnerabilities list with pagination
 
 This implementation provides a comprehensive pagination solution that integrates seamlessly with the DT API while offering a great user experience.

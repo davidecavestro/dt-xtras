@@ -1106,6 +1106,7 @@ async def proxy_dt_api_get(path: str, request: Request):
         target_url = f"{DT_API_URL}/api/v1/{path}"
         print(f"GET Target URL: {target_url}")
         print(f"GET Request headers: {headers}")
+        print(f"GET Request params: {params}")
 
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -1115,6 +1116,9 @@ async def proxy_dt_api_get(path: str, request: Request):
             )
 
             print(f"GET DT API Response status: {response.status_code}")
+            print(f"GET DT API Response headers: {dict(response.headers)}")
+            if response.status_code == 405:
+                print(f"GET 405 Method Not Allowed for {path} - check DT API docs")
 
             # Return response with same status and headers
             return Response(
