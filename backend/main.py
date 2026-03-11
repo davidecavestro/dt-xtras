@@ -1061,6 +1061,16 @@ async def untag_projects_direct(tag_name: str, request: Request, dt_token: str =
             detail=f"Unexpected error untagging projects"
         ) from e
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for container orchestration"""
+    return {
+        "status": "healthy",
+        "service": "dt-xtras-backend",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0"
+    }
+
 # Proxy endpoints for DT API
 @app.get("/api/v1/test")
 async def test_proxy():
