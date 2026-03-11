@@ -192,11 +192,15 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { AlertCircle, RefreshCw, Shield } from 'lucide-vue-next'
-import { usePaginatedData } from '../composables/usePagination'
+import XRegExp from 'xregexp'
+import axios from 'axios'
 import apiService from '../services/api'
+import auth from '../services/auth.js'
+import { useRouter } from 'vue-router'
 import Pagination from './Pagination.vue'
+import { usePaginatedData } from '../composables/usePagination'
 
 export default {
   name: 'VulnerabilitiesList',
@@ -226,7 +230,7 @@ export default {
     const { data, pagination, fetchData, refresh } = usePaginatedData(
       async (params) => {
         const queryParams = {}
-        
+
         // Apply filters
         if (filters.value.search) {
           queryParams.search = filters.value.search
@@ -246,7 +250,11 @@ export default {
     )
 
     const fetchVulnerabilities = () => {
-      return fetchData()
+      return fetchData().catch(error => {
+        console.error('Error fetching vulnerabilities:', error)
+        pagination.setError(error.message || 'Failed to fetch vulnerabilities')
+        throw error
+      })
     }
 
     const refreshData = () => {
@@ -255,37 +263,38 @@ export default {
 
     const handlePageChange = (page) => {
       pagination.setPage(page)
-      fetchVulnerabilities()
+      fetchVulnerabilities().catch(() => {}) // Ignore errors for page changes
     }
 
     const handlePageSizeChange = (pageSize) => {
       pagination.setPageSize(pageSize)
-      fetchVulnerabilities()
+      fetchVulnerabilities().catch(() => {}) // Ignore errors for page size changes
     }
 
     const getSeverityClass = (severity) => {
-      const classes = {
-        CRITICAL: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200',
-        HIGH: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200',
-        MEDIUM: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200',
-        LOW: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200',
-        INFO: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-      }
+      if (!severity) return classes.INFO
       return classes[severity] || classes.INFO
     }
 
     const formatDate = (dateString) => {
       if (!dateString) return 'Unknown'
-      return new Date(dateString).toLocaleDateString()
+      try {
+        return new Date(dateString).toLocaleDateString()
+      } catch (error) {
+        console.error('Date parsing error:', error)
+        return 'Invalid Date'
+      }
     }
 
     const viewVulnerability = (vulnerability) => {
       // Navigate to vulnerability details
+      if (!vulnerability) return
       console.log('View vulnerability:', vulnerability)
     }
 
     const analyzeVulnerability = (vulnerability) => {
       // Trigger vulnerability analysis
+      if (!vulnerability) return
       console.log('Analyze vulnerability:', vulnerability)
     }
 
@@ -301,9 +310,8 @@ export default {
       refreshData,
       handlePageChange,
       handlePageSizeChange,
-      debouncedSearch,
-      getSeverityClass,
       formatDate,
+      getSeverityClass,
       viewVulnerability,
       analyzeVulnerability
     }

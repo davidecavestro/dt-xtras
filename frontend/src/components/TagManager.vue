@@ -36,15 +36,15 @@
           </div>
         </div>
 
-        <!-- Taxonomy Hints -->
+        <!-- Taxonomy Patterns -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Taxonomy Hints
+            Taxonomy Patterns
           </label>
           <div class="mt-1 space-y-2">
             <div v-for="taxonomy in taxonomies" :key="taxonomy.id" class="text-xs">
               <span class="font-medium text-gray-700 dark:text-gray-300">{{ taxonomy.name }}:</span>
-              <span class="text-gray-600 dark:text-gray-400 ml-1">{{ taxonomy.pattern }}</span>
+              <span class="text-gray-600 dark:text-gray-400 ml-1">{{ taxonomy.regex_pattern }}</span>
             </div>
           </div>
         </div>
@@ -57,12 +57,12 @@
         </label>
         <div class="flex flex-wrap gap-2">
           <button
-            v-for="tag in suggestedTags"
-            :key="tag"
-            @click="selectSuggestedTag(tag)"
-            class="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+            v-for="suggestion in suggestedTags"
+            :key="suggestion"
+            @click="selectSuggestedTag(suggestion)"
+            class="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300"
           >
-            {{ tag }}
+            {{ suggestion }}
           </button>
         </div>
       </div>
@@ -211,8 +211,11 @@
                   class="mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
                 <div>
-                  <div class="font-medium text-gray-900 dark:text-white">{{ tag.name }}</div>
-                  <div class="text-xs text-gray-600 dark:text-gray-400">
+                  <div class="font-medium text-gray-900 dark:text-white">
+                    {{ tag.name }}
+                    <span v-if="tag.custom" class="ml-2 text-xs text-gray-500 dark:text-gray-400">(custom)</span>
+                  </div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400">
                     {{ tag.projectsCount || 0 }} projects
                   </div>
                 </div>
@@ -305,8 +308,10 @@
 </template>
 
 <script>
+import { ref, computed, onMounted } from 'vue'
+import { AlertCircle, RefreshCw, Plus, X, Folder } from 'lucide-vue-next'
+import XRegExp from 'xregexp'
 import axios from 'axios'
-import { ref, onMounted, computed } from 'vue'
 import auth from '../services/auth.js'
 import { useRouter } from 'vue-router'
 
@@ -334,17 +339,43 @@ export default {
 
       const suggestions = []
       const input = newTag.value.toLowerCase()
+      const currentTag = newTag.value.trim()
 
+      // Generate suggestions based on current input and taxonomies
       taxonomies.value.forEach(taxonomy => {
-        // Generate example tags based on taxonomy patterns
-        if (taxonomy.id === 'customer') {
-          suggestions.push(`cust:acme`, `cust:beta`, `cust:demo`)
-        } else if (taxonomy.id === 'env') {
-          suggestions.push(`env:prod`, `env:staging`, `env:dev`)
-        } else if (taxonomy.id === 'product_version') {
-          suggestions.push(`myapp:1.0.0`, `webapp:2.1.0`, `api:3.0.0`)
-        } else if (taxonomy.id === 'deploy') {
-          suggestions.push(`deploy:prod:cust:acme:myapp:1.0.0`)
+        // Check if current input already matches this taxonomy pattern
+        try {
+          // Use XRegExp for Python/JS regex compatibility
+          const regex = XRegExp(taxonomy.regex_pattern)
+          const match = regex.test(currentTag)
+
+          if (match) {
+            // If it matches, show variations based on matched groups
+            const groups = regex.exec(currentTag)?.groups || {}
+            if (taxonomy.id === 'customer' && groups.customer) {
+              // Show similar customer names
+              suggestions.push(`cust:${groups.customer}`, `cust:beta`, `cust:demo`)
+            } else if (taxonomy.id === 'env' && groups.env) {
+              // Show other environments
+              suggestions.push(`env:prod`, `env:staging`, `env:dev`)
+            } else if (taxonomy.id === 'product_version' && groups.product) {
+              // Show version variations
+              suggestions.push(`${groups.product}:1.0.0`, `${groups.product}:2.0.0`, `${groups.product}:latest`)
+            }
+          } else {
+            // If no match, show standard examples for this taxonomy
+            if (taxonomy.id === 'customer') {
+              suggestions.push(`cust:acme`, `cust:beta`, `cust:demo`)
+            } else if (taxonomy.id === 'env') {
+              suggestions.push(`env:prod`, `env:staging`, `env:dev`)
+            } else if (taxonomy.id === 'product_version') {
+              suggestions.push(`myapp:1.0.0`, `webapp:2.1.0`, `api:3.0.0`)
+            } else if (taxonomy.id === 'deploy') {
+              suggestions.push(`deploy:prod:cust:acme:myapp:1.0.0`)
+            }
+          }
+        } catch (error) {
+          console.error('Invalid regex pattern:', taxonomy.regex_pattern, error)
         }
       })
 
@@ -404,12 +435,24 @@ export default {
 
       const tag = newTag.value.trim()
 
+      // Check for duplicates first
+      if (tags.value.some(existing => existing.name === tag)) {
+        tagValidation.value = {
+          valid: false,
+          message: '❌ Tag already exists'
+        }
+        return
+      }
+
       // Check if tag matches any taxonomy pattern
       const matchingTaxonomy = taxonomies.value.find(taxonomy => {
         try {
-          const regex = new RegExp(taxonomy.regex_pattern)
-          return regex.test(tag)
+          // Use XRegExp for Python/JS regex compatibility
+          const regex = XRegExp(taxonomy.regex_pattern)
+          const matches = regex.test(tag)
+          return matches
         } catch (error) {
+          console.error('Invalid regex pattern:', taxonomy.regex_pattern, error)
           return false
         }
       })
@@ -417,20 +460,12 @@ export default {
       if (matchingTaxonomy) {
         tagValidation.value = {
           valid: true,
-          message: `✅ Matches ${matchingTaxonomy.name} taxonomy`
+          message: `✅ Matches ${matchingTaxonomy.name} taxonomy (${matchingTaxonomy.id})`
         }
       } else {
         tagValidation.value = {
           valid: true,
-          message: '⚠️ Custom tag (no taxonomy match)'
-        }
-      }
-
-      // Check for duplicates
-      if (tags.value.some(existing => existing.name === tag)) {
-        tagValidation.value = {
-          valid: false,
-          message: '❌ Tag already exists'
+          message: '✅ Custom tag'
         }
       }
     }
@@ -449,14 +484,17 @@ export default {
         })
 
         if (response.data) {
-          // Add the new tag to our list
+          // Add new tag to our list
           tags.value.push(response.data)
           newTag.value = ''
           tagValidation.value = { valid: false, message: '' }
         }
       } catch (error) {
         console.error('Error creating tag:', error)
-        alert('Failed to create tag. Please try again.')
+        tagValidation.value = {
+          valid: false,
+          message: `❌ Error: ${error.response?.data?.detail || error.message}`
+        }
       }
     }
 

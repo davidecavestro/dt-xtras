@@ -36,11 +36,6 @@ const routes = [
     path: '/projects',
     component: ProjectsList,
     meta: { requiresAuth: true }
-  },
-  {
-    path: '/vulnerabilities',
-    component: VulnerabilitiesList,
-    meta: { requiresAuth: true }
   }
 ]
 

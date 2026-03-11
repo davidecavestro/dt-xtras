@@ -94,11 +94,11 @@
                 {{ project.active ? 'Active' : 'Inactive' }}
               </span>
             </div>
-            
+
             <p v-if="project.description" class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
               {{ project.description }}
             </p>
-            
+
             <div class="space-y-2">
               <div class="flex justify-between text-sm">
                 <span class="text-gray-500 dark:text-gray-400">Components:</span>
@@ -106,18 +106,18 @@
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-gray-500 dark:text-gray-400">Vulnerabilities:</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ project.vulnerabilities || 0 }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ project?.vulnerabilities || 0 }}</span>
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-gray-500 dark:text-gray-400">Risk Score:</span>
-                <RiskScoreBadge :score="project.riskScore" />
+                <RiskScoreBadge :score="project?.riskScore || 0" />
               </div>
             </div>
 
             <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
               <div class="flex justify-between items-center">
                 <span class="text-xs text-gray-500 dark:text-gray-400">
-                  Updated: {{ formatDate(project.lastBomImport) }}
+                  Updated: {{ formatDate(project?.lastBomImport) }}
                 </span>
                 <div class="flex space-x-2">
                   <button
@@ -198,7 +198,7 @@ export default {
     const { data, pagination, fetchData, refresh } = usePaginatedData(
       async (params) => {
         const queryParams = {}
-        
+
         // Apply filters
         if (filters.value.search) {
           queryParams.search = filters.value.search
@@ -215,7 +215,11 @@ export default {
     )
 
     const fetchProjects = () => {
-      return fetchData()
+      return fetchData().catch(error => {
+        console.error('Error fetching projects:', error)
+        pagination.setError(error.message || 'Failed to fetch projects')
+        throw error
+      })
     }
 
     const refreshData = () => {
@@ -224,12 +228,12 @@ export default {
 
     const handlePageChange = (page) => {
       pagination.setPage(page)
-      fetchProjects()
+      fetchProjects().catch(() => {}) // Ignore errors for page changes
     }
 
     const handlePageSizeChange = (pageSize) => {
       pagination.setPageSize(pageSize)
-      fetchProjects()
+      fetchProjects().catch(() => {}) // Ignore errors for page size changes
     }
 
     const formatDate = (dateString) => {
@@ -239,11 +243,13 @@ export default {
 
     const viewProject = (project) => {
       // Navigate to project details
+      if (!project) return
       console.log('View project:', project)
     }
 
     const analyzeProject = (project) => {
       // Trigger project analysis
+      if (!project) return
       console.log('Analyze project:', project)
     }
 
@@ -259,7 +265,6 @@ export default {
       refreshData,
       handlePageChange,
       handlePageSizeChange,
-      debouncedSearch,
       formatDate,
       viewProject,
       analyzeProject

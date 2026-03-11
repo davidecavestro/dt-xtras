@@ -15,13 +15,6 @@
               Dashboard
             </router-link>
             <router-link
-              to="/taxonomies"
-              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-              :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/taxonomies' }"
-            >
-              Taxonomy Editor
-            </router-link>
-            <router-link
               to="/projects"
               class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/projects' }"
@@ -29,18 +22,19 @@
               Projects
             </router-link>
             <router-link
-              to="/vulnerabilities"
-              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-              :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/vulnerabilities' }"
-            >
-              Vulnerabilities
-            </router-link>
-            <router-link
               to="/tags"
               class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/tags' }"
             >
               Tag Manager
+            </router-link>
+
+            <router-link
+              to="/taxonomies"
+              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              :class="{ 'bg-gray-200 dark:bg-gray-700': $route.path === '/taxonomies' }"
+            >
+              Taxonomy Editor
             </router-link>
 
             <!-- Authentication status -->
