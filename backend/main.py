@@ -1,21 +1,22 @@
-from fastapi import Request, status, Form, FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Request, status, Form, FastAPI, HTTPException, Depends, responses, Response
+from pydantic import BaseModel, field_validator
+from urllib.parse import urlencode
+from fastapi.security import HTTPBasic, HTTPBearer, HTTPAuthorizationCredentials
 import httpx
-import os
-import re
 import yaml
 import json
+import os
 import uuid
-import base64
-from typing import Dict, List, Optional
-from collections import defaultdict
+import re
 from datetime import datetime, timedelta
+from typing import Dict, Optional, List, Any
+from pathlib import Path
+import base64
+import jwt
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from collections import defaultdict, Counter
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
-from urllib.parse import urlencode
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="dt-xtras", version="1.0.0")
 
@@ -32,34 +33,71 @@ app.add_middleware(
 DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
 DT_API_KEY = os.getenv("DT_API_KEY", "")
 TAXONOMIES_FILE = "../api/taxonomies.yaml"
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
 
 # Security
 security = HTTPBearer()
 
-# Simple in-memory token storage (in production, use Redis or database)
-token_store = {}
-
 # JWT utilities
-def decode_jwt_permissions(token: str) -> List[str]:
-    """Decode JWT token and extract permissions"""
+def create_jwt_token(username: str, dt_api_key: str, permissions: List[str]) -> str:
+    """Create JWT token with user info and permissions"""
+    payload = {
+        "sub": username,
+        "dt_api_key": dt_api_key,
+        "permissions": ",".join(permissions),
+        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS),
+        "iat": datetime.utcnow()
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+def decode_jwt_token(token: str) -> dict:
+    """Decode and validate our JWT token"""
     try:
-        # Split token and decode payload
-        parts = token.split('.')
-        if len(parts) != 3:
-            return []
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired"
+        )
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
 
-        payload = parts[1]
-        # Add padding if needed
-        padding = '=' * (4 - len(payload) % 4)
-        decoded = base64.urlsafe_b64decode(payload + padding)
-        payload_data = json.loads(decoded)
+def decode_jwt_permissions(dt_token: str) -> List[str]:
+    """Decode DT JWT token and extract permissions"""
+    try:
+        # DT JWT tokens don't need secret key for decoding permissions
+        payload = jwt.decode(dt_token, options={"verify_signature": False})
 
-        # Extract permissions (comma-separated string)
-        permissions_str = payload_data.get('permissions', '')
-        return [p.strip() for p in permissions_str.split(',') if p.strip()]
+        # Extract permissions from DT JWT - check common permission fields
+        permissions = []
+
+        # Check various possible permission fields in DT JWT
+        if "permissions" in payload:
+            if isinstance(payload["permissions"], list):
+                permissions = payload["permissions"]
+            elif isinstance(payload["permissions"], str):
+                permissions = [p.strip() for p in payload["permissions"].split(",") if p.strip()]
+
+        # Check for team/role based permissions
+        if "teams" in payload:
+            teams = payload["teams"]
+            if isinstance(teams, list) and any(team in ["administrators", "managers"] for team in teams):
+                permissions.extend(["PORTFOLIO_MANAGEMENT", "TAG_MANAGEMENT"])
+
+        # Ensure basic view permission for authenticated users
+        if not permissions:
+            permissions = ["VIEW_PORTFOLIO"]
+
+        return list(set(permissions))  # Remove duplicates
     except Exception as e:
-        print(f"Error decoding JWT: {e}")
-        return []
+        print(f"Error decoding DT JWT permissions: {e}")
+        return ["VIEW_PORTFOLIO"]  # Default permission
 
 def has_permission(permissions: List[str], required_permission: str) -> bool:
     """Check if user has a specific permission"""
@@ -92,6 +130,14 @@ class DTProject(BaseModel):
     tags: List[str]
     metrics: Optional[Dict[str, Any]] = None
 
+    @field_validator('tags', mode='before')
+    @classmethod
+    def convert_tags_to_strings(cls, v):
+        """Convert tag objects to strings if needed"""
+        if isinstance(v, list):
+            return [tag.get('name') if isinstance(tag, dict) and 'name' in tag else str(tag) for tag in v]
+        return v
+
 class SecurityNode(BaseModel):
     id: str
     name: str
@@ -114,6 +160,14 @@ class ProjectVersion(BaseModel):
     project_uuid: str
     tags: List[str]
     metrics: Optional[Dict[str, Any]] = None
+
+    @field_validator('tags', mode='before')
+    @classmethod
+    def convert_tags_to_strings(cls, v):
+        """Convert tag objects to strings if needed"""
+        if isinstance(v, list):
+            return [tag.get('name') if isinstance(tag, dict) and 'name' in tag else str(tag) for tag in v]
+        return v
 
 # Update forward reference
 SecurityNode.model_rebuild()
@@ -208,109 +262,71 @@ async def login(username: str = Form(...), password: str = Form(...)):
             )
 
             if response.status_code == 200:
-                # Get the DT token from response
-                dt_token = response.text.strip()
+                # Get DT JWT token from response
+                dt_jwt_token = response.text.strip()
 
-                # Decode permissions from DT token
-                permissions = decode_jwt_permissions(dt_token)
+                # Extract permissions from DT JWT token
+                dt_permissions = decode_jwt_permissions(dt_jwt_token)
 
-                # Check if user has VIEW_PORTFOLIO permission (required for basic access)
-                if not has_permission(permissions, 'VIEW_PORTFOLIO'):
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Access denied. VIEW_PORTFOLIO permission is required."
-                    )
+                # Create our JWT wrapper with DT token and extracted permissions
+                jwt_token = create_jwt_token(username, dt_jwt_token, dt_permissions)
 
-                # Generate a simple JWT-like token for our app (in production, use proper JWT)
-                app_token = f"token_{uuid.uuid4().hex}"
-
-                # Store the DT token and permissions associated with our app token
-                token_store[app_token] = {
-                    "dt_token": dt_token,
+                return {
+                    "access_token": jwt_token,
+                    "token_type": "bearer",
                     "username": username,
-                    "permissions": permissions,
-                    "created_at": datetime.now()
+                    "permissions": dt_permissions
                 }
-
-                return app_token
-            elif response.status_code == 401:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid credentials"
-                )
-            elif response.status_code == 405:
-                # DT API might not have authentication enabled
-                # Fall back to using API key if available, or return helpful error
+            else:
+                # Fall back to using API key if available
                 if DT_API_KEY:
-                    print("DT API authentication not available, falling back to API key")
-                    # Fall back to using API key if available
-                    app_token = f"token_{uuid.uuid4().hex}"
-                    token_store[app_token] = {
-                        "dt_token": None,
+                    # Create a limited JWT token for API key access
+                    permissions = ['VIEW_PORTFOLIO']
+                    jwt_token = create_jwt_token(username, DT_API_KEY, permissions)
+
+                    return {
+                        "access_token": jwt_token,
+                        "token_type": "bearer",
                         "username": username,
-                        "permissions": ['VIEW_PORTFOLIO'],
-                        "created_at": datetime.now()
+                        "permissions": permissions
                     }
-                    return app_token
                 else:
                     raise HTTPException(
-                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail="DT API authentication not available and no API key configured"
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Authentication failed: {response.text}"
                     )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Authentication failed: {response.text}"
-                )
 
     except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Unable to connect to DT API: {e}"
-        )
+        # Fall back to using API key if available, or return helpful error
+        if DT_API_KEY:
+            # Create a limited JWT token for API key access
+            permissions = ['VIEW_PORTFOLIO']
+            jwt_token = create_jwt_token(username, DT_API_KEY, permissions)
+
+            return {
+                "access_token": jwt_token,
+                "token_type": "bearer",
+                "username": username,
+                "permissions": permissions
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Unable to connect to DT API: {e}"
+            )
 
 def get_dt_token_from_request(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Extract DT token from our app token"""
-    app_token = credentials.credentials
-    if app_token not in token_store:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
-        )
-
-    token_data = token_store[app_token]
-
-    # Check if token is older than 24 hours (optional)
-    if datetime.now() - token_data["created_at"] > timedelta(hours=24):
-        del token_store[app_token]
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired"
-        )
-
-    # Return DT token if available, otherwise None (will fall back to API key)
-    return token_data.get("dt_token")
+    """Extract DT JWT token from our wrapper JWT"""
+    token = credentials.credentials
+    payload = decode_jwt_token(token)
+    return payload.get("dt_api_key")
 
 def get_user_permissions_from_request(credentials: HTTPAuthorizationCredentials = Depends(security)) -> List[str]:
-    """Extract user permissions from our app token"""
-    app_token = credentials.credentials
-    if app_token not in token_store:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
-        )
-
-    token_data = token_store[app_token]
-
-    # Check if token is older than 24 hours (optional)
-    if datetime.now() - token_data["created_at"] > timedelta(hours=24):
-        del token_store[app_token]
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired"
-        )
-
-    return token_data.get("permissions", [])
+    """Extract user permissions from JWT token"""
+    token = credentials.credentials
+    payload = decode_jwt_token(token)
+    permissions_str = payload.get("permissions", "")
+    return [p.strip() for p in permissions_str.split(",") if p.strip()]
 
 def require_edit_permissions(permissions: List[str] = Depends(get_user_permissions_from_request)):
     """Dependency to check if user has editing permissions"""
@@ -323,11 +339,8 @@ def require_edit_permissions(permissions: List[str] = Depends(get_user_permissio
     return permissions
 
 @app.post("/auth/logout")
-async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Logout and invalidate token"""
-    app_token = credentials.credentials
-    if app_token in token_store:
-        del token_store[app_token]
+async def logout():
+    """Logout endpoint - JWT tokens are stateless so client-side token removal is sufficient"""
     return {"message": "Successfully logged out"}
 
 # DT API Client
@@ -336,15 +349,30 @@ async def get_dt_projects(dt_token: str) -> List[Dict]:
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
+        print(f"Using DT token for authentication")
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
+        print(f"Using API key for authentication")
+    else:
+        print(f"No authentication available")
+
+    print(f"Making request to: {DT_API_URL}/api/v1/project")
+    print(f"Headers: {headers}")
 
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers)
+        print(f"DT API response status: {response.status_code}")
+        print(f"DT API response: {response.text[:200]}...")
+
         response.raise_for_status()
 
         # DT API returns plain dicts, not objects
-        return response.json()
+        projects_data = response.json()
+        print(f"Successfully parsed {len(projects_data)} projects")
+        print(f"Sample project data: {projects_data[0] if projects_data else 'None'}")
+
+        # The field_validator in DTProject will handle tag conversion automatically
+        return projects_data
 
 # Taxonomy CRUD Operations
 @app.get("/api/taxonomies", response_model=List[Taxonomy])
@@ -393,7 +421,12 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
     project_versions = []
 
     for project in projects:
-        project_tags = " ".join(project.get('tags', []))
+        # Handle tags that might be objects with 'name' field or plain strings
+        tags = project.get('tags', [])
+        if tags and isinstance(tags, list) and tags[0] and isinstance(tags[0], dict):
+            project_tags = " ".join([tag.get('name', '') for tag in tags])
+        else:
+            project_tags = " ".join(str(tag) for tag in tags)
         version_info = {}
         taxonomies_list = load_taxonomies()
 
@@ -407,6 +440,11 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
                     version_info[f'{taxonomy.id}_name'] = groups[taxonomy.id]
 
         # Create ProjectVersion object
+        # Convert tag objects to strings for ProjectVersion model
+        tags = project.get('tags', [])
+        if tags and isinstance(tags, list) and tags[0] and isinstance(tags[0], dict):
+            tags = [tag.get('name', '') for tag in tags]
+
         project_version = ProjectVersion(
             id=f"{project['uuid']}",
             name=project['name'],
@@ -414,7 +452,7 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
             customer_id=version_info.get('customer_id'),
             environment_id=version_info.get('environment_id'),
             project_uuid=project['uuid'],
-            tags=project.get('tags', []),
+            tags=tags,
             metrics=project.get('metrics', {})
         )
 
@@ -426,10 +464,14 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
 async def get_projects(dt_token: str = Depends(get_dt_token_from_request)):
     """Get all projects from DT API"""
     try:
+        print(f"Getting projects with DT token: {dt_token[:50] if dt_token else 'None'}...")
         projects = await get_dt_projects(dt_token)
+        print(f"Successfully retrieved {len(projects)} projects")
         return projects
     except Exception as e:
         print(f"Error getting projects: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error fetching projects: {e}")
 
 @app.get("/api/project-versions", response_model=List[ProjectVersion])
@@ -922,10 +964,7 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
         return all_root_nodes
 
     except Exception as e:
-        print(f"Error in aggregate_security_data: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error aggregating security data: {e}")
+        raise HTTPException(status_code=500, detail=f"Error aggregating security data: {e}") from e
 
 @app.get("/api/dt-token")
 async def get_dt_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -977,10 +1016,10 @@ async def tag_projects_direct(tag_name: str, request: Request, dt_token: str = D
 
     except httpx.HTTPError as e:
         print(f"Error tagging projects: {e}")
-        raise HTTPException(status_code=500, detail=f"Error tagging projects: {e}")
+        raise HTTPException(status_code=500, detail=f"Error tagging projects: {e}") from e
     except Exception as e:
         print(f"Unexpected error tagging projects: {e}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error tagging projects")
+        raise HTTPException(status_code=500, detail=f"Unexpected error tagging projects") from e
 
 @app.delete("/api/v1/tag/{tag_name}/project")
 async def untag_projects_direct(tag_name: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
@@ -995,27 +1034,32 @@ async def untag_projects_direct(tag_name: str, request: Request, dt_token: str =
         elif DT_API_KEY:
             headers["X-Api-Key"] = DT_API_KEY
 
-        async with httpx.AsyncClient() as client:
-            response = await client.delete(
-                f"{DT_API_URL}/api/v1/tag/{tag_name}/project",
-                headers=headers,
-                json=data
+
+        response = httpx.request(
+            method="DELETE",
+            url=f"{DT_API_URL}/api/v1/tag/{tag_name}/project",
+            headers={**headers, "Content-Type": "application/json"},
+            content=json.dumps(data)
+        )
+
+        if response.status_code == 204:
+            return {"message": f"Successfully untagged projects from '{tag_name}'"}
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Failed to untag projects: {response.text}"
             )
 
-            if response.status_code == 204:
-                return {"message": f"Successfully untagged projects from '{tag_name}'"}
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Failed to untag projects: {response.text}"
-                )
-
     except httpx.HTTPError as e:
-        print(f"Error untagging projects: {e}")
-        raise HTTPException(status_code=500, detail=f"Error untagging projects: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error untagging projects: {e}"
+        ) from e
     except Exception as e:
-        print(f"Unexpected error untagging projects: {e}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error untagging projects")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error untagging projects"
+        ) from e
 
 # Proxy endpoints for DT API
 @app.get("/api/v1/test")
@@ -1037,25 +1081,23 @@ async def proxy_dt_api_get(path: str, request: Request):
     auth_header = request.headers.get("Authorization")
     print(f"GET Auth header from request: {auth_header}")
 
-    if auth_header:
-        # Extract token from Bearer header and send as X-Api-Key to DT API
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:]  # Remove "Bearer " prefix
-            headers["X-Api-Key"] = token
-            print(f"GET Using X-Api-Key from Bearer token: {token}")
-        else:
-            headers["X-Api-Key"] = auth_header
-            print(f"GET Using X-Api-Key directly: {auth_header}")
-    else:
-        # Fall back to cookie-based token
+    if auth_header and auth_header.startswith("Bearer "):
+        # Extract JWT token and get DT token from it
+        jwt_token = auth_header[7:]  # Remove "Bearer " prefix
+        try:
+            dt_token = get_dt_token_from_request(HTTPAuthorizationCredentials(scheme="Bearer", credentials=jwt_token))
+            print(f"GET Extracted DT token from JWT: {dt_token[:50] if dt_token else 'None'}...")
+            if dt_token:
+                headers["Authorization"] = f"Bearer {dt_token}"
+                print(f"GET Using Bearer token for DT API")
+        except Exception as e:
+            print(f"GET Error extracting DT token from JWT: {e}")
+    elif request.cookies.get("dt_token"):
         dt_token = request.cookies.get("dt_token")
         print(f"GET Cookie dt_token: {dt_token}")
         if dt_token:
             headers["X-Api-Key"] = dt_token
             print(f"GET Using X-Api-Key from cookie: {dt_token}")
-        elif DT_API_KEY:
-            headers["X-Api-Key"] = DT_API_KEY
-            print(f"GET Using DT_API_KEY: {DT_API_KEY}")
 
     # Forward query parameters
     params = dict(request.query_params)
@@ -1086,42 +1128,30 @@ async def proxy_dt_api_get(path: str, request: Request):
 
 @app.api_route("/api/v1/{path:path}", methods=["POST", "PUT", "DELETE"])
 async def proxy_dt_api(path: str, request: Request):
-    print(f"Proxy {request.method} request: /api/v1/{path}")
+    """Proxy API requests to DT API"""
+    try:
+        data = await request.body()
+        print(f"Proxy {request.method} request: /api/v1/{path}")
 
-    # Prepare headers for DT API
-    headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json"}
 
-    # Check for Authorization header first (from frontend)
-    auth_header = request.headers.get("Authorization")
-    print(f"Auth header from request: {auth_header}")
-
-    if auth_header:
-        # Extract token from Bearer header and send as X-Api-Key to DT API
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:]  # Remove "Bearer " prefix
-            headers["X-Api-Key"] = token
-            print(f"Using X-Api-Key from Bearer token: {token}")
-        else:
-            headers["X-Api-Key"] = auth_header
-            print(f"Using X-Api-Key directly: {auth_header}")
-    else:
-        # Fall back to cookie-based token
-        dt_token = request.cookies.get("dt_token")
-        print(f"Cookie dt_token: {dt_token}")
-        if dt_token:
-            headers["X-Api-Key"] = dt_token
-            print(f"Using X-Api-Key from cookie: {dt_token}")
+        # Check for X-Api-Key header from frontend
+        api_key = request.headers.get("X-Api-Key")
+        if api_key:
+            headers["X-Api-Key"] = api_key
+            print(f"Using X-Api-Key from frontend: {api_key}")
         elif DT_API_KEY:
             headers["X-Api-Key"] = DT_API_KEY
             print(f"Using DT_API_KEY: {DT_API_KEY}")
+        else:
+            print("No API key provided")
+            return Response(
+                content=b'{"detail": "API key required"}',
+                status_code=401,
+                headers={"Content-Type": "application/json"}
+            )
 
-    # Forward query parameters
-    params = dict(request.query_params)
-
-    try:
-        # Get request body
-        body = await request.body()
-        print(f"Request body: {body}")
+        params = dict(request.query_params)
 
         target_url = f"{DT_API_URL}/api/v1/{path}"
         print(f"Target URL: {target_url}")
@@ -1133,27 +1163,24 @@ async def proxy_dt_api(path: str, request: Request):
                 url=target_url,
                 headers=headers,
                 params=params,
-                content=body
+                content=data
             )
 
-            print(f"DT API Response status: {response.status_code}")
-            print(f"DT API Response headers: {dict(response.headers)}")
+        print(f"DT API Response status: {response.status_code}")
+        print(f"DT API Response headers: {dict(response.headers)}")
 
-            # Handle specific authentication errors
-            if response.status_code == 401:
-                print("DT API returned 401 Unauthorized - token is invalid or expired")
-                return Response(
-                    content=b'{"detail": "DT API authentication failed. Please check your credentials or login again."}',
-                    status_code=401,
-                    headers={"Content-Type": "application/json"}
-                )
-
-            # Return response with same status and headers
+        # Handle specific authentication errors
+        if response.status_code == 401:
+            print("DT API returned 401 Unauthorized - token is invalid or expired")
             return Response(
-                content=response.content,
-                status_code=response.status_code,
-                headers=dict(response.headers)
+                content=b'{"detail": "DT API authentication failed. Please check your credentials or login again."}',
+                status_code=401,
+                headers={"Content-Type": "application/json"}
             )
+        content=response.content,
+        status_code=response.status_code,
+        headers=dict(response.headers)
+
     except httpx.HTTPError as e:
         print(f"Error proxying {request.method} request to {path}: {e}")
         raise HTTPException(status_code=500, detail=f"Error proxying request: {e}")

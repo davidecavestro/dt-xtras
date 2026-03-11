@@ -6,6 +6,19 @@
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
+  "python.defaultInterpreterPath": "/usr/local/bin/python3",
+  "python.terminal.activateEnvironment": false,
+  "python.terminal.activateEnvInCurrentTerminal": false,
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
   "[vue]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },

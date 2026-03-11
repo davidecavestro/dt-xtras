@@ -5,15 +5,17 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 class AuthService {
   constructor() {
     this.token = localStorage.getItem('auth_token')
+    this.username = localStorage.getItem('auth_username')
+    this.permissions = JSON.parse(localStorage.getItem('auth_permissions') || '[]')
     this.setupAxiosInterceptors()
   }
 
   setupAxiosInterceptors() {
-    // Add request interceptor to include token in all API calls
+    // Add request interceptor to include JWT token in all API calls
     axios.interceptors.request.use(
       (config) => {
         if (this.token) {
-          config.headers.Authorization = `Bearer ${this.token}`
+          config.headers['Authorization'] = `Bearer ${this.token}`
         }
         return config
       },
@@ -47,12 +49,22 @@ class AuthService {
         }
       })
 
-      this.token = response.data
-      this.username = username
-      localStorage.setItem('auth_token', this.token)
-      localStorage.setItem('auth_username', this.username)
+      if (response.data.access_token) {
+        this.token = response.data.access_token
+        this.username = response.data.username
+        this.permissions = response.data.permissions || []
 
-      return { success: true }
+        localStorage.setItem('auth_token', this.token)
+        localStorage.setItem('auth_username', this.username)
+        localStorage.setItem('auth_permissions', JSON.stringify(this.permissions))
+
+        return { success: true }
+      } else {
+        return {
+          success: false,
+          error: response.data?.error || 'Login failed'
+        }
+      }
     } catch (error) {
       console.error('Login failed:', error)
       return {
@@ -64,23 +76,17 @@ class AuthService {
 
   async logout() {
     try {
-      if (this.token) {
-        // Call backend logout endpoint to invalidate the token
-        await axios.post(`${API_BASE_URL}/auth/logout`, {}, {
-          headers: {
-            'Authorization': `Bearer ${this.token}`
-          }
-        })
-      }
+      // Call logout endpoint for consistency (though JWT is stateless)
+      await axios.post(`${API_BASE_URL}/auth/logout`)
     } catch (error) {
-      console.error('Backend logout error:', error)
-      // Continue with local logout even if backend call fails
+      console.error('Logout failed:', error)
     } finally {
-      // Always clear local auth state
       this.token = null
-      this.username = ''
+      this.username = null
+      this.permissions = []
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_username')
+      localStorage.removeItem('auth_permissions')
     }
   }
 
@@ -88,12 +94,20 @@ class AuthService {
     return this.username
   }
 
-  isAuthenticated() {
-    return !!this.token
+  getPermissions() {
+    return this.permissions
   }
 
-  getToken() {
-    return this.token
+  hasPermission(permission) {
+    return this.permissions.includes(permission)
+  }
+
+  hasAnyPermission(permissions) {
+    return permissions.some(perm => this.permissions.includes(perm))
+  }
+
+  isAuthenticated() {
+    return !!this.token
   }
 }
 

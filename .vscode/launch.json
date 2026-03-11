@@ -2,31 +2,81 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Backend",
-      "type": "python",
+      "name": "Debug Backend (FastAPI)",
+      "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/backend/main.py",
+      "module": "uvicorn",
+      "args": [
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload"
+      ],
+      "jinja": true,
+      "justMyCode": false,
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/backend",
+      "python": "/usr/local/bin/python3",
       "env": {
-        "PYTHONPATH": "${workspaceFolder}/backend"
+        "PYTHONPATH": "${workspaceFolder}/backend",
+        "DT_API_URL": "http://dtrack-apiserver:8080",
+        "DT_API_KEY": "",
+        "JWT_SECRET_KEY": "debug-secret-key"
       },
       "presentation": {
         "hidden": false,
         "group": "DT Aggregator",
         "order": 1
       }
+    },
+    {
+      "name": "Debug Backend (Direct)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/main.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/backend",
+      "python": "/usr/local/bin/python3",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend",
+        "DT_API_URL": "http://dtrack-apiserver:8080",
+        "DT_API_KEY": "",
+        "JWT_SECRET_KEY": "debug-secret-key"
+      },
+      "presentation": {
+        "hidden": false,
+        "group": "DT Aggregator",
+        "order": 2
+      }
+    },
+    {
+      "name": "Attach to Running Backend",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "presentation": {
+        "hidden": false,
+        "group": "DT Aggregator",
+        "order": 3
+      }
     }
   ],
   "compounds": [
     {
       "name": "Debug Full Stack",
-      "configurations": ["Debug Backend"],
+      "configurations": [
+        "Debug Backend (FastAPI)"
+      ],
       "preLaunchTask": "Start Frontend Only",
       "presentation": {
         "hidden": false,
         "group": "DT Aggregator",
-        "order": 2
+        "order": 4
       }
     }
   ]
