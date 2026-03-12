@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Main startup script - starts DT services, backend and frontend
-echo "🚀 Starting DT Aggregator Development Environment"
+echo "🚀 Starting DT extras Development Environment"
 echo "=========================================="
 
 # Create logs directory

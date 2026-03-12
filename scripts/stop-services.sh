@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🛑 Stopping DT Aggregator Services"
+echo "🛑 Stopping DT extras Services"
 
 # Stop DT services
 echo "🐳 Stopping DT services..."

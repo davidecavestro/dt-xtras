@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Backend startup script
-echo "🚀 Starting DT Aggregator Backend..."
+echo "🚀 Starting DT extras Backend..."
 echo "📍 Directory: $(pwd)"
 echo "🔧 Installing dependencies..."
 

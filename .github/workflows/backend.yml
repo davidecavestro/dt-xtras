@@ -12,6 +12,7 @@ on:
       - 'backend/**'
       - '.github/workflows/backend.yml'
   workflow_dispatch:
+  workflow_call:
 
 env:
   REGISTRY: ghcr.io

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# DT Aggregator Environment Setup Script
+# DT extras Environment Setup Script
 # This script helps manage different environment configurations
 
 set -e
 
-echo "🔧 DT Aggregator Environment Setup"
+echo "🔧 DT extras Environment Setup"
 echo "=================================="
 
 # Function to show current environment
@@ -20,13 +20,13 @@ show_env() {
 # Function to setup development environment
 setup_dev() {
     echo "🛠️  Setting up Development Environment..."
-    
+
     # Copy development environment
     if [ -f .env ]; then
         cp .env .env.backup
         echo "✅ Backed up existing .env to .env.backup"
     fi
-    
+
     cp .env.dev .env
     echo "✅ Copied .env.dev to .env"
     echo "🔄 Restart devcontainer to apply changes"
@@ -39,13 +39,13 @@ setup_dev() {
 # Function to setup production environment
 setup_prod() {
     echo "🚀 Setting up Production Environment..."
-    
+
     # Backup existing environment
     if [ -f .env ]; then
         cp .env .env.backup
         echo "✅ Backed up existing .env to .env.backup"
     fi
-    
+
     cp .env.example .env
     echo "✅ Copied .env.example to .env"
     echo "⚠️  Please edit .env with your actual DT_API_KEY"
@@ -56,18 +56,18 @@ setup_prod() {
 # Function to start production containers
 start_prod() {
     echo "🐳 Starting Production Containers..."
-    
+
     if [ ! -f .env ]; then
         echo "❌ .env file not found. Please run './setup.sh prod' first"
         exit 1
     fi
-    
+
     # Check if API key is set
     if grep -q "your-dt-api-key-here" .env; then
         echo "❌ Please set your actual DT_API_KEY in .env file"
         exit 1
     fi
-    
+
     docker compose up -d
     echo "✅ Production containers started"
     echo "🌐 Frontend: http://localhost:${FRONTEND_PORT:-5173}"
@@ -83,7 +83,7 @@ stop_prod() {
 
 # Function to show help
 show_help() {
-    echo "📖 DT Aggregator Setup Script"
+    echo "📖 DT extras Setup Script"
     echo ""
     echo "Usage: $0 [command]"
     echo ""
