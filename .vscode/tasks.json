@@ -83,7 +83,7 @@
         "clear": false
       },
       "problemMatcher": [],
-      "detail": "Stop and restart all DT Aggregator services (DT, backend, frontend)",
+      "detail": "Stop and restart all DT extras services (DT, backend, frontend)",
       "icon": "$(debug-restart)"
     }
   ]

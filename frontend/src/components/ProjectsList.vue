@@ -255,6 +255,8 @@ export default {
 
     onMounted(() => {
       fetchProjects()
+      console.log('Projects data:', data.value)
+      console.log('Pagination:', pagination.value)
     })
 
     return {

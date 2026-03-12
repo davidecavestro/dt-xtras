@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔄 Restarting DT Aggregator Services"
+echo "🔄 Restarting DT extras Services"
 echo "=================================="
 
 # Stop all services first
@@ -11,7 +11,7 @@ echo "🛑 Stopping existing services..."
 sleep 2
 
 echo ""
-echo "🚀 Starting DT Aggregator Development Environment"
+echo "🚀 Starting DT extras Development Environment"
 echo "=========================================="
 
 # Create logs directory

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 DT Aggregator - Development Environment Ready!"
+echo "🚀 DT extras - Development Environment Ready!"
 echo "============================================="
 echo ""
 echo "📋 Available Commands:"

@@ -27,7 +27,7 @@
       },
       "presentation": {
         "hidden": false,
-        "group": "DT Aggregator",
+        "group": "DT extras",
         "order": 1
       }
     },
@@ -47,7 +47,7 @@
       },
       "presentation": {
         "hidden": false,
-        "group": "DT Aggregator",
+        "group": "DT extras",
         "order": 2
       }
     },
@@ -61,7 +61,7 @@
       },
       "presentation": {
         "hidden": false,
-        "group": "DT Aggregator",
+        "group": "DT extras",
         "order": 3
       }
     }
@@ -75,7 +75,7 @@
       "preLaunchTask": "Start Frontend Only",
       "presentation": {
         "hidden": false,
-        "group": "DT Aggregator",
+        "group": "DT extras",
         "order": 4
       }
     }

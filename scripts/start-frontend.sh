@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Frontend startup script
-echo "🚀 Starting DT Aggregator Frontend..."
+echo "🚀 Starting DT extras Frontend..."
 echo "📍 Directory: $(pwd)"
 echo "🔧 Installing dependencies..."
 
