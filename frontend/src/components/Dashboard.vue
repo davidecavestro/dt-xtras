@@ -86,13 +86,17 @@
           <div class="mt-8">
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Risk Score Distribution</h3>
             <div class="bg-white dark:bg-gray-800 p-4 rounded-lg">
-              <div class="space-y-2">
-                <div v-for="item in riskDistribution" :key="item.range" class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">{{ item.range }}</span>
-                  <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div class="h-2 bg-gray-600 dark:bg-gray-800 rounded-full" :style="{ width: `${item.percentage}%` }"></div>
+              <div class="space-y-3">
+                <div v-for="item in riskDistribution" :key="item.range">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-24">{{ item.range }}</span>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">
+                      {{ item.count }}<span v-if="item.range !== 'Info'"> ({{ item.percentage }}%)</span>
+                    </span>
                   </div>
-                  <span class="text-sm text-gray-600 dark:text-gray-400">{{ item.count }} ({{ item.percentage }}%)</span>
+                  <div v-if="item.range !== 'Info'" class="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div class="h-2 rounded-full" :class="getRiskBarColor(item.range)" :style="{ width: `${item.percentage}%` }"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -102,7 +106,7 @@
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Recent Vulnerabilities</h3>
             <div class="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg">
               <div v-if="recentVulns.length === 0" class="text-center py-8">
-                <component :is="Folder" class="mx-auto h-12 w-12 text-gray-400" />
+                <Folder class="mx-auto h-12 w-12 text-gray-400" />
                 <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No vulnerability details available</h3>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Security nodes show aggregated counts, not individual vulnerabilities.</p>
               </div>
@@ -140,13 +144,17 @@
 import { ref, onMounted, computed } from 'vue'
 import { AlertCircle, RefreshCw, Folder } from 'lucide-vue-next'
 import axios from 'axios'
+import RiskScoreBadge from './RiskScoreBadge.vue'
+import VulnerabilityBar from './VulnerabilityBar.vue'
 
 export default {
   name: 'Dashboard',
   components: {
     AlertCircle,
     RefreshCw,
-    Folder
+    Folder,
+    RiskScoreBadge,
+    VulnerabilityBar
   },
   setup() {
     const loading = ref(false)
@@ -181,8 +189,9 @@ export default {
     })
 
     const infoVulns = computed(() => {
-      if (!securityData.value || securityData.value.length === 0) return 0
-      return securityData.value.reduce((sum, node) => sum + (node.inheritedRiskScore || 0), 0)
+      // SecurityNode doesn't have info field, so return 0
+      // Info vulnerabilities are typically not tracked as security risks
+      return 0
     })
 
     const recentVulns = computed(() => {
@@ -195,20 +204,29 @@ export default {
     const riskDistribution = computed(() => {
       if (!securityData.value || securityData.value.length === 0) return []
 
-      const total = totalVulnerabilities.value
       const critical = criticalVulns.value
       const high = highVulns.value
       const medium = mediumVulns.value
       const low = lowVulns.value
       const info = infoVulns.value
 
-      return [
-        { range: 'Critical', count: critical, percentage: total > 0 ? Math.round((critical / total) * 100) : 0 },
-        { range: 'High', count: high, percentage: total > 0 ? Math.round((high / total) * 100) : 0 },
-        { range: 'Medium', count: medium, percentage: total > 0 ? Math.round((medium / total) * 100) : 0 },
-        { range: 'Low', count: low, percentage: total > 0 ? Math.round((low / total) * 100) : 0 },
-        { range: 'Info', count: info, percentage: total > 0 ? Math.round((info / total) * 100) : 0 }
+      // Calculate percentages based on actual risk vulnerabilities (excluding Info)
+      const riskTotal = critical + high + medium + low
+
+      const distribution = [
+        { range: 'Critical', count: critical, percentage: riskTotal > 0 ? Math.round((critical / riskTotal) * 100) : 0 },
+        { range: 'High', count: high, percentage: riskTotal > 0 ? Math.round((high / riskTotal) * 100) : 0 },
+        { range: 'Medium', count: medium, percentage: riskTotal > 0 ? Math.round((medium / riskTotal) * 100) : 0 },
+        { range: 'Low', count: low, percentage: riskTotal > 0 ? Math.round((low / riskTotal) * 100) : 0 }
       ]
+
+      // Add Info separately without percentage only if there are actual info vulnerabilities
+      // Currently SecurityNode doesn't track info vulnerabilities, so this won't show
+      if (info > 0) {
+        distribution.push({ range: 'Info', count: info, percentage: 0 })
+      }
+
+      return distribution
     })
 
     const refreshData = async () => {
@@ -249,6 +267,17 @@ export default {
       }
     }
 
+    const getRiskBarColor = (range) => {
+      switch (range) {
+        case 'Critical': return 'bg-orange-500'
+        case 'High': return 'bg-red-500'
+        case 'Medium': return 'bg-yellow-500'
+        case 'Low': return 'bg-green-500'
+        case 'Info': return 'bg-gray-500'
+        default: return 'bg-blue-500'
+      }
+    }
+
     const formatDate = (dateString) => {
       if (!dateString) return 'Unknown'
       return new Date(dateString).toLocaleDateString()
@@ -274,6 +303,7 @@ export default {
       recentVulns,
       riskDistribution,
       getSeverityColor,
+      getRiskBarColor,
       formatDate
     }
   }

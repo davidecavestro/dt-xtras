@@ -56,7 +56,7 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="pagination.loading && data.length === 0" class="text-center py-8">
+      <div v-if="pagination.loading.value && data.length === 0" class="text-center py-8">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <p class="mt-2 text-gray-600 dark:text-gray-400">Loading projects...</p>
       </div>
@@ -65,7 +65,7 @@
       <div v-else class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
         <div class="px-4 py-5 sm:px-6">
           <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-            Projects ({{ pagination.totalItems }} total)
+            Projects ({{ pagination.totalItems.value }} total)
           </h3>
           <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
             Software projects being tracked
@@ -155,7 +155,7 @@
         </div>
 
         <!-- Empty State -->
-        <div v-if="data.length === 0 && !pagination.loading" class="text-center py-8 text-gray-500 dark:text-gray-400">
+        <div v-if="data.length === 0 && !pagination.loading.value" class="text-center py-8 text-gray-500 dark:text-gray-400">
           <component :is="Folder" class="mx-auto h-12 w-12 text-gray-400" />
           <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -165,10 +165,10 @@
 
         <!-- Pagination -->
         <Pagination
-          v-if="pagination.totalItems > 0"
-          :current-page="pagination.currentPage"
-          :page-size="pagination.pageSize"
-          :total-items="pagination.totalItems"
+          v-if="pagination.totalItems.value > 0"
+          :current-page="pagination.currentPage.value"
+          :page-size="pagination.pageSize.value"
+          :total-items="pagination.totalItems.value"
           :page-size-options="[10, 20, 50, 100]"
           @page-change="handlePageChange"
           @page-size-change="handlePageSizeChange"
@@ -231,16 +231,8 @@ export default {
       { initialPageSize: 20 }
     )
 
-    console.log('paginatedData initialized - data:', data)
-    console.log('paginatedData initialized - pagination:', pagination)
-
     const fetchProjects = () => {
-      console.log('Starting fetchProjects...')
-      return fetchData().then(response => {
-        console.log('FetchProjects response:', response)
-        console.log('data.value after fetch:', data.value)
-        return response
-      }).catch(error => {
+      return fetchData().catch(error => {
         console.error('Error fetching projects:', error)
         pagination.setError(error.message || 'Failed to fetch projects')
         throw error
@@ -287,12 +279,6 @@ export default {
 
     onMounted(() => {
       fetchProjects()
-      console.log('Projects data after fetch:', data.value)
-      console.log('Data length:', data.value?.length)
-      console.log('Pagination object:', pagination)
-      console.log('Pagination totalItems:', pagination.totalItems?.value)
-      console.log('Data type:', typeof data.value)
-      console.log('Is array?', Array.isArray(data.value))
     })
 
     // Watch for tag updates and refresh projects

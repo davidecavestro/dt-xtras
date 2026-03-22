@@ -46,6 +46,7 @@
                 <button
                   @click="handleLogout"
                   class="px-3 py-2 rounded-md text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 hover:bg-red-100 dark:hover:bg-red-900"
+                  autocomplete="off"
                 >
                   Logout
                 </button>
