@@ -102,22 +102,31 @@
             <div class="space-y-2">
               <div class="flex justify-between text-sm">
                 <span class="text-gray-500 dark:text-gray-400">Components:</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ project.components || 0 }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">
+                  {{ project.metrics?.vulnerableComponents || 0 }}
+                </span>
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-gray-500 dark:text-gray-400">Vulnerabilities:</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ project?.vulnerabilities || 0 }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">
+                  {{ project.metrics?.vulnerabilities || 0 }}
+                </span>
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-gray-500 dark:text-gray-400">Risk Score:</span>
-                <RiskScoreBadge :score="project?.riskScore || 0" />
+                <div v-if="project.metrics">
+                  <RiskScoreBadge :score="project.metrics.inheritedRiskScore || 0" />
+                </div>
+                <div v-else class="text-sm text-gray-500 dark:text-gray-400">
+                  Not available
+                </div>
               </div>
             </div>
 
             <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
               <div class="flex justify-between items-center">
                 <span class="text-xs text-gray-500 dark:text-gray-400">
-                  Updated: {{ formatDate(project?.lastBomImport) }}
+                  Updated: Unknown
                 </span>
                 <div class="flex space-x-2">
                   <button
@@ -125,6 +134,13 @@
                     class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 text-sm"
                   >
                     View
+                  </button>
+                  <button
+                    v-if="!project.metrics"
+                    @click.stop="viewSecurityDetails(project)"
+                    class="text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 text-sm"
+                  >
+                    Security Details
                   </button>
                   <button
                     @click.stop="analyzeProject(project)"
@@ -163,12 +179,13 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { AlertCircle, RefreshCw, Folder } from 'lucide-vue-next'
 import { usePaginatedData } from '../composables/usePagination'
 import apiService from '../services/api'
 import Pagination from './Pagination.vue'
 import RiskScoreBadge from './RiskScoreBadge.vue'
+import { useTagStore } from '../stores/tags.js'
 
 export default {
   name: 'ProjectsList',
@@ -184,6 +201,8 @@ export default {
       search: '',
       activeOnly: false
     })
+
+    const tagStore = useTagStore()
 
     // Debounce search input
     let searchTimeout = null
@@ -209,13 +228,19 @@ export default {
 
         return apiService.getProjects(params, queryParams)
       },
-      {
-        initialPageSize: 20
-      }
+      { initialPageSize: 20 }
     )
 
+    console.log('paginatedData initialized - data:', data)
+    console.log('paginatedData initialized - pagination:', pagination)
+
     const fetchProjects = () => {
-      return fetchData().catch(error => {
+      console.log('Starting fetchProjects...')
+      return fetchData().then(response => {
+        console.log('FetchProjects response:', response)
+        console.log('data.value after fetch:', data.value)
+        return response
+      }).catch(error => {
         console.error('Error fetching projects:', error)
         pagination.setError(error.message || 'Failed to fetch projects')
         throw error
@@ -247,6 +272,13 @@ export default {
       console.log('View project:', project)
     }
 
+    const viewSecurityDetails = (project) => {
+      // Fetch and display security details from aggregate endpoint
+      if (!project) return
+      console.log('View security details for project:', project)
+      // TODO: Navigate to security details or show modal
+    }
+
     const analyzeProject = (project) => {
       // Trigger project analysis
       if (!project) return
@@ -255,9 +287,22 @@ export default {
 
     onMounted(() => {
       fetchProjects()
-      console.log('Projects data:', data.value)
-      console.log('Pagination:', pagination.value)
+      console.log('Projects data after fetch:', data.value)
+      console.log('Data length:', data.value?.length)
+      console.log('Pagination object:', pagination)
+      console.log('Pagination totalItems:', pagination.totalItems?.value)
+      console.log('Data type:', typeof data.value)
+      console.log('Is array?', Array.isArray(data.value))
     })
+
+    // Watch for tag updates and refresh projects
+    watch(
+      () => tagStore.lastUpdate,
+      () => {
+        console.log('Tag store updated, refreshing projects...')
+        fetchProjects()
+      }
+    )
 
     return {
       data,
@@ -269,6 +314,7 @@ export default {
       handlePageSizeChange,
       formatDate,
       viewProject,
+      viewSecurityDetails,
       analyzeProject
     }
   }

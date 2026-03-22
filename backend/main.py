@@ -369,7 +369,6 @@ async def get_dt_projects(dt_token: str) -> List[Dict]:
         # DT API returns plain dicts, not objects
         projects_data = response.json()
         print(f"Successfully parsed {len(projects_data)} projects")
-        print(f"Sample project data: {projects_data[0] if projects_data else 'None'}")
 
         # The field_validator in DTProject will handle tag conversion automatically
         return projects_data

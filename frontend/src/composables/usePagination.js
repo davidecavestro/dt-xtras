@@ -118,13 +118,13 @@ export function usePagination(options = {}) {
     totalPages,
     loading,
     error,
-    
+
     // Computed
     startItem,
     endItem,
     hasNextPage,
     hasPreviousPage,
-    
+
     // Methods
     setPage,
     setPageSize,
@@ -137,7 +137,7 @@ export function usePagination(options = {}) {
     setLoading,
     setError,
     clearError,
-    
+
     // Options
     pageSizeOptions
   })
@@ -157,18 +157,18 @@ export function usePaginatedData(fetchFunction, paginationOptions = {}) {
   const fetchData = async (additionalParams = {}) => {
     pagination.setLoading(true)
     pagination.clearError()
-    
+
     try {
       const params = {
         page: pagination.currentPage,
         pageSize: pagination.pageSize,
         ...additionalParams
       }
-      
+
       lastFetchParams.value = { ...params }
-      
+
       const response = await fetchFunction(params)
-      
+
       // Handle different response formats
       if (response && typeof response === 'object') {
         if (response.data && response.pagination) {
@@ -184,7 +184,7 @@ export function usePaginatedData(fetchFunction, paginationOptions = {}) {
           data.value = [response]
         }
       }
-      
+
       return response
     } catch (err) {
       pagination.setError(err.message || 'Failed to fetch data')
@@ -204,11 +204,11 @@ export function usePaginatedData(fetchFunction, paginationOptions = {}) {
     lastFetchParams.value = {}
   }
 
-  return reactive({
+  return {
     data,
     pagination,
     fetchData,
     refresh,
     reset
-  })
+  }
 }
