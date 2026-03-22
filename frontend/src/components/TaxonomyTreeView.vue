@@ -133,16 +133,45 @@
           <p class="text-sm text-gray-500 dark:text-gray-400">Click any node to filter projects</p>
         </div>
         <div class="p-4">
-          <div class="space-y-1">
-            <TreeNode
-              v-for="node in taxonomyTree"
-              :key="node.id"
-              :node="node"
-              :level="0"
-              @select="selectNode"
-              :selected-node-id="selectedNodeId"
-            />
-          </div>
+          <TreeView
+            :items="taxonomyTree"
+            @onSelect="handleNodeSelect"
+            class="taxonomy-tree"
+          >
+            <template #default="{ item, level }">
+              <div class="flex items-center py-2 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                   :class="{
+                     'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500': selectedNodeId === item.id,
+                     'border-l-4 border-transparent': selectedNodeId !== item.id
+                   }"
+                   @click="handleNodeClick(item)">
+                <!-- Node Icon -->
+                <span class="text-lg mr-2">{{ getNodeTypeIcon(item) }}</span>
+
+                <!-- Node Name -->
+                <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white">
+                  {{ getNodeDisplayName(item) }}
+                </span>
+
+                <!-- Node Type Badge -->
+                <span
+                  v-if="showTypeBadge(item)"
+                  class="px-2 py-1 text-xs rounded-full"
+                  :class="getTypeBadgeClass(item)"
+                >
+                  {{ getNodeTypeLabel(item) }}
+                </span>
+
+                <!-- Projects Count -->
+                <span
+                  v-if="showProjectsCount(item)"
+                  class="ml-2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full"
+                >
+                  {{ item.projectsCount || 0 }}
+                </span>
+              </div>
+            </template>
+          </TreeView>
         </div>
       </div>
 
@@ -210,19 +239,16 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
-import { Folder } from 'lucide-vue-next'
-import XRegExp from 'xregexp'
-import TreeNode from './TreeNode.vue'
-import RiskScoreBadge from './RiskScoreBadge.vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import XRegExp from 'xregexp'
+import TreeView from 'vue3-tree-vue'
+import 'vue3-tree-vue/dist/style.css'
 
 export default {
   name: 'TaxonomyTreeView',
   components: {
-    Folder,
-    TreeNode,
-    RiskScoreBadge
+    TreeView
   },
   setup() {
     const selectedTaxonomy = ref('')
@@ -239,16 +265,19 @@ export default {
     const filteredProjects = ref([])
     const loading = ref(false)
 
-    // Load available taxonomies
+    // Load taxonomies
     const loadTaxonomies = async () => {
       try {
-        console.log('Loading taxonomies...')
+        loading.value = true
         const response = await axios.get('/api/taxonomies')
-        console.log('Taxonomies response:', response)
         availableTaxonomies.value = response.data || []
-        console.log('Available taxonomies:', availableTaxonomies.value)
+
+        // Load projects after taxonomies are loaded
+        await loadAllProjects()
       } catch (error) {
         console.error('Error loading taxonomies:', error)
+      } finally {
+        loading.value = false
       }
     }
 
@@ -301,9 +330,13 @@ export default {
       }
     }
 
-    // Build tree structure from tags
+    // Build tree structure from tags with proper hierarchy
     const buildTreeFromTags = async (rootTags, taxonomy, allTags) => {
-      return rootTags.map(tag => {
+      const nodeMap = new Map()
+      const rootNodes = []
+
+      // First, create nodes for all tags that match this taxonomy
+      rootTags.forEach(tag => {
         const node = {
           id: tag.name,
           name: tag.name,
@@ -312,34 +345,100 @@ export default {
           pattern: taxonomy.regex_pattern,
           projectsCount: tag.projectsCount || 0,
           children: [],
-          projects: []
+          projects: [],
+          expanded: false
         }
-
-        // Build hierarchical structure based on tag naming patterns
-        // For deployment example: env:production:customer:acme:product_version:myapp:1.0.0
-        const tagParts = tag.name.split(':')
-
-        if (tagParts.length > 1) {
-          // Find child tags that extend this tag's path
-          const childTags = allTags.filter(childTag => {
-            const childParts = childTag.name.split(':')
-            // Child tag should start with parent tag's path and have more parts
-            return childTag.name.startsWith(tag.name + ':') && childParts.length === tagParts.length + 1
-          })
-
-          node.children = childTags.map(childTag => ({
-            id: childTag.name,
-            name: childTag.name,
-            type: 'tag',
-            taxonomy: 'derived', // Mark as derived from hierarchy
-            projectsCount: childTag.projectsCount || 0,
-            children: [],
-            projects: []
-          }))
-        }
-
-        return node
+        nodeMap.set(tag.name, node)
+        rootNodes.push(node)
       })
+
+      // If taxonomy has relations, build hierarchical structure
+      if (taxonomy.relations && taxonomy.relations.length > 0) {
+        await buildRelationHierarchy(rootNodes, taxonomy, allTags, nodeMap)
+      }
+
+      // Sort nodes alphabetically for better organization
+      return sortTreeNodes(rootNodes)
+    }
+
+    // Build hierarchical structure based on taxonomy relations
+    const buildRelationHierarchy = async (nodes, taxonomy, allTags, nodeMap) => {
+      for (const node of nodes) {
+        // Parse the tag to extract components
+        const components = parseTagComponents(node.name, taxonomy)
+
+        if (components && taxonomy.relations) {
+          // Build children based on relations
+          for (const relation of taxonomy.relations) {
+            const childTags = findRelatedTags(components, relation, allTags)
+
+            for (const childTag of childTags) {
+              if (!nodeMap.has(childTag.name)) {
+                const childNode = {
+                  id: childTag.name,
+                  name: childTag.name,
+                  type: 'tag',
+                  taxonomy: relation.targets,
+                  projectsCount: childTag.projectsCount || 0,
+                  children: [],
+                  projects: [],
+                  expanded: false
+                }
+                nodeMap.set(childTag.name, childNode)
+                node.children.push(childNode)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Parse tag components based on taxonomy pattern
+    const parseTagComponents = (tagName, taxonomy) => {
+      if (!tagName || !taxonomy || !taxonomy.regex_pattern) return null
+
+      try {
+        const regex = XRegExp(taxonomy.regex_pattern)
+        const match = XRegExp.exec(tagName, regex)
+        return match ? match : null
+      } catch (error) {
+        console.error('Error parsing tag components:', error, 'tagName:', tagName, 'pattern:', taxonomy.regex_pattern)
+        return null
+      }
+    }
+
+    // Find tags related to a specific component
+    const findRelatedTags = (components, relation, allTags) => {
+      const relatedTaxonomy = availableTaxonomies.value.find(t => t.id === relation.targets)
+      if (!relatedTaxonomy) return []
+
+      // Extract the component value (e.g., 'acme' from 'cust:acme')
+      const componentValue = components[relation.group]
+      if (!componentValue) return []
+
+      // Find tags in the related taxonomy that match this component
+      return allTags.filter(tag => {
+        try {
+          const regex = XRegExp(relatedTaxonomy.regex_pattern)
+          return regex.test(tag.name) && tag.name.includes(componentValue)
+        } catch (error) {
+          return false
+        }
+      })
+    }
+
+    // Sort tree nodes alphabetically
+    const sortTreeNodes = (nodes) => {
+      return nodes.sort((a, b) => {
+        // Sort by type first (tags before projects), then by name
+        if (a.type !== b.type) {
+          return a.type === 'tag' ? -1 : 1
+        }
+        return a.name.localeCompare(b.name)
+      }).map(node => ({
+        ...node,
+        children: node.children.length > 0 ? sortTreeNodes(node.children) : node.children
+      }))
     }
 
     // Load all projects
@@ -361,16 +460,47 @@ export default {
       filterProjectsByNode(node)
     }
 
-    // Filter projects based on selected node
-    const filterProjectsByNode = (node) => {
-      // This is a simplified filtering logic
-      // We'll need to implement the actual filtering based on taxonomy patterns
-      filteredProjects.value = allProjects.value.filter(project => {
-        // Check if project has tags matching the selected node or its descendants
-        return project.tags && project.tags.some(tag =>
-          tag.includes(node.name) || tag.includes(node.pattern)
-        )
-      })
+    // Handle node click for vue3-tree-vue
+    const handleNodeClick = (node) => {
+      selectNode(node, node.name)
+    }
+
+    // Handle node selection for TreeView
+    const handleNodeSelect = (item) => {
+      selectNode(item, item.name)
+    }
+
+    // Helper functions for tree display
+    const showTypeBadge = (node) => {
+      return node.taxonomy && node.type === 'tag'
+    }
+
+    const getNodeTypeLabel = (node) => {
+      if (node.type === 'project') return 'Project'
+
+      const taxonomyLabels = {
+        'customer': 'Customer',
+        'env': 'Environment',
+        'deploy': 'Deployment',
+        'product_version': 'Version'
+      }
+
+      return taxonomyLabels[node.taxonomy] || node.taxonomy
+    }
+
+    const getTypeBadgeClass = (node) => {
+      const classes = {
+        'customer': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+        'env': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        'deploy': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+        'product_version': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+      }
+
+      return classes[node.taxonomy] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+    }
+
+    const showProjectsCount = (node) => {
+      return node.type === 'tag' && node.projectsCount !== undefined
     }
 
     // View project details
@@ -385,37 +515,140 @@ export default {
       return new Date(dateString).toLocaleDateString()
     }
 
-    // Computed properties for direct tag creation
+    // Get node display name with taxonomy context
+    const getNodeDisplayName = (node) => {
+      if (!node || !availableTaxonomies.value) return node?.name || 'Unknown'
+      const taxonomy = availableTaxonomies.value.find(t => t.id === node.taxonomy)
+      const taxonomyName = taxonomy ? taxonomy.name : node.taxonomy
+
+      // For better UX, show just the value part for related taxonomies
+      if (node.taxonomy !== selectedTaxonomy.value) {
+        const parts = node.name.split(':')
+        return parts.length > 1 ? parts[parts.length - 1] : node.name
+      }
+
+      return node.name
+    }
+
+    // Get node type icon
+    const getNodeTypeIcon = (node) => {
+      if (!node) return '🏷️'
+      if (node.type === 'project') return '📁'
+
+      // Different icons for different taxonomies
+      switch (node.taxonomy) {
+        case 'customer': return '🏢'
+        case 'env': return '🌍'
+        case 'deploy': return '🚀'
+        case 'product_version': return '📦'
+        default: return '🏷️'
+      }
+    }
+
+    // Enhanced project filtering based on selected node
+    const filterProjectsByNode = (node) => {
+      if (!node) {
+        filteredProjects.value = allProjects.value
+        return
+      }
+
+      // Get all tags under this node (including descendants)
+      const allNodeTags = getAllNodeTags(node)
+
+      // Filter projects that have any of the tags
+      filteredProjects.value = allProjects.value.filter(project => {
+        if (!project.tags || project.tags.length === 0) return false
+
+        return project.tags.some(projectTag => {
+          // Handle both string tags and object tags
+          const tagName = typeof projectTag === 'string' ? projectTag : projectTag.name
+
+          if (!tagName) return false
+
+          return allNodeTags.some(nodeTag => {
+            // Exact match
+            if (tagName === nodeTag) return true
+
+            // Hierarchical match - if project tag starts with node tag
+            if (tagName.startsWith(nodeTag + ':')) return true
+
+            // Component match - if project tag contains components of node tag
+            return hasComponentMatch(tagName, nodeTag)
+          })
+        })
+      })
+    }
+
+    // Get all tags under a node (including all descendants)
+    const getAllNodeTags = (node) => {
+      const tags = [node.name]
+
+      if (node.children && node.children.length > 0) {
+        node.children.forEach(child => {
+          tags.push(...getAllNodeTags(child))
+        })
+      }
+
+      return tags
+    }
+
+    // Check if tags have matching components
+    const hasComponentMatch = (projectTag, nodeTag) => {
+      const projectParts = projectTag.split(':')
+      const nodeParts = nodeTag.split(':')
+
+      // Check if all parts of node tag exist in project tag
+      return nodeParts.every(part => projectParts.includes(part))
+    }
+
     const selectedTaxonomyName = computed(() => {
+      if (!selectedTaxonomy.value || !availableTaxonomies.value) return ''
       const taxonomy = availableTaxonomies.value.find(t => t.id === selectedTaxonomy.value)
       return taxonomy ? taxonomy.id : ''
     })
 
     const selectedTaxonomyPattern = computed(() => {
+      if (!selectedTaxonomy.value || !availableTaxonomies.value) return ''
       const taxonomy = availableTaxonomies.value.find(t => t.id === selectedTaxonomy.value)
       return taxonomy ? taxonomy.regex_pattern : ''
     })
 
     // Direct tag creation functions
     const validateDirectTag = () => {
-      const taxonomy = availableTaxonomies.value.find(t => t.id === selectedTaxonomy.value)
-      if (!taxonomy || !directTagName.value) {
+      console.log('Validating direct tag...')
+      console.log('Selected taxonomy:', selectedTaxonomy.value)
+      console.log('Available taxonomies:', availableTaxonomies.value.map(t => ({ id: t.id, pattern: t.regex_pattern })))
+
+      if (!selectedTaxonomy.value || !availableTaxonomies.value || !directTagName.value) {
         directTagValidation.value = { isValid: false, error: '' }
         return
       }
+
+      const taxonomy = availableTaxonomies.value.find(t => t.id === selectedTaxonomy.value)
+      if (!taxonomy) {
+        directTagValidation.value = { isValid: false, error: 'Taxonomy not found' }
+        return
+      }
+
+      console.log('Found taxonomy:', taxonomy)
+      console.log('Using pattern:', taxonomy.regex_pattern)
 
       try {
         // For most taxonomies, the full tag is taxonomy:value
         // But for product_version, the tag should be just the user input
         const fullTag = taxonomy.id === 'product_version' ? directTagName.value : `${taxonomy.id}:${directTagName.value}`
+        console.log('Full tag to validate:', fullTag)
+
         const regex = XRegExp(taxonomy.regex_pattern)
         const isValid = regex.test(fullTag)
+        console.log('Validation result:', isValid)
 
         directTagValidation.value = {
           isValid,
           error: isValid ? '' : `Tag "${fullTag}" does not match pattern: ${taxonomy.regex_pattern}`
         }
       } catch (error) {
+        console.error('Error validating direct tag:', error)
         directTagValidation.value = {
           isValid: false,
           error: 'Invalid regex pattern'
@@ -536,7 +769,11 @@ export default {
     }
 
     onMounted(() => {
-      loadTaxonomies()
+      try {
+        loadTaxonomies()
+      } catch (error) {
+        console.error('Error initializing TaxonomyTreeView:', error)
+      }
     })
 
     return {
@@ -565,6 +802,14 @@ export default {
       clearDirectForm,
       createDirectTag,
       selectNode,
+      handleNodeClick,
+      handleNodeSelect,
+      getNodeDisplayName,
+      getNodeTypeIcon,
+      showTypeBadge,
+      getNodeTypeLabel,
+      getTypeBadgeClass,
+      showProjectsCount,
       viewProject,
       formatDate
     }
@@ -575,5 +820,70 @@ export default {
 <style scoped>
 .taxonomy-tree-view {
   @apply p-6;
+}
+
+/* Custom styling for vue3-tree-vue */
+.taxonomy-tree {
+  --tree-node-padding: 8px;
+  --tree-node-hover-bg: rgba(0, 0, 0, 0.05);
+  --tree-node-selected-bg: rgba(59, 130, 246, 0.1);
+}
+
+.taxonomy-tree :deep(.treeview-item) {
+  margin: 2px 0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.taxonomy-tree :deep(.treeview-item:hover) {
+  background-color: var(--tree-node-hover-bg);
+}
+
+.taxonomy-tree :deep(.treeview-item.selected) {
+  background-color: var(--tree-node-selected-bg);
+  border-left: 4px solid #3b82f6;
+}
+
+.taxonomy-tree :deep(.treeview-item-content) {
+  padding: var(--tree-node-padding);
+  display: flex;
+  align-items: center;
+}
+
+.taxonomy-tree :deep(.treeview-item-arrow) {
+  margin-right: 8px;
+  color: #6b7280;
+  transition: transform 0.2s ease;
+}
+
+.taxonomy-tree :deep(.treeview-item-arrow.expanded) {
+  transform: rotate(90deg);
+}
+
+.taxonomy-tree :deep(.treeview-item-text) {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.dark .taxonomy-tree :deep(.treeview-item-text) {
+  color: #f9fafb;
+}
+
+.taxonomy-tree :deep(.treeview-item-icon) {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .taxonomy-tree :deep(.treeview-item-content) {
+    padding: 6px;
+  }
+
+  .taxonomy-tree :deep(.treeview-item-text) {
+    font-size: 13px;
+  }
 }
 </style>
