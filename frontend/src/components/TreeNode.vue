@@ -22,26 +22,29 @@
       <div v-else class="w-6 mr-2"></div>
 
       <!-- Node Icon -->
-      <component
-        :is="nodeIcon"
-        class="h-4 w-4 mr-2"
-        :class="iconColor"
-      />
+      <span class="text-lg mr-2">{{ nodeIcon }}</span>
 
-      <!-- Node Label -->
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-medium text-gray-900 dark:text-white truncate">
-            {{ node.name }}
-          </span>
-          <span v-if="node.projects && node.projects.length > 0" class="text-xs text-gray-500 dark:text-gray-400 ml-2">
-            {{ node.projects.length }} projects
-          </span>
-        </div>
-        <div v-if="node.pattern" class="text-xs text-gray-500 dark:text-gray-400 truncate">
-          {{ node.pattern }}
-        </div>
-      </div>
+      <!-- Node Name -->
+      <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white">
+        {{ displayName }}
+      </span>
+
+      <!-- Node Type Badge -->
+      <span
+        v-if="showTypeBadge"
+        class="px-2 py-1 text-xs rounded-full"
+        :class="typeBadgeClass"
+      >
+        {{ nodeTypeLabel }}
+      </span>
+
+      <!-- Projects Count -->
+      <span
+        v-if="showProjectsCount && projectsCount > 0"
+        class="ml-2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full"
+      >
+        {{ projectsCount }}
+      </span>
     </div>
 
     <!-- Children -->
@@ -51,8 +54,10 @@
         :key="child.id"
         :node="child"
         :level="level + 1"
-        @select="$emit('select', $event, buildPath(child))"
         :selected-node-id="selectedNodeId"
+        :get-node-display-name="getNodeDisplayName"
+        :get-node-type-icon="getNodeTypeIcon"
+        @select="$emit('select', $event, buildPath(child))"
       />
     </div>
   </div>
@@ -82,6 +87,14 @@ export default {
     selectedNodeId: {
       type: String,
       default: ''
+    },
+    getNodeDisplayName: {
+      type: Function,
+      default: (node) => node.name
+    },
+    getNodeTypeIcon: {
+      type: Function,
+      default: () => '🏷️'
     }
   },
   emits: ['select'],
@@ -96,10 +109,48 @@ export default {
       return props.selectedNodeId === props.node.id
     })
 
+    const displayName = computed(() => {
+      return props.getNodeDisplayName(props.node)
+    })
+
     const nodeIcon = computed(() => {
-      if (props.node.type === 'tag') return Tag
-      if (props.node.type === 'project') return Package
-      return Folder
+      return props.getNodeTypeIcon(props.node)
+    })
+
+    const showTypeBadge = computed(() => {
+      return props.node.taxonomy && props.node.type === 'tag'
+    })
+
+    const nodeTypeLabel = computed(() => {
+      if (props.node.type === 'project') return 'Project'
+
+      const taxonomyLabels = {
+        'customer': 'Customer',
+        'env': 'Environment',
+        'deploy': 'Deployment',
+        'product_version': 'Version'
+      }
+
+      return taxonomyLabels[props.node.taxonomy] || props.node.taxonomy
+    })
+
+    const typeBadgeClass = computed(() => {
+      const classes = {
+        'customer': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+        'env': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        'deploy': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+        'product_version': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+      }
+
+      return classes[props.node.taxonomy] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+    })
+
+    const showProjectsCount = computed(() => {
+      return props.node.type === 'tag' && props.node.projectsCount !== undefined
+    })
+
+    const projectsCount = computed(() => {
+      return props.node.projectsCount || 0
     })
 
     const iconColor = computed(() => {
@@ -127,7 +178,13 @@ export default {
       isExpanded,
       hasChildren,
       isSelected,
+      displayName,
       nodeIcon,
+      showTypeBadge,
+      nodeTypeLabel,
+      typeBadgeClass,
+      showProjectsCount,
+      projectsCount,
       iconColor,
       toggleExpanded,
       handleSelect,
