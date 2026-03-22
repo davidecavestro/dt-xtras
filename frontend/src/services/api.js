@@ -227,6 +227,30 @@ class ApiService {
   }
 
   /**
+   * Get taxonomies with pagination
+   * Endpoint: /taxonomies
+   * Operation: getTaxonomies
+   * @param {Object} pagination - Pagination configuration
+   * @param {Object} filters - Additional filters
+   * @returns {Promise} - Paginated taxonomies data
+   */
+  async getTaxonomies(pagination = {}, filters = {}) {
+    return this.getPaginated('/taxonomies', pagination, filters)
+  }
+
+  /**
+   * Get tags with pagination
+   * Endpoint: /tags
+   * Operation: getTags
+   * @param {Object} pagination - Pagination configuration
+   * @param {Object} filters - Additional filters
+   * @returns {Promise} - Paginated tags data
+   */
+  async getTags(pagination = {}, filters = {}) {
+    return this.getPaginated('/tags', pagination, filters)
+  }
+
+  /**
    * Get CWEs with pagination
    * Endpoint: /cwe
    * Operation: getCwes
