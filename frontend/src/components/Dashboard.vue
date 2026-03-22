@@ -87,11 +87,12 @@
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Risk Score Distribution</h3>
             <div class="bg-white dark:bg-gray-800 p-4 rounded-lg">
               <div class="space-y-2">
-                <div v-for="(range, count) in riskDistribution" :key="range" class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">{{ range }}</span>
+                <div v-for="item in riskDistribution" :key="item.range" class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">{{ item.range }}</span>
                   <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div class="h-2 bg-gray-600 dark:bg-gray-800 rounded-full" :style="{ width: `${(count / totalVulns) * 100}%` }"></div>
+                    <div class="h-2 bg-gray-600 dark:bg-gray-800 rounded-full" :style="{ width: `${item.percentage}%` }"></div>
                   </div>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">{{ item.count }} ({{ item.percentage }}%)</span>
                 </div>
               </div>
             </div>
@@ -102,8 +103,8 @@
             <div class="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg">
               <div v-if="recentVulns.length === 0" class="text-center py-8">
                 <component :is="Folder" class="mx-auto h-12 w-12 text-gray-400" />
-                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No vulnerabilities found</h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Try adjusting your filters or check your connection.</p>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No vulnerability details available</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Security nodes show aggregated counts, not individual vulnerabilities.</p>
               </div>
               <div v-else class="divide-y divide-gray-200 dark:divide-gray-700">
                 <div v-for="vuln in recentVulns" :key="vuln.id" class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -137,14 +138,15 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue'
-import { AlertCircle, RefreshCw } from 'lucide-vue-next'
+import { AlertCircle, RefreshCw, Folder } from 'lucide-vue-next'
 import axios from 'axios'
 
 export default {
   name: 'Dashboard',
   components: {
     AlertCircle,
-    RefreshCw
+    RefreshCw,
+    Folder
   },
   setup() {
     const loading = ref(false)
@@ -160,35 +162,34 @@ export default {
 
     const criticalVulns = computed(() => {
       if (!securityData.value || securityData.value.length === 0) return 0
-      return securityData.value.reduce((sum, node) => sum + (node.vulnerabilities || 0), 0)
+      return securityData.value.reduce((sum, node) => sum + (node.critical || 0), 0)
     })
 
     const highVulns = computed(() => {
       if (!securityData.value || securityData.value.length === 0) return 0
-      return securityData.value.reduce((sum, node) => sum + (node.vulnerabilities || 0), 0)
+      return securityData.value.reduce((sum, node) => sum + (node.high || 0), 0)
     })
 
     const mediumVulns = computed(() => {
       if (!securityData.value || securityData.value.length === 0) return 0
-      return securityData.value.reduce((sum, node) => sum + (node.vulnerabilities || 0), 0)
+      return securityData.value.reduce((sum, node) => sum + (node.medium || 0), 0)
     })
 
     const lowVulns = computed(() => {
       if (!securityData.value || securityData.value.length === 0) return 0
-      return securityData.value.reduce((sum, node) => sum + (node.vulnerabilities || 0), 0)
+      return securityData.value.reduce((sum, node) => sum + (node.low || 0), 0)
     })
 
     const infoVulns = computed(() => {
       if (!securityData.value || securityData.value.length === 0) return 0
-      return securityData.value.reduce((sum, node) => sum + (node.vulnerabilities || 0), 0)
+      return securityData.value.reduce((sum, node) => sum + (node.inheritedRiskScore || 0), 0)
     })
 
     const recentVulns = computed(() => {
       if (!securityData.value || !Array.isArray(securityData.value)) return []
-      return securityData.value
-        .flatMap(node => node.vulnerabilities || [])
-        .sort((a, b) => new Date(b.published) - new Date(a.published) < 0 ? 1 : -1)
-        .slice(0, 10)
+      // Since SecurityNode doesn't have vulnerability objects, return empty array for now
+      // This would need to be implemented in the backend to provide actual vulnerability details
+      return []
     })
 
     const riskDistribution = computed(() => {
@@ -271,7 +272,9 @@ export default {
       lowVulns,
       infoVulns,
       recentVulns,
-      riskDistribution
+      riskDistribution,
+      getSeverityColor,
+      formatDate
     }
   }
 }

@@ -314,11 +314,13 @@ import XRegExp from 'xregexp'
 import axios from 'axios'
 import auth from '../services/auth.js'
 import { useRouter } from 'vue-router'
+import { useTagStore } from '../stores/tags.js'
 
 export default {
   name: 'TagManager',
   setup() {
     const router = useRouter()
+    const tagStore = useTagStore()
 
     // State
     const taxonomies = ref([])
@@ -479,13 +481,13 @@ export default {
       if (!tagValidation.value.valid || !newTag.value.trim()) return
 
       try {
-        const response = await axios.post('/api/tags', {
+        const response = await tagStore.createTag({
           name: newTag.value.trim()
         })
 
-        if (response.data) {
+        if (response) {
           // Add new tag to our list
-          tags.value.push(response.data)
+          tags.value.push(response)
           newTag.value = ''
           tagValidation.value = { valid: false, message: '' }
         }
@@ -493,7 +495,7 @@ export default {
         console.error('Error creating tag:', error)
         tagValidation.value = {
           valid: false,
-          message: `❌ Error: ${error.response?.data?.detail || error.message}`
+          message: `❌ Error: ${tagStore.error || error.message}`
         }
       }
     }
