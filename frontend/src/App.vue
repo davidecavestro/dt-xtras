@@ -4,7 +4,11 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">dt-xtras</h1>
+            <LogoWithText
+              size="medium"
+              :variant="isDark ? 'dark' : 'default'"
+              class="mr-4"
+            />
           </div>
           <div class="flex items-center space-x-4">
             <router-link
@@ -95,9 +99,13 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import authService from './services/auth'
+import LogoWithText from './components/LogoWithText.vue'
 
 export default {
   name: 'App',
+  components: {
+    LogoWithText
+  },
   setup() {
     const router = useRouter()
     const isDark = ref(false)

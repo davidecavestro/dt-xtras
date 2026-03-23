@@ -20,13 +20,13 @@ The taxonomy system provides a structured way to categorize project tags and def
 Environment Taxonomy:
   pattern: '^env:(?P<env_type>\\w+)$'
   relations: [{ group: 'deploy', targets: 'env' }]
-  
+
 Customer Taxonomy:
   pattern: '^cust:(?P<customer_id>\\w+)$'
   relations: [{ group: 'deploy', targets: 'customer' }]
-  
+
 Deployment Taxonomy:
-  pattern: '^deploy:(?P<env>\\w+):(?P<customer>cust:\\w+):(?P<product_version>[\\w-]+:[\\d\\.]+)$'
+  pattern: '^deploy:(?P<env>\\w+):(?P<customer>\\w+):(?P<product_version>[\\w-]+:[\\d\\.]+)$'
   relations: [
     { group: 'env', targets: 'env' },
     { group: 'customer', targets: 'customer' },
@@ -46,7 +46,7 @@ Deployment Taxonomy:
 - `env:prod` - Production environment
 - `cust:acme` - ACME customer
 - `myapp:1.0.0` - Application version 1.0.0
-- `deploy:prod:cust:acme:myapp:1.0.0` - Complete deployment specification
+- `deploy:prod:acme:myapp:1.0.0` - Complete deployment specification
 
 ### 3. Project Labeling
 
@@ -67,11 +67,11 @@ HardLabel(webapp-frontend, env:prod) = true
 
 **Notation:** `SoftLabel(P, S) = ∃path(S → T) ∧ HardLabel(P, T)`
 
-**Example:** If project `webapp-frontend` has tag `deploy:prod:cust:acme:myapp:1.0.0` and the graph contains:
+**Example:** If project `webapp-frontend` has tag `deploy:prod:acme:myapp:1.0.0` and the graph contains:
 ```
-deploy:prod:cust:acme:myapp:1.0.0 → env:prod
-deploy:prod:cust:acme:myapp:1.0.0 → cust:acme  
-deploy:prod:cust:acme:myapp:1.0.0 → myapp:1.0.0
+deploy:prod:acme:myapp:1.0.0 → env:prod
+deploy:prod:acme:myapp:1.0.0 → cust:acme
+deploy:prod:acme:myapp:1.0.0 → myapp:1.0.0
 ```
 
 Then:
@@ -92,10 +92,10 @@ SoftLabel(webapp-frontend, myapp:1.0.0) = true
 2. Their parsed components share at least one value
 3. The shared component establishes semantic relationship
 
-**Example:** 
+**Example:**
 ```
-deploy:prod:cust:acme:myapp:1.0.0
-├── Components: { env: env:prod, customer: cust:acme, product_version: myapp:1.0.0 }
+deploy:prod:acme:myapp:1.0.0
+├── Components: { env: env:prod, customer: acme, product_version: myapp:1.0.0 }
 env:prod
 ├── Components: { type: env, value: prod }
 Result: Edge exists (shared 'env' component)
@@ -114,12 +114,12 @@ Result: Edge exists (shared 'env' component)
 **Example:** Environment taxonomy tree projection:
 ```
 env:prod (root)
-├── deploy:prod:cust:acme:myapp:1.0.0 (child)
-└── deploy:prod:cust:foo:myapp:1.0.0 (child)
+├── deploy:prod:acme:myapp:1.0.0 (child)
+└── deploy:prod:foo:myapp:1.0.0 (child)
 
-env:staging (root)  
-├── deploy:staging:cust:acme:myapp:1.0.1 (child)
-└── deploy:staging:cust:bar:myapp:2.0.0 (child)
+env:staging (root)
+├── deploy:staging:acme:myapp:1.0.1 (child)
+└── deploy:staging:bar:myapp:2.0.0 (child)
 ```
 
 ## 🔧 Technical Implementation
@@ -131,10 +131,10 @@ env:staging (root)
 **Algorithm:**
 ```javascript
 parseTagComponents(tagName) {
-  // Deployment tags: deploy:env:prod:cust:acme:myapp:1.0.0
+  // Deployment tags: deploy:prod:acme:myapp:1.0.0
   if (tagName.startsWith('deploy:')) {
     const parts = tagName.split(':')
-    if (parts.length >= 6) {
+    if (parts.length >= 5) {
       return {
         deploy: parts[0],
         env: `env:${parts[1]}`,
@@ -144,7 +144,7 @@ parseTagComponents(tagName) {
       }
     }
   }
-  
+
   // Simple tags: env:prod, cust:acme, myapp:1.0.0
   const parts = tagName.split(':')
   if (parts.length === 2) {
@@ -154,7 +154,7 @@ parseTagComponents(tagName) {
       full_tag: tagName
     }
   }
-  
+
   return null
 }
 ```
@@ -165,7 +165,7 @@ parseTagComponents(tagName) {
 1. Initialize all tags as graph nodes
 2. For each taxonomy relation:
    - Find all tags matching source taxonomy pattern
-   - Find all tags matching target taxonomy pattern  
+   - Find all tags matching target taxonomy pattern
    - Create edges between tags sharing components
 3. Build undirected adjacency list
 
@@ -184,10 +184,10 @@ parseTagComponents(tagName) {
 Find all projects with specific characteristics:
 ```sql
 -- Find all production projects
-SELECT * FROM projects 
+SELECT * FROM projects
 WHERE SoftLabel(project, 'env:prod') = true
 
--- Find all ACME customer projects  
+-- Find all ACME customer projects
 SELECT * FROM projects
 WHERE SoftLabel(project, 'cust:acme') = true
 ```

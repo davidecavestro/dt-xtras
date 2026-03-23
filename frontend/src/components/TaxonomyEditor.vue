@@ -173,6 +173,150 @@
         </div>
       </div>
 
+      <!-- Taxonomy Graph Visualization -->
+      <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white">Taxonomy Relations Graph</h3>
+          <button
+            @click="resetGraphView"
+            class="px-3 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700"
+          >
+            Reset View
+          </button>
+        </div>
+
+        <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700" style="height: 400px; position: relative; overflow: hidden;">
+          <svg
+            ref="graphSvg"
+            width="100%"
+            height="100%"
+            style="cursor: grab;"
+            @mousedown="startPan"
+            @mousemove="pan"
+            @mouseup="endPan"
+            @mouseleave="endPan"
+            @wheel="zoom"
+          >
+            <!-- Graph Group for Panning/Zooming -->
+            <g ref="graphGroup" :transform="`translate(${panX}, ${panY}) scale(${zoomLevel})`">
+              <!-- Edges (Relations) -->
+              <g v-if="graphEdges.length > 0">
+                <line
+                  v-for="edge in graphEdges"
+                  :key="`${edge.source}-${edge.target}`"
+                  :x1="edge.sourceX"
+                  :y1="edge.sourceY"
+                  :x2="edge.targetX"
+                  :y2="edge.targetY"
+                  stroke="#6B7280"
+                  stroke-width="2"
+                  opacity="0.6"
+                  :stroke-dasharray="edge.type === 'relation' ? '5,5' : 'none'"
+                />
+                <!-- Edge Labels -->
+                <text
+                  v-for="edge in graphEdges"
+                  :key="`label-${edge.source}-${edge.target}`"
+                  :x="(edge.sourceX + edge.targetX) / 2"
+                  :y="(edge.sourceY + edge.targetY) / 2"
+                  text-anchor="middle"
+                  dominant-baseline="middle"
+                  class="text-xs fill-gray-600 dark:fill-gray-400"
+                  :transform="`translate(${(edge.sourceX + edge.targetX) / 2}, ${(edge.sourceY + edge.targetY) / 2}) rotate(${edge.angle})`"
+                >
+                  {{ edge.label }}
+                </text>
+              </g>
+
+              <!-- Nodes (Taxonomies) -->
+              <g v-if="graphNodes.length > 0">
+                <g
+                  v-for="node in graphNodes"
+                  :key="node.id"
+                  @click="selectGraphNode(node)"
+                  style="cursor: pointer;"
+                >
+                  <!-- Node Circle -->
+                  <circle
+                    :cx="node.x"
+                    :cy="node.y"
+                    :r="node.selected ? 35 : 30"
+                    :fill="getNodeColor(node)"
+                    :stroke="node.selected ? '#3B82F6' : '#9CA3AF'"
+                    stroke-width="3"
+                    @mouseover="hoverNode = node.id"
+                    @mouseleave="hoverNode = null"
+                  />
+                  <!-- Node Icon -->
+                  <text
+                    :x="node.x"
+                    :y="node.y - 5"
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                    class="text-lg fill-white font-bold"
+                  >
+                    {{ getNodeIcon(node) }}
+                  </text>
+                  <!-- Node Label -->
+                  <text
+                    :x="node.x"
+                    :y="node.y + 10"
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                    class="text-xs fill-white font-medium"
+                  >
+                    {{ node.id }}
+                  </text>
+                  <!-- Hover Tooltip -->
+                  <g v-if="hoverNode === node.id">
+                    <rect
+                      :x="node.x + 40"
+                      :y="node.y - 30"
+                      width="200"
+                      height="60"
+                      fill="white"
+                      stroke="#9CA3AF"
+                      stroke-width="1"
+                      rx="4"
+                      opacity="0.95"
+                    />
+                    <text :x="node.x + 50" :y="node.y - 10" class="text-xs fill-gray-800">
+                      {{ node.name }}
+                    </text>
+                    <text :x="node.x + 50" :y="node.y + 5" class="text-xs fill-gray-600">
+                      Priority: {{ node.priority }}
+                    </text>
+                    <text :x="node.x + 50" :y="node.y + 20" class="text-xs fill-gray-600">
+                      Relations: {{ node.relations?.length || 0 }}
+                    </text>
+                  </g>
+                </g>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Graph Legend -->
+        <div class="mt-4 flex flex-wrap gap-4 text-xs text-gray-600 dark:text-gray-400">
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 bg-blue-500 rounded-full"></div>
+            <span>Selected Taxonomy</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 bg-gray-500 rounded-full"></div>
+            <span>Taxonomy Node</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-0 border-t-2 border-gray-400"></div>
+            <span>Relation</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-0 border-t-2 border-dashed border-gray-400"></div>
+            <span>Group Relation</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Taxonomies List -->
       <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
         <div class="px-4 py-5 sm:px-6">
@@ -225,23 +369,35 @@
   </div>
 </template>
 
-<script>
-import { ref, computed, onMounted } from 'vue'
-import { Plus, Edit, Trash2 } from 'lucide-vue-next'
+<script setup>
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { Plus, Trash2, Edit2 } from 'lucide-vue-next'
 import axios from 'axios'
 
-export default {
-  name: 'TaxonomyEditor',
-  components: {
-    Plus,
-    Edit,
-    Trash2
-  },
-  setup() {
-    const taxonomies = ref([])
-    const editingTaxonomy = ref(null)
-    const testTags = ref('')
-    const regexTestResult = ref(null)
+// Reactive data
+const taxonomies = ref([])
+const editingTaxonomy = ref({
+  id: '',
+  name: '',
+  regex_pattern: '^.*$', // Default pattern - matches anything
+  priority: 1,
+  relations: []
+})
+const testTags = ref('customer:acme env:production product:webapp')
+const regexTestResult = ref(null)
+
+// Graph visualization data
+const graphNodes = ref([])
+const graphEdges = ref([])
+const selectedGraphNode = ref(null)
+const hoverNode = ref(null)
+const panX = ref(0)
+const panY = ref(0)
+const zoomLevel = ref(1)
+const isPanning = ref(false)
+const panStart = ref({ x: 0, y: 0 })
+const graphSvg = ref(null)
+const graphGroup = ref(null)
 
     const sortedTaxonomies = computed(() => {
       return [...taxonomies.value].sort((a, b) => a.priority - b.priority)
@@ -376,27 +532,136 @@ export default {
       }
     }
 
+    // Graph visualization methods
+    const buildGraphData = () => {
+      const nodes = taxonomies.value.map((taxonomy, index) => {
+        const angle = (index * 2 * Math.PI) / taxonomies.value.length
+        const radius = 150
+        return {
+          id: taxonomy.id,
+          name: taxonomy.name,
+          priority: taxonomy.priority,
+          relations: taxonomy.relations,
+          x: 200 + radius * Math.cos(angle),
+          y: 200 + radius * Math.sin(angle),
+          selected: false
+        }
+      })
+
+      const edges = []
+      taxonomies.value.forEach(taxonomy => {
+        if (taxonomy.relations) {
+          taxonomy.relations.forEach(relation => {
+            const sourceNode = nodes.find(n => n.id === taxonomy.id)
+            const targetNode = nodes.find(n => n.id === relation.targets)
+
+            if (sourceNode && targetNode) {
+              const dx = targetNode.x - sourceNode.x
+              const dy = targetNode.y - sourceNode.y
+              const angle = Math.atan2(dy, dx) * 180 / Math.PI
+
+              edges.push({
+                source: taxonomy.id,
+                target: relation.targets,
+                sourceX: sourceNode.x,
+                sourceY: sourceNode.y,
+                targetX: targetNode.x,
+                targetY: targetNode.y,
+                label: relation.group || 'related',
+                type: 'relation',
+                angle: angle
+              })
+            }
+          })
+        }
+      })
+
+      graphNodes.value = nodes
+      graphEdges.value = edges
+    }
+
+    const selectGraphNode = (node) => {
+      graphNodes.value.forEach(n => n.selected = false)
+      node.selected = true
+      selectedGraphNode.value = node
+      editTaxonomy(node.id)
+    }
+
+    const getNodeColor = (node) => {
+      if (node.selected) return '#3B82F6'
+
+      // Use user-defined color or generate one based on taxonomy ID
+      if (node.color) return node.color
+
+      // Generate consistent color based on taxonomy ID hash
+      const hash = node.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+      const hue = hash % 360
+      return `hsl(${hue}, 70%, 50%)`
+    }
+
+    const getNodeIcon = (node) => {
+      // Use user-defined icon or suggest based on ID pattern
+      if (node.icon) return node.icon
+
+      // Suggest icons based on common patterns (optional, can be overridden)
+      const suggestions = {
+        'env': '🌍',
+        'customer': '👥',
+        'cust': '👥',
+        'deploy': '🚀',
+        'product': '📦',
+        'version': '🔖',
+        'app': '📱',
+        'service': '⚙️',
+        'team': '�',
+        'project': '�'
+      }
+
+      // Check if ID contains any known patterns
+      for (const [pattern, icon] of Object.entries(suggestions)) {
+        if (node.id.toLowerCase().includes(pattern)) {
+          return icon
+        }
+      }
+
+      return '📁' // Default icon
+    }
+
+    const resetGraphView = () => {
+      panX.value = 0
+      panY.value = 0
+      zoomLevel.value = 1
+    }
+
+    const startPan = (event) => {
+      isPanning.value = true
+      panStart.value = { x: event.clientX - panX.value, y: event.clientY - panY.value }
+    }
+
+    const pan = (event) => {
+      if (!isPanning.value) return
+      panX.value = event.clientX - panStart.value.x
+      panY.value = event.clientY - panStart.value.y
+    }
+
+    const endPan = () => {
+      isPanning.value = false
+    }
+
+    const zoom = (event) => {
+      event.preventDefault()
+      const delta = event.deltaY > 0 ? 0.9 : 1.1
+      zoomLevel.value = Math.max(0.5, Math.min(3, zoomLevel.value * delta))
+    }
+
     onMounted(() => {
       loadTaxonomies()
     })
 
-    return {
-      taxonomies,
-      editingTaxonomy,
-      testTags,
-      regexTestResult,
-      sortedTaxonomies,
-      isFormValid,
-      isEditingExisting,
-      createNewTaxonomy,
-      editTaxonomy,
-      cancelEdit,
-      saveTaxonomy,
-      deleteTaxonomy,
-      testRegex,
-      addRelation,
-      removeRelation
-    }
-  }
-}
+    // Rebuild graph when taxonomies change
+    watch(taxonomies, () => {
+      nextTick(() => {
+        buildGraphData()
+      })
+    }, { deep: true })
 </script>

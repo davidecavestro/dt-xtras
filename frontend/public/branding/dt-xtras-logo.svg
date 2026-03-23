@@ -1,0 +1,100 @@
+<!--
+DT Logo Grid Visualization:
+□ _ _  (DT: top-left, empty top-center, empty top-right)
+_ □ _  (DT: empty left-center, DT square middle-center, empty right-center)
+□ _ _  (DT: bottom-left, empty bottom-center, empty bottom-right)
+
+dt-xtras Grid (our goal):
+_ X _  (space, dt-xtras top-center, space)
+X _ _  (dt-xtras left-center, space, dt-xtras right-center)
+_ X _  (space, dt-xtras bottom-center, space)
+
+The dt-xtras squares should fill the spaces that DT leaves empty!
+-->
+
+<svg
+  width="100"
+  height="100"
+  viewBox="0 0 100 100"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- Background circle for contrast -->
+  <circle
+    cx="50"
+    cy="50"
+    r="48"
+    fill="#F0FDF4"
+    stroke="none"
+  />
+
+  <!-- Main DT-inspired structure filling DT logo gaps in 3x3 grid -->
+  <!-- Top-center square (fills DT's top-middle gap) -->
+  <rect
+    x="37.5"
+    y="16.7"
+    width="25"
+    height="25"
+    rx="6.25"
+    ry="6.25"
+    fill="#059669"
+    stroke="none"
+  />
+
+  <!-- Left-center square (fills DT's left-middle gap) -->
+  <rect
+    x="16.7"
+    y="37.5"
+    width="25"
+    height="25"
+    rx="6.25"
+    ry="6.25"
+    fill="#059669"
+    stroke="none"
+  />
+
+  <!-- Bottom-center square (fills DT's bottom-middle gap) -->
+  <rect
+    x="37.5"
+    y="58.3"
+    width="25"
+    height="25"
+    rx="6.25"
+    ry="6.25"
+    fill="#059669"
+    stroke="none"
+  />
+
+  <!-- Connecting arcs to glue squares together -->
+  <!-- Arc from top-center to middle-left -->
+  <path
+    d="M 39.6 22.9 Q 43.7 43.8 22.9 39.6"
+    stroke="#059669"
+    stroke-width="4.2"
+    fill="none"
+    stroke-linecap="round"
+  />
+  <path
+    d="M 56.2 39.5 Q 35.4 35.4 39.5 56.2"
+    stroke="#059669"
+    stroke-width="4.2"
+    fill="none"
+    stroke-linecap="round"
+  />
+
+  <!-- Arc from middle-left to bottom-center -->
+  <path
+    d="M 39.7 77.1 Q 43.7 56.2 22.9 60.4"
+    stroke="#059669"
+    stroke-width="4.2"
+    fill="none"
+    stroke-linecap="round"
+  />
+  <path
+    d="M 39.5 43.8 Q 35.4 64.6 56.2 60.4"
+    stroke="#059669"
+    stroke-width="4.2"
+    fill="none"
+    stroke-linecap="round"
+  />
+
+</svg>

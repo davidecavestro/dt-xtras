@@ -1,8 +1,19 @@
-# dt-xtras - Dependency-Track Taxonomy & Security Aggregator
+<div align="center">
 
-A comprehensive security aggregation system that extends Dependency-Track with custom taxonomy-based hierarchical views and security roll-up calculations.
+![DT Taxonomy Logo](/frontend/public/branding/dt-xtras-logo.svg)
 
-## Features
+# dt-xtras - Dependency-Track Extensions
+
+*A comprehensive security aggregation system that extends Dependency-Track with custom taxonomy-based hierarchical views and security roll-up calculations.*
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Vue.js](https://img.shields.io/badge/Vue.js-3.x-green.svg)](https://vuejs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-red.svg)](https://fastapi.tiangolo.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.x-38B2AC.svg)](https://tailwindcss.com/)
+
+</div>
+
+## 🎯 About
 
 ### Backend (FastAPI)
 
