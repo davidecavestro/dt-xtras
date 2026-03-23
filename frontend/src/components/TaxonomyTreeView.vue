@@ -16,7 +16,7 @@
       </div>
       <select
         v-model="selectedTaxonomy"
-        @change="loadTaxonomyTree"
+        @change="(event) => loadTaxonomyTree(selectedTaxonomy)"
         class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       >
         <option value="">Choose a taxonomy...</option>
@@ -214,7 +214,7 @@
             <p class="mt-2 text-gray-600 dark:text-gray-400">Loading projects...</p>
           </div>
           <div v-else-if="filteredProjects.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-            <Folder class="mx-auto h-12 w-12 text-gray-400" />
+            <FolderIcon class="mx-auto h-12 w-12 text-gray-400" />
             <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {{ selectedNodeId ? 'No projects match the selected node.' : 'Select a node to view projects.' }}
@@ -504,8 +504,11 @@
 import { ref, computed, onMounted, defineComponent } from 'vue'
 import axios from 'axios'
 import XRegExp from 'xregexp'
+import TaxonomyGraphBuilder from '../utils/taxonomyGraphBuilder.js'
 import TreeView from 'vue3-tree-vue'
 import 'vue3-tree-vue/dist/style.css'
+import { FolderIcon } from '@heroicons/vue/24/outline'
+import RiskScoreBadge from './RiskScoreBadge.vue'
 
 // Recursive TreeNode component for hierarchical tree rendering
 const TreeNode = defineComponent({
@@ -522,7 +525,11 @@ const TreeNode = defineComponent({
   },
   emits: ['node-click'],
   setup(props, { emit }) {
-    // Use local reactive state for expansion
+    // Graph-based tree builder
+    const graphBuilder = new TaxonomyGraphBuilder()
+    let builtGraph = null
+
+    // Reactive state for expansion
     const isExpanded = ref(false)
 
     // Initialize expanded state from node prop
@@ -589,9 +596,15 @@ export default {
   name: 'TaxonomyTreeView',
   components: {
     TreeView,
-    TreeNode
+    TreeNode,
+    FolderIcon,
+    RiskScoreBadge
   },
   setup() {
+    // Graph-based tree builder
+    const graphBuilder = new TaxonomyGraphBuilder()
+    let builtGraph = null
+
     const selectedTaxonomy = ref('')
     const availableTaxonomies = ref([])
     const taxonomyTree = ref([])
@@ -676,56 +689,19 @@ export default {
     }
 
     // Load taxonomy tree structure
-    const loadTaxonomyTree = async () => {
-      console.log('Loading taxonomy tree for:', selectedTaxonomy.value)
-
-      if (!selectedTaxonomy.value) {
-        console.log('No taxonomy selected, clearing tree')
-        taxonomyTree.value = []
-        taxonomyRelations.value = []
-        return
-      }
-
-      loading.value = true
+    const loadTaxonomyTree = async (taxonomyId) => {
       try {
-        // Get taxonomy details
-        const taxonomy = availableTaxonomies.value.find(t => t.id === selectedTaxonomy.value)
+        loading.value = true
+        console.log('Loading taxonomy tree for:', taxonomyId)
+
+        const taxonomy = availableTaxonomies.value.find(t => t.id === taxonomyId)
         if (!taxonomy) {
-          console.log('Taxonomy not found:', selectedTaxonomy.value)
+          console.error('Taxonomy not found:', taxonomyId)
           return
         }
 
-        console.log('Found taxonomy:', taxonomy)
-        console.log('Available taxonomies:', availableTaxonomies.value)
-
-        // Special debugging for deployment taxonomy
-        if (taxonomy.id === 'deploy') {
-          console.log('🚀 DEPLOYMENT TAXONOMY DEBUG:')
-          console.log('Pattern:', taxonomy.regex_pattern)
-
-          // Get all tags first
-          const tagsResponse = await axios.get('/api/tags')
-          allTags.value = tagsResponse.data || []
-
-          console.log('All tags in system:')
-          allTags.value.forEach(tag => {
-            console.log(`  - ${tag.name}`)
-          })
-
-          // Check for deployment-related tags
-          const deployRelatedTags = allTags.value.filter(tag =>
-            tag.name.includes('deploy') || tag.name.startsWith('deploy:')
-          )
-          console.log('Deployment-related tags found:', deployRelatedTags.length)
-          deployRelatedTags.forEach(tag => {
-            console.log(`  - ${tag.name}`)
-
-            // Check if tag has double prefix
-            if (tag.name.startsWith('deploy:deploy:')) {
-              console.log('❌ DOUBLE PREFIX DETECTED:', tag.name)
-            }
-          })
-        }
+        console.log('Found taxonomy:', taxonomy.id, 'with pattern:', taxonomy.regex_pattern)
+        console.log('Taxonomy relations:', taxonomy.relations)
 
         // Set relations for tag creation
         taxonomyRelations.value = taxonomy.relations || []
@@ -739,13 +715,21 @@ export default {
         console.log('All tags loaded:', allTags.value.length, 'tags')
         console.log('Sample tags:', allTags.value.slice(0, 5))
 
-        // Filter tags that match the taxonomy pattern
-        const rootTags = filterTagsByPattern(allTags.value, taxonomy.regex_pattern)
-        console.log('Root tags matching pattern:', rootTags.length, 'tags')
-        console.log('Root tags:', rootTags)
+        // Build graph once if not already built
+        if (!builtGraph) {
+          console.log('Building graph for the first time...')
+          builtGraph = graphBuilder.buildGraph(allTags.value, availableTaxonomies.value)
 
-        // Build tree structure
-        taxonomyTree.value = await buildTreeFromTags(rootTags, taxonomy, allTags.value)
+          // Log graph statistics
+          const stats = graphBuilder.getGraphStats()
+          console.log('Graph statistics:', stats)
+        } else {
+          console.log('Using existing graph...')
+        }
+
+        // Extract tree for specific taxonomy
+        console.log('Extracting tree for taxonomy:', taxonomyId)
+        taxonomyTree.value = graphBuilder.graphToTree(taxonomyId)
         console.log('Final tree structure:', taxonomyTree.value)
         console.log('Tree length:', taxonomyTree.value.length)
 
@@ -757,7 +741,7 @@ export default {
       }
     }
 
-    // Filter tags by regex pattern
+    // Filter tags by regex pattern (kept for tag creation)
     const filterTagsByPattern = (tags, pattern) => {
       console.log('Filtering tags with pattern:', pattern)
       console.log('Total tags to filter:', tags.length)
@@ -775,7 +759,7 @@ export default {
           return matches
         })
 
-        console.log('Tags matching pattern:', matchingTags.length)
+        console.log('Found', matchingTags.length, 'matching tags')
         return matchingTags
       } catch (error) {
         console.error('Invalid regex pattern:', pattern, error)
@@ -783,256 +767,24 @@ export default {
       }
     }
 
-    // Build tree structure from tags with proper hierarchy using undirected graph relations
-    const buildTreeFromTags = async (rootTags, taxonomy, allTags) => {
-      console.log('Building tree from', rootTags.length, 'root tags')
-      console.log('Taxonomy:', taxonomy.id, 'with pattern:', taxonomy.regex_pattern)
-      console.log('Taxonomy relations:', taxonomy.relations)
-
-      const nodeMap = new Map()
-      const rootNodes = []
-
-      // Create nodes for all tags that match this taxonomy
-      rootTags.forEach(tag => {
-        console.log('Creating node for tag:', tag.name)
-        const node = {
-          id: tag.name,
-          name: tag.name,
-          type: 'tag',
-          taxonomy: taxonomy.id,
-          pattern: taxonomy.regex_pattern,
-          projectsCount: tag.projectsCount || 0,
-          children: [],
-          projects: [],
-          expanded: false,
-          level: 0,
-          icon: getNodeTypeIcon({ name: tag.name, type: 'tag' })
-        }
-        nodeMap.set(tag.name, node)
-        rootNodes.push(node)
-      })
-
-      console.log('Created', rootNodes.length, 'tree nodes')
-      console.log('Root nodes:', rootNodes.map(n => n.name))
-
-      // Build complete undirected graph first, then derive tree
-      await buildGraphHierarchy(rootNodes, taxonomy, allTags, nodeMap)
-
-      // Sort nodes alphabetically for better organization
-      const sortedNodes = sortTreeNodes(rootNodes)
-      console.log('Final tree structure:', sortedNodes)
-      return sortedNodes
-    }
-
-    // Build complete undirected graph from all taxonomy relations, then derive tree
-    const buildGraphHierarchy = async (rootNodes, selectedTaxonomy, allTags, nodeMap) => {
-      console.log('Building complete graph for taxonomy:', selectedTaxonomy.id)
-
-      // Build adjacency list for the complete graph
-      const graph = new Map() // node -> Set of connected node names
-
-      // Initialize graph with all nodes
-      for (const node of nodeMap.values()) {
-        graph.set(node.name, new Set())
-      }
-
-      // Process ALL taxonomy relations to build undirected graph
-      for (const taxonomy of availableTaxonomies.value) {
-        if (!taxonomy.relations || taxonomy.relations.length === 0) continue
-
-        console.log('Processing relations for taxonomy:', taxonomy.id)
-
-        for (const relation of taxonomy.relations) {
-          console.log('Processing relation:', relation)
-          console.log('Relation keys:', Object.keys(relation))
-
-          // Handle different relation structures
-          const sourceId = relation.source || relation.sourceTaxonomy || relation.from || relation.group
-          const targetId = relation.targets || relation.targetTaxonomy || relation.to
-
-          console.log('Relation source:', sourceId)
-          console.log('Relation targets:', targetId)
-
-          if (!sourceId || !targetId) {
-            console.log('Skipping relation with missing source/target')
-            continue
-          }
-
-          // Find all tags for source taxonomy
-          const sourceTaxonomy = availableTaxonomies.value.find(t => t.id === sourceId)
-          if (!sourceTaxonomy) {
-            console.log('Source taxonomy not found:', sourceId)
-            continue
-          }
-
-          const sourceTags = allTags.filter(tag => {
-            try {
-              const regex = XRegExp(sourceTaxonomy.regex_pattern)
-              return regex.test(tag.name)
-            } catch (error) {
-              console.error('Invalid regex for source taxonomy:', error)
-              return false
-            }
-          })
-
-          // Find all tags for target taxonomy
-          const targetTaxonomy = availableTaxonomies.value.find(t => t.id === targetId)
-          if (!targetTaxonomy) continue
-
-          const targetTags = allTags.filter(tag => {
-            try {
-              const regex = XRegExp(targetTaxonomy.regex_pattern)
-              return regex.test(tag.name)
-            } catch (error) {
-              console.error('Invalid regex for target taxonomy:', error)
-              return false
-            }
-          })
-
-          console.log('Found', sourceTags.length, 'source tags and', targetTags.length, 'target tags')
-          console.log('Source tags:', sourceTags.map(t => t.name))
-          console.log('Target tags:', targetTags.map(t => t.name))
-
-          // Build connections based on component matching
-          for (const sourceTag of sourceTags) {
-            const sourceComponents = parseTagComponents(sourceTag.name)
-            if (!sourceComponents) {
-              console.log('No components for source tag:', sourceTag.name)
-              continue
-            }
-            console.log('Source components for', sourceTag.name, ':', sourceComponents)
-
-            for (const targetTag of targetTags) {
-              const targetComponents = parseTagComponents(targetTag.name)
-              if (!targetComponents) {
-                console.log('No components for target tag:', targetTag.name)
-                continue
-              }
-              console.log('Target components for', targetTag.name, ':', targetComponents)
-
-              // Check if tags share components (undirected relation)
-              const hasConnection = Object.values(sourceComponents).some(comp =>
-                Object.values(targetComponents).includes(comp)
-              )
-              console.log('Connection check between', sourceTag.name, 'and', targetTag.name, ':', hasConnection)
-
-              if (hasConnection) {
-                // Add bidirectional edge
-                if (graph.has(sourceTag.name)) {
-                  graph.get(sourceTag.name).add(targetTag.name)
-                }
-                if (graph.has(targetTag.name)) {
-                  graph.get(targetTag.name).add(sourceTag.name)
-                }
-                console.log('Connected:', sourceTag.name, '<->', targetTag.name)
-              }
-            }
-          }
-        }
-      }
-
-      // Now derive tree from graph using selected taxonomy as roots
-      console.log('Deriving tree from graph with', selectedTaxonomy.id, 'as roots')
-      console.log('Graph built with', graph.size, 'nodes')
-      for (const [nodeName, connections] of graph.entries()) {
-        console.log('Node', nodeName, 'has connections:', Array.from(connections))
-      }
-
-      const visited = new Set()
-      const queue = [...rootNodes] // Start with selected taxonomy nodes
-
-      while (queue.length > 0) {
-        const currentNode = queue.shift()
-        if (visited.has(currentNode.name)) continue
-        visited.add(currentNode.name)
-
-        console.log('Processing node:', currentNode.name)
-
-        // Get connected nodes from graph
-        const connectedNodeNames = graph.get(currentNode.name) || new Set()
-        console.log('Found', connectedNodeNames.size, 'connections for', currentNode.name, ':', Array.from(connectedNodeNames))
-
-        for (const connectedNodeName of connectedNodeNames) {
-          if (visited.has(connectedNodeName)) continue
-
-          // Find or create the connected node
-          let connectedNode = nodeMap.get(connectedNodeName)
-          if (!connectedNode) {
-            const connectedTag = allTags.find(tag => tag.name === connectedNodeName)
-            if (connectedTag) {
-              // Find taxonomy for this tag
-              const connectedTaxonomy = availableTaxonomies.value.find(t => {
-                try {
-                  const regex = XRegExp(t.regex_pattern)
-                  return regex.test(connectedNodeName)
-                } catch (error) {
-                  return false
-                }
-              })
-
-              connectedNode = {
-                id: connectedNodeName,
-                name: connectedNodeName,
-                type: 'tag',
-                taxonomy: connectedTaxonomy?.id || 'unknown',
-                projectsCount: connectedTag.projectsCount || 0,
-                children: [],
-                projects: [],
-                expanded: false,
-                level: currentNode.level + 1,
-                icon: getNodeTypeIcon({ name: connectedNodeName, type: 'tag' })
-              }
-              nodeMap.set(connectedNodeName, connectedNode)
-              console.log('Created new node for:', connectedNodeName, 'from taxonomy:', connectedTaxonomy?.id)
-            }
-          }
-
-          if (connectedNode && !currentNode.children.some(child => child.id === connectedNode.id)) {
-            currentNode.children.push(connectedNode)
-            queue.push(connectedNode)
-            console.log('Added child:', connectedNode.name, 'to parent:', currentNode.name)
-          }
-        }
-      }
-
-      console.log('Graph hierarchy built successfully')
-    }
-
-    // Sort tree nodes alphabetically
-    const sortTreeNodes = (nodes) => {
-      return nodes.sort((a, b) => {
-        // Sort by type first (tags before projects), then by name
-        if (a.type !== b.type) {
-          return a.type === 'tag' ? -1 : 1
-        }
-        return a.name.localeCompare(b.name)
-      })
-    }
-
-    // Parse tag components from tag name
+    // Parse tag components (kept for tag creation)
     const parseTagComponents = (tagName) => {
-      console.log('Parsing tag components for:', tagName)
-
-      // Handle deployment tags: deploy:env:prod:cust:acme:myapp:1.0.0
-      if (tagName.startsWith('deploy:')) {
-        const parts = tagName.split(':')
-        if (parts.length >= 6) {
-          return {
-            deploy: parts[0],
-            env: `env:${parts[1]}`,
-            customer: `cust:${parts[2]}`,
-            product_version: `${parts[3]}:${parts[4]}`,
-            full_tag: tagName
-          }
+      // Handle complex tags: env:prod:myapp:1.0.0
+      const parts = tagName.split(':')
+      if (parts.length === 5) {
+        return {
+          environment: parts[1],
+          customer: parts[2],
+          product_version: `${parts[3]}:${parts[4]}`
         }
       }
 
       // Handle simple tags: env:prod, cust:acme, myapp:1.0.0
-      const parts = tagName.split(':')
-      if (parts.length === 2) {
+      const simpleParts = tagName.split(':')
+      if (simpleParts.length === 2) {
         return {
-          type: parts[0],
-          value: parts[1],
+          type: simpleParts[0],
+          value: simpleParts[1],
           full_tag: tagName
         }
       }
@@ -1277,13 +1029,34 @@ export default {
       switch (node.type) {
         case 'relation': return '🔗'
         case 'tag':
-          // Try to infer from tag name
-          if (node.name.includes('prod') || node.name.includes('production')) return '🚀'
-          if (node.name.includes('staging') || node.name.includes('stage')) return '🧪'
-          if (node.name.includes('dev') || node.name.includes('development')) return '🔧'
-          if (node.name.includes('cust:')) return '🏢'
-          if (node.name.includes('env:')) return '🌍'
-          return '🏷️'
+          // Suggest icons based on common patterns (optional, can be overridden)
+          const suggestions = {
+            'prod': '🚀',
+            'production': '🚀',
+            'staging': '🧪',
+            'stage': '🧪',
+            'dev': '🔧',
+            'development': '🔧',
+            'test': '🧪',
+            'env': '🌍',
+            'customer': '🏢',
+            'cust': '🏢',
+            'deploy': '🚀',
+            'product': '📦',
+            'version': '🔖',
+            'app': '📱',
+            'service': '⚙️',
+            'xtras': '⚡'
+          }
+
+          // Check if tag name contains any known patterns
+          for (const [pattern, icon] of Object.entries(suggestions)) {
+            if (node.name.toLowerCase().includes(pattern)) {
+              return icon
+            }
+          }
+
+          return '🏷️' // Default tag icon
         default: return '🏷️'
       }
     }
@@ -1408,19 +1181,20 @@ export default {
       if (!taxonomy || !taxonomy.relations) return ''
 
       // Build tag based on taxonomy pattern and selected values
-      // For deployment taxonomy: deploy:env:customer:product_version
       let tagPattern = taxonomy.id
 
-      // Order relations according to the taxonomy pattern
-      const orderedRelations = ['env', 'customer', 'product_version']
+      // Order relations according to the taxonomy pattern or user-defined order
+      // This should be configurable by the user in the future
+      const relationOrder = taxonomy.relation_order ||
+        taxonomy.relations.map(r => r.group).filter(Boolean) ||
+        []
 
-      for (const relationName of orderedRelations) {
-        const relation = taxonomy.relations.find(r => r.group === relationName)
-        if (relation) {
-          const value = selectedValues.value[relation.group]
-          if (value) {
-            tagPattern += `:${value}`
-          }
+      for (const relationName of relationOrder) {
+        const value = selectedValues.value[relationName]
+        if (value) {
+          // Extract the actual tag value (remove taxonomy prefix if present)
+          const tagValue = value.includes(':') ? value.split(':')[1] : value
+          tagPattern += `:${tagValue}`
         }
       }
 
@@ -1743,8 +1517,8 @@ export default {
     const buildImpliedTagName = (relation, components) => {
       if (!components) return ''
 
-      // For example: deploy:env:prod:cust:acme -> env:prod (from env component)
-      // deploy:env:prod:cust:acme:myapp:1.0.0 -> myapp:1.0.0 (from product_version component)
+      // Generic component mapping based on relation definition
+      // User can define source_component and target_component in relations
       const sourceComponent = components[relation.source_component]
       const targetComponent = components[relation.target_component]
 

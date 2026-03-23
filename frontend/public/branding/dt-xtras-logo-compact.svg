@@ -1,0 +1,92 @@
+<svg
+  width="48"
+  height="48"
+  viewBox="0 0 48 48"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- Main DT-inspired structure filling DT logo gaps on the 1st 2 cols of a 3x3 grid -->
+
+  <!--
+    3x3 grid:
+    [ ][ ][ ]
+    [ ][ ][ ]
+    [ ][ ][ ]
+    DT logo:
+    [□][ ][ ]
+    [ ][□][ ]
+    [□][ ][ ]
+    our logo:
+    [ ][■][ ]
+    [■][ ][ ]
+    [ ][■][ ]
+    but we also want to connect the squares adiacent corners
+  -->
+  <!-- Top-center square (fills DT's top-middle gap) -->
+  <rect
+    x="18"
+    y="8"
+    width="12"
+    height="12"
+    rx="3"
+    ry="3"
+    fill="#10B981"
+    stroke="none"
+  />
+
+  <!-- Left-center square (fills DT's left-middle gap) -->
+  <rect
+    x="8"
+    y="18"
+    width="12"
+    height="12"
+    rx="3"
+    ry="3"
+    fill="#10B981"
+    stroke="none"
+  />
+
+  <!-- Bottom-center square (fills DT's bottom-middle gap) -->
+  <rect
+    x="18"
+    y="28"
+    width="12"
+    height="12"
+    rx="3"
+    ry="3"
+    fill="#10B981"
+    stroke="none"
+  />
+
+  <!-- Connecting arcs to glue squares together -->
+  <!-- Arc from top-center to middle-left -->
+  <path
+    d="M 19 11 Q 21 21 11 19"
+    stroke="#10B981"
+    stroke-width="2"
+    fill="none"
+    stroke-linecap="round"
+  />
+  <path
+    d="M 27 19 Q 17 17 19 27"
+    stroke="#10B981"
+    stroke-width="2"
+    fill="none"
+    stroke-linecap="round"
+  />
+
+  <!-- Arc from middle-left to bottom-center -->
+  <path
+    d="M 19 37 Q 21 27 11 29"
+    stroke="#10B981"
+    stroke-width="2"
+    fill="none"
+    stroke-linecap="round"
+  />
+  <path
+    d="M 19 21 Q 17 31 27 29"
+    stroke="#10B981"
+    stroke-width="2"
+    fill="none"
+    stroke-linecap="round"
+  />
+</svg>
