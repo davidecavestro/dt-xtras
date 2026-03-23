@@ -1,6 +1,6 @@
 {
   "name": "dt-xtras",
-  "dockerComposeFile": "docker-compose.yml",
+  "dockerComposeFile": "compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
   "runServices": [
