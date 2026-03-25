@@ -142,55 +142,17 @@
           <p class="text-sm text-gray-500 dark:text-gray-400">Click any node to filter projects</p>
         </div>
         <div class="p-4">
-          <!-- Debug: Show tree data -->
-          <div class="mb-4 p-2 bg-gray-100 dark:bg-gray-700 rounded">
-            <div class="text-sm font-mono">
-              Tree Length: {{ taxonomyTree.length }}<br>
-              Tree Data: {{ JSON.stringify(taxonomyTree, null, 2) }}
-            </div>
-          </div>
-
-          <!-- Show tree data below for debugging -->
-          <div class="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded">
-            <h4 class="text-sm font-medium mb-2">Tree Nodes ({{ taxonomyTree.length }}):</h4>
-            <div class="space-y-2">
-              <div
-                v-for="node in taxonomyTree"
-                :key="node.id"
-                class="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded border"
-                :class="{
-                  'border-blue-500 bg-blue-50 dark:bg-blue-900/20': selectedNodeId === node.id,
-                  'border-gray-300 dark:border-gray-600': selectedNodeId !== node.id
-                }"
-                @click="handleNodeClick(node)"
-                style="cursor: pointer"
-              >
-                <div class="flex items-center">
-                  <span class="text-lg mr-2">{{ getNodeTypeIcon(node) }}</span>
-                  <span class="font-medium">{{ node.name }}</span>
-                  <span class="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded">
-                    {{ node.type }}
-                  </span>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <span class="text-xs text-gray-500">
-                    {{ node.projectsCount || 0 }} projects
-                  </span>
-                  <button
-                    @click.stop="openTaggingDialog('direct', node)"
-                    class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    🏷️ Tag
-                  </button>
-                  <button
-                    @click.stop="openTaggingDialog('indirect', node)"
-                    class="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                  >
-                    🔗 Link
-                  </button>
-                </div>
-              </div>
-            </div>
+          <!-- Render hierarchical tree -->
+          <div class="taxonomy-tree">
+            <TreeNode
+              v-for="node in taxonomyTree"
+              :key="node.id"
+              :node="node"
+              :get-node-display-name="getNodeDisplayName"
+              :get-node-type-icon="getNodeTypeIcon"
+              :get-node-type-label="getNodeTypeLabel"
+              @node-click="selectNode"
+            />
           </div>
         </div>
       </div>
@@ -509,88 +471,7 @@ import TreeView from 'vue3-tree-vue'
 import 'vue3-tree-vue/dist/style.css'
 import { FolderIcon } from '@heroicons/vue/24/outline'
 import RiskScoreBadge from './RiskScoreBadge.vue'
-
-// Recursive TreeNode component for hierarchical tree rendering
-const TreeNode = defineComponent({
-  name: 'TreeNode',
-  props: {
-    node: {
-      type: Object,
-      required: true
-    },
-    level: {
-      type: Number,
-      default: 0
-    }
-  },
-  emits: ['node-click'],
-  setup(props, { emit }) {
-    // Graph-based tree builder
-    const graphBuilder = new TaxonomyGraphBuilder()
-    let builtGraph = null
-
-    // Reactive state for expansion
-    const isExpanded = ref(false)
-
-    // Initialize expanded state from node prop
-    if (props.node.expanded) {
-      isExpanded.value = true
-    }
-
-    const toggleNodeExpansion = () => {
-      isExpanded.value = !isExpanded.value
-    }
-
-    return () => ({
-      isExpanded
-    })
-  },
-  template: `
-    <div
-      class="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded border"
-      :class="{
-        'border-blue-500 bg-blue-50 dark:bg-blue-900/20': selectedNodeId === props.node.id,
-        'border-gray-300 dark:border-gray-600': selectedNodeId !== props.node.id
-      }"
-      @click="emit('node-click', props.node)"
-      style="cursor: pointer; margin-left: \${props.level * 24}px"
-    >
-      <div class="flex items-center">
-        <span
-          v-if="props.node.children && props.node.children.length > 0"
-          @click.stop="toggleNodeExpansion()"
-          class="mr-2 text-gray-500 hover:text-gray-700 cursor-pointer"
-        >
-          {{ isExpanded.value ? '▼' : '▶' }}
-        </span>
-
-        <span class="text-lg mr-2">{{ props.node.icon }}</span>
-        <span class="font-medium">{{ props.node.name }}</span>
-        <span class="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded">
-          {{ props.node.type }}
-        </span>
-      </div>
-      <div class="flex items-center space-x-2">
-        <span class="text-xs text-gray-500">
-          {{ props.node.projectsCount || 0 }} projects
-        </span>
-      </div>
-    </div>
-
-    <div
-      v-if="isExpanded.value && props.node.children && props.node.children.length > 0"
-      class="ml-6 mt-2 space-y-2"
-    >
-      <TreeNode
-        v-for="child in props.node.children"
-        :key="child.id"
-        :node="child"
-        :level="props.level + 1"
-        @node-click="emit('node-click', $event)"
-      />
-    </div>
-  `
-})
+import TreeNode from './TreeNode.vue'
 
 export default {
   name: 'TaxonomyTreeView',
@@ -961,25 +842,22 @@ export default {
     const getNodeTypeLabel = (node) => {
       if (node.type === 'project') return 'Project'
 
-      const taxonomyLabels = {
-        'customer': 'Customer',
-        'env': 'Environment',
-        'deploy': 'Deployment',
-        'product_version': 'Version'
-      }
-
-      return taxonomyLabels[node.taxonomy] || node.taxonomy
+      // Find the taxonomy to get its display name
+      const taxonomy = availableTaxonomies.value.find(t => t.id === node.taxonomy)
+      return taxonomy ? taxonomy.name : node.taxonomy
     }
 
     const getTypeBadgeClass = (node) => {
-      const classes = {
+      // Dynamic color classes for taxonomies
+      const taxonomyColors = {
         'customer': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
         'env': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
         'deploy': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
         'product_version': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
       }
 
-      return classes[node.taxonomy] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+      // Use predefined color if available, otherwise use a default
+      return taxonomyColors[node.taxonomy] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
 
     const showProjectsCount = (node) => {

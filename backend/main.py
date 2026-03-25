@@ -118,6 +118,9 @@ class Taxonomy(BaseModel):
     regex_pattern: str
     priority: int
     relations: Optional[List[TaxonomyRelation]] = None
+    special: Optional[bool] = None
+    special_type: Optional[str] = None
+    hierarchy_order: Optional[List[str]] = None
 
     # For backward compatibility with new YAML format
     @property

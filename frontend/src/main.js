@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import Dashboard from './components/Dashboard.vue'
 import TaxonomyEditor from './components/TaxonomyEditor.vue'
-import TaxonomyTreeView from './components/TaxonomyTreeView.vue'
+import TaxonomyVisualization from './components/TaxonomyVisualization.vue'
 import TagManager from './components/TagManager.vue'
 import ProjectsList from './components/ProjectsList.vue'
 import VulnerabilitiesList from './components/VulnerabilitiesList.vue'
@@ -31,7 +31,7 @@ const routes = [
   },
   {
     path: '/taxonomy-view',
-    component: TaxonomyTreeView,
+    component: TaxonomyVisualization,
     meta: { requiresAuth: true }
   },
   {
