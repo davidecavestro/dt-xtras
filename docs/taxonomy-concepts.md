@@ -10,10 +10,45 @@ The taxonomy system provides a structured way to categorize project tags and def
 
 **Definition:** A taxonomy is a formal classification scheme that defines:
 - **Regex Pattern:** A regular expression with named capture groups for matching tags
-- **Relations:** Semantic relationships to other taxonomies
+- **Relations:** Semantic relationships to other taxonomies, based on capture groups
 - **Priority:** Hierarchical ordering for conflict resolution
 
 **Purpose:** Taxonomies provide the rules for categorizing tags and establishing how different tag categories relate to each other.
+
+### 1.1 Associative Taxonomy
+
+**Definition:** An associative taxonomy is a taxonomy where:
+- All capture groups in its pattern are used for relations to other taxonomies
+- It acts as a junction/associative entity in the Entity-Relationship model
+- It connects multiple taxonomy types without being a primary categorization itself
+
+**Characteristics:**
+- **Invisible in Tree Projection:** Can be hidden from visual tree structures
+- **Direct Component Relationships:** Enables direct edges between its related taxonomies
+- **Semantic Foundation:** Provides the underlying meaning for cross-taxonomy relationships
+
+**Example - Deployment Taxonomy:**
+```yaml
+Deployment Taxonomy:
+  pattern: ^deploy:(?P<env>\w+):(?P<customer>\w+):(?P<product_version>[\w-]+:[\d\.]+)$
+  relations:
+    - group: env         # Links to Environment taxonomy
+      targets: env
+    - group: customer    # Links to Customer taxonomy
+      targets: customer
+    - group: product_version  # Links to Product Version taxonomy
+      targets: product_version
+```
+
+**Behavior:**
+- **Normal Mode:** Creates edges `deploy:prod:acme:myapp:1.0.0 ↔ env:prod`, `deploy:prod:acme:myapp:1.0.0 ↔ cust:acme`
+- **Associative Mode:** Creates direct edge `env:prod ↔ cust:acme` (deployment tag becomes invisible)
+
+**Benefits:**
+1. **Cleaner Visual Trees:** Removes intermediate nodes that don't add categorization value
+2. **Simplified Data Model:** Direct relationships between primary taxonomies
+3. **Flexible Loading:** Can toggle between visible and invisible modes
+4. **Semantic Clarity:** Maintains the meaning of relationships while simplifying visualization
 
 **Examples:**
 ```yaml
@@ -24,6 +59,10 @@ Environment Taxonomy:
 Customer Taxonomy:
   pattern: '^cust:(?P<customer_id>\\w+)$'
   relations: [{ group: 'deploy', targets: 'customer' }]
+
+Product Version Taxonomy:
+  pattern: ^(?!(?:env|cust|deploy):)(?P<product_name>[\w-]+):(?P<version>[\d\w\.-]+)$
+  relations: [{ group: 'deploy', targets: 'product_version' }]
 
 Deployment Taxonomy:
   pattern: '^deploy:(?P<env>\\w+):(?P<customer>\\w+):(?P<product_version>[\\w-]+:[\\d\\.]+)$'
@@ -38,14 +77,14 @@ Deployment Taxonomy:
 
 **Definition:** A label that can be applied to a project in Dependency Track.
 
-**Structure:** Tags follow the format `type:value` where:
+**Structure:** Tags conventionally follow the format `type:value` where:
 - `type` indicates the category (e.g., `env`, `cust`, `myapp`)
 - `value` provides the specific instance (e.g., `prod`, `acme`, `1.0.0`)
 
 **Examples:**
 - `env:prod` - Production environment
 - `cust:acme` - ACME customer
-- `myapp:1.0.0` - Application version 1.0.0
+- `myapp:1.0.0` - "myapp" product version 1.0.0
 - `deploy:prod:acme:myapp:1.0.0` - Complete deployment specification
 
 ### 3. Project Labeling
@@ -56,9 +95,9 @@ Deployment Taxonomy:
 
 **Notation:** `HardLabel(P, T)`
 
-**Example:** If project `webapp-frontend` has tag `env:prod` in Dependency Track, then:
+**Example:** If project `myapp` has tag `env:prod` in Dependency Track, then:
 ```
-HardLabel(webapp-frontend, env:prod) = true
+HardLabel(myapp, env:prod) = true
 ```
 
 #### 3.2 Soft Labeling (Inferred Labeling)
@@ -67,7 +106,7 @@ HardLabel(webapp-frontend, env:prod) = true
 
 **Notation:** `SoftLabel(P, S) = ∃path(S → T) ∧ HardLabel(P, T)`
 
-**Example:** If project `webapp-frontend` has tag `deploy:prod:acme:myapp:1.0.0` and the graph contains:
+**Example:** If project `myapp` has tag `deploy:prod:acme:myapp:1.0.0` and the graph contains:
 ```
 deploy:prod:acme:myapp:1.0.0 → env:prod
 deploy:prod:acme:myapp:1.0.0 → cust:acme
@@ -76,21 +115,46 @@ deploy:prod:acme:myapp:1.0.0 → myapp:1.0.0
 
 Then:
 ```
-SoftLabel(webapp-frontend, env:prod) = true
-SoftLabel(webapp-frontend, cust:acme) = true
-SoftLabel(webapp-frontend, myapp:1.0.0) = true
+SoftLabel(myapp, env:prod) = true
+SoftLabel(myapp, cust:acme) = true
+SoftLabel(myapp, myapp:1.0.0) = true
 ```
 
 ### 4. Tag Graph
 
 **Definition:** The tag graph is an undirected graph `G = (V, E)` where:
-- **Vertices (V):** All tags in the system
+- **Vertices (V):** All tags in the system matching taxonomy patterns
 - **Edges (E):** Connections between tags that share components based on taxonomy relations
+
+**Components:** Semantic parts extracted from tags during parsing. Components represent meaningful segments of a tag that can be shared across different tags to establish relationships.
+
+**Component Examples:**
+- `deploy:prod:acme:myapp:1.0.0` → `{ env: env:prod, customer: acme, product_version: myapp:1.0.0 }`
+- `env:prod` → `{ type: env, value: prod }`
+- `cust:acme` → `{ type: cust, value: acme }`
 
 **Edge Formation:** Two tags `T1` and `T2` have an edge if:
 1. They belong to taxonomies with defined relations
 2. Their parsed components share at least one value
 3. The shared component establishes semantic relationship
+
+**Associative Taxonomy Edge Formation:**
+When an associative taxonomy is involved, edge formation follows special rules:
+
+**Normal Mode (Visible):**
+```
+deploy:prod:acme:myapp:1.0.0 ↔ env:prod (via env component)
+deploy:prod:acme:myapp:1.0.0 ↔ cust:acme (via customer component)
+```
+
+**Associative Mode (Invisible):**
+```
+env:prod ↔ cust:acme (direct edge via shared deployment)
+env:prod ↔ myapp:1.0.0 (direct edge via shared deployment)
+cust:acme ↔ myapp:1.0.0 (direct edge via shared deployment)
+```
+
+**Implementation:** The associative taxonomy tags are loaded into the graph to establish relationships, but can be hidden during tree projection, creating direct connections between their related taxonomies.
 
 **Example:**
 ```
@@ -103,23 +167,53 @@ Result: Edge exists (shared 'env' component)
 
 ### 5. Tree Projection
 
-**Definition:** A tree projection is a hierarchical view of the tag graph with a selected taxonomy as root nodes.
+**Definition:** A tree projection is a hierarchical view of the tag graph with all tags from a selected taxonomy serving as root nodes.
 
 **Properties:**
-- **Root Selection:** Tags from the selected taxonomy become root nodes
-- **Hierarchy Derivation:** Children are connected nodes from other taxonomies
-- **Cycle Prevention:** Graph cycles are cut to maintain tree structure
-- **BFS Traversal:** Breadth-first search ensures proper level assignment
+- **Multiple Roots:** All tags matching the selected taxonomy pattern become root nodes
+- **Graph Traversal:** Tree is built by traversing connections in the underlying tag graph
+- **Cycle Prevention:** Visited node tracking prevents infinite loops in cyclic graphs
+- **Depth-Based Levels:** Tree depth increases with each step from any root node
+- **Associative Filtering:** Associative taxonomies can be hidden for cleaner visualization
 
-**Example:** Environment taxonomy tree projection:
+**Process Flow:**
+1. **Load Tag Graph:** Build complete graph with all tags and relationships
+2. **Select Root Taxonomy:** User chooses taxonomy (e.g., Customer)
+3. **Identify Roots:** All `cust:*` tags become independent root nodes
+4. **Traverse Graph:** For each root, explore all connected tags
+5. **Build Tree:** Create hierarchical structure with depth tracking
+
+**Associative Taxonomy Impact:**
+When associative taxonomies are set to invisible mode:
+- **Direct Relationships:** Related taxonomies appear directly connected
+- **Cleaner Hierarchy:** Removes intermediate nodes that don't provide categorization
+- **Semantic Preservation:** Relationships maintain their meaning through the underlying graph
+
+**Example - Customer as Root Taxonomy:**
+```
+cust:acme (root)
+├── env:prod (via deploy:prod:acme:myapp:1.0.0)
+├── env:staging (via deploy:staging:acme:myapp:1.0.1)
+├── myapp:1.0.0 (via deploy:prod:acme:myapp:1.0.0)
+└── myapp:1.0.1 (via deploy:staging:acme:myapp:1.0.1)
+
+cust:foo (root)
+├── env:prod (via deploy:prod:foo:myapp:1.0.0)
+└── myapp:1.0.0 (via deploy:prod:foo:myapp:1.0.0)
+```
+
+**Example - Environment as Root Taxonomy (Associative Mode):**
 ```
 env:prod (root)
-├── deploy:prod:acme:myapp:1.0.0 (child)
-└── deploy:prod:foo:myapp:1.0.0 (child)
+├── cust:acme (direct via shared deployment)
+├── cust:foo (direct via shared deployment)
+├── myapp:1.0.0 (direct via shared deployment)
+└── myapp:2.0.0 (direct via shared deployment)
 
 env:staging (root)
-├── deploy:staging:acme:myapp:1.0.1 (child)
-└── deploy:staging:bar:myapp:2.0.0 (child)
+├── cust:acme (direct via shared deployment)
+├── cust:bar (direct via shared deployment)
+└── myapp:1.0.1 (direct via shared deployment)
 ```
 
 ## 🔧 Technical Implementation
@@ -168,15 +262,87 @@ parseTagComponents(tagName) {
    - Find all tags matching target taxonomy pattern
    - Create edges between tags sharing components
 3. Build undirected adjacency list
+4. **Associative Processing:** For associative taxonomies:
+   - Load all associative tags into the graph for relationship establishment
+   - Optionally hide associative tags during tree projection
+   - Create direct edges between related taxonomies when associative tags are invisible
+
+**Associative Mode Implementation:**
+```javascript
+// When building graph with associative taxonomies hidden
+if (taxonomy.isAssociative && !taxonomy.visible) {
+  // Create direct edges between related taxonomies
+  for (const associativeTag of associativeTags) {
+    const relatedTags = getRelatedTags(associativeTag);
+    for (let i = 0; i < relatedTags.length; i++) {
+      for (let j = i + 1; j < relatedTags.length; j++) {
+        addDirectEdge(relatedTags[i], relatedTags[j]);
+      }
+    }
+    // Remove associative tag from visible graph
+    removeNode(associativeTag);
+  }
+}
+```
 
 ### Tree Derivation
 
 **Algorithm:**
-1. Select taxonomy for tree roots
-2. Perform BFS from root nodes through graph
-3. Track visited nodes to prevent cycles
-4. Assign levels based on distance from roots
-5. Build hierarchical structure
+1. **Root Selection:** Select all nodes from the chosen taxonomy as root nodes
+2. **Graph Traversal:** For each root node, perform depth-first traversal through the tag graph
+3. **Cycle Prevention:** Track visited nodes to prevent cycles and infinite loops
+4. **Level Assignment:** Tree depth increases with each traversal step from the root
+5. **Tree Construction:** Build hierarchical structure with parent-child relationships
+
+**Implementation Details:**
+```javascript
+graphToTree(rootTaxonomyId) {
+  // 1. Find all root nodes (tags from selected taxonomy)
+  const rootNodes = this.graph.nodes()
+    .filter(node => node.data('taxonomy') === rootTaxonomyId);
+
+  const visited = new Set();
+  const treeData = [];
+
+  // 2. Build tree from each root
+  rootNodes.forEach(rootNode => {
+    const treeNode = this.buildTreeNode(rootNode, visited, 0);
+    if (treeNode) {
+      treeData.push(treeNode);
+    }
+  });
+
+  return treeData;
+}
+
+buildTreeNode(node, visited, level) {
+  // 3. Prevent cycles
+  if (visited.has(node.id())) return null;
+  visited.add(node.id());
+
+  // 4. Get all connected nodes (undirected graph)
+  const connectedNodes = node.neighborhood().filter(n => n.isNode());
+
+  // 5. Recursively build children (level + 1)
+  const children = connectedNodes.map(childNode =>
+    this.buildTreeNode(childNode, visited, level + 1)
+  ).filter(Boolean);
+
+  return {
+    id: node.data('id'),
+    name: node.data('name'),
+    taxonomy: node.data('taxonomy'),
+    level: level,  // 5. Depth from root
+    children: children
+  };
+}
+```
+
+**Key Properties:**
+- **Multiple Roots:** All tags from the selected taxonomy become independent root nodes
+- **Graph-Based:** Tree is derived from the underlying tag graph structure
+- **Cycle-Safe:** Visited tracking prevents infinite loops in cyclic graphs
+- **Depth-Based:** Tree level represents distance from the root taxonomy
 
 ## 📊 Use Cases
 

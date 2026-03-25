@@ -274,19 +274,19 @@
                       :y="node.y - 30"
                       width="200"
                       height="60"
-                      fill="white"
+                      :fill="isDarkMode ? '#374151' : 'white'"
                       stroke="#9CA3AF"
                       stroke-width="1"
                       rx="4"
                       opacity="0.95"
                     />
-                    <text :x="node.x + 50" :y="node.y - 10" class="text-xs fill-gray-800">
+                    <text :x="node.x + 50" :y="node.y - 10" :class="isDarkMode ? 'fill-gray-200' : 'fill-gray-800'">
                       {{ node.name }}
                     </text>
-                    <text :x="node.x + 50" :y="node.y + 5" class="text-xs fill-gray-600">
+                    <text :x="node.x + 50" :y="node.y + 5" :class="isDarkMode ? 'fill-gray-300' : 'fill-gray-600'">
                       Priority: {{ node.priority }}
                     </text>
-                    <text :x="node.x + 50" :y="node.y + 20" class="text-xs fill-gray-600">
+                    <text :x="node.x + 50" :y="node.y + 20" :class="isDarkMode ? 'fill-gray-300' : 'fill-gray-600'">
                       Relations: {{ node.relations?.length || 0 }}
                     </text>
                   </g>
@@ -385,6 +385,11 @@ const editingTaxonomy = ref({
 })
 const testTags = ref('customer:acme env:production product:webapp')
 const regexTestResult = ref(null)
+
+// Dark mode detection
+const isDarkMode = computed(() => {
+  return document.documentElement.classList.contains('dark')
+})
 
 // Graph visualization data
 const graphNodes = ref([])

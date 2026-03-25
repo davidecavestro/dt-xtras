@@ -6,6 +6,7 @@
         'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500': isSelected,
         'border-l-4 border-transparent': !isSelected
       }"
+      :style="{ marginLeft: `${level * 24}px` }"
       @click="handleSelect"
     >
       <!-- Expand/Collapse Icon -->
@@ -57,140 +58,110 @@
         :selected-node-id="selectedNodeId"
         :get-node-display-name="getNodeDisplayName"
         :get-node-type-icon="getNodeTypeIcon"
+        :get-node-type-label="getNodeTypeLabel"
         @select="$emit('select', $event, buildPath(child))"
       />
     </div>
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, computed } from 'vue'
 import { ChevronRight, Folder, Tag, Package } from 'lucide-vue-next'
 
-export default {
-  name: 'TreeNode',
-  components: {
-    ChevronRight,
-    Folder,
-    Tag,
-    Package
+const props = defineProps({
+  node: {
+    type: Object,
+    required: true
   },
-  props: {
-    node: {
-      type: Object,
-      required: true
-    },
-    level: {
-      type: Number,
-      default: 0
-    },
-    selectedNodeId: {
-      type: String,
-      default: ''
-    },
-    getNodeDisplayName: {
-      type: Function,
-      default: (node) => node.name
-    },
-    getNodeTypeIcon: {
-      type: Function,
-      default: () => '🏷️'
-    }
+  level: {
+    type: Number,
+    default: 0
   },
-  emits: ['select'],
-  setup(props, { emit }) {
-    const isExpanded = ref(props.level === 0) // Auto-expand root level
-
-    const hasChildren = computed(() => {
-      return props.node.children && props.node.children.length > 0
-    })
-
-    const isSelected = computed(() => {
-      return props.selectedNodeId === props.node.id
-    })
-
-    const displayName = computed(() => {
-      return props.getNodeDisplayName(props.node)
-    })
-
-    const nodeIcon = computed(() => {
-      return props.getNodeTypeIcon(props.node)
-    })
-
-    const showTypeBadge = computed(() => {
-      return props.node.taxonomy && props.node.type === 'tag'
-    })
-
-    const nodeTypeLabel = computed(() => {
-      if (props.node.type === 'project') return 'Project'
-
-      const taxonomyLabels = {
-        'customer': 'Customer',
-        'env': 'Environment',
-        'deploy': 'Deployment',
-        'product_version': 'Version'
-      }
-
-      return taxonomyLabels[props.node.taxonomy] || props.node.taxonomy
-    })
-
-    const typeBadgeClass = computed(() => {
-      const classes = {
-        'customer': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-        'env': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-        'deploy': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-        'product_version': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-      }
-
-      return classes[props.node.taxonomy] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-    })
-
-    const showProjectsCount = computed(() => {
-      return props.node.type === 'tag' && props.node.projectsCount !== undefined
-    })
-
-    const projectsCount = computed(() => {
-      return props.node.projectsCount || 0
-    })
-
-    const iconColor = computed(() => {
-      if (isSelected.value) return 'text-blue-500'
-      if (props.node.type === 'tag') return 'text-green-500'
-      if (props.node.type === 'project') return 'text-orange-500'
-      return 'text-gray-500'
-    })
-
-    const toggleExpanded = () => {
-      isExpanded.value = !isExpanded.value
-    }
-
-    const handleSelect = () => {
-      emit('select', props.node)
-    }
-
-    const buildPath = (node) => {
-      // Build the full path from root to this node
-      // This is a simplified version - we'll need to track the full path
-      return node.name
-    }
-
-    return {
-      isExpanded,
-      hasChildren,
-      isSelected,
-      displayName,
-      nodeIcon,
-      showTypeBadge,
-      nodeTypeLabel,
-      typeBadgeClass,
-      showProjectsCount,
-      projectsCount,
-      iconColor,
-      toggleExpanded,
-      handleSelect,
-      buildPath
-    }
+  selectedNodeId: {
+    type: String,
+    default: ''
+  },
+  getNodeDisplayName: {
+    type: Function,
+    default: (node) => node.name
+  },
+  getNodeTypeIcon: {
+    type: Function,
+    default: () => '🏷️'
+  },
+  getNodeTypeLabel: {
+    type: Function,
+    default: (node) => node.taxonomy || 'Unknown'
   }
+})
+
+const emit = defineEmits(['select'])
+
+const isExpanded = ref(props.level === 0) // Auto-expand root level
+
+const hasChildren = computed(() => {
+  return props.node.children && props.node.children.length > 0
+})
+
+const isSelected = computed(() => {
+  return props.selectedNodeId === props.node.id
+})
+
+const displayName = computed(() => {
+  return props.getNodeDisplayName(props.node)
+})
+
+const nodeIcon = computed(() => {
+  return props.getNodeTypeIcon(props.node)
+})
+
+const showTypeBadge = computed(() => {
+  return props.node.taxonomy && props.node.type === 'tag'
+})
+
+const nodeTypeLabel = computed(() => {
+  return props.getNodeTypeLabel(props.node)
+})
+
+const typeBadgeClass = computed(() => {
+  const classes = {
+    'customer': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    'env': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    'deploy': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    'product_version': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+  }
+
+  return classes[props.node.taxonomy] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+})
+
+const showProjectsCount = computed(() => {
+  return props.node.type === 'tag' && props.node.projectsCount !== undefined
+})
+
+const projectsCount = computed(() => {
+  return props.node.projectsCount || 0
+})
+
+const iconColor = computed(() => {
+  if (isSelected.value) return 'text-blue-500'
+  if (props.node.type === 'tag') return 'text-green-500'
+  if (props.node.type === 'project') return 'text-orange-500'
+  return 'text-gray-500'
+})
+
+const toggleExpanded = () => {
+  isExpanded.value = !isExpanded.value
+}
+
+const handleSelect = () => {
+  emit('select', props.node)
+}
+
+const buildPath = (node) => {
+  // Build the full path from root to this node
+  // This is a simplified version - we'll need to track the full path
+  return node.name
 }
 </script>
 
