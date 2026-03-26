@@ -384,8 +384,7 @@ export default class SimpleTaxonomyGraphBuilder {
     });
   }
 
-  // UNDIRECTED GRAPH: Tree building treats edges as undirected
-  buildTree(rootTaxonomyId) {
+  buildNormalTree(rootTaxonomyId) {
     const rootNodes = Array.from(this.nodes.values())
       .filter(node => node.taxonomy === rootTaxonomyId);
 
@@ -393,7 +392,7 @@ export default class SimpleTaxonomyGraphBuilder {
     const treeData = [];
 
     rootNodes.forEach(rootNode => {
-      const treeNode = this.buildTreeNode(rootNode, visited, 0);
+      const treeNode = this.buildNormalTreeNode(rootNode, visited, 0);
       if (treeNode) {
         treeData.push(treeNode);
       }
@@ -402,27 +401,19 @@ export default class SimpleTaxonomyGraphBuilder {
     return treeData;
   }
 
-  buildTreeNode(node, visited, level) {
+  buildNormalTreeNode(node, visited, level) {
     if (visited.has(node.id)) {
       return null;
     }
     visited.add(node.id);
 
     const children = [];
-
-    // Since the graph is undirected, we consider all connected nodes
-    // regardless of edge direction
-    const connectedEdges = this.edges.filter(edge =>
-      edge.source === node.id || edge.target === node.id
-    );
+    const connectedEdges = this.edges.filter(edge => edge.source === node.id);
 
     connectedEdges.forEach(edge => {
-      // Find the connected node (the other end of the edge)
-      const connectedNodeId = edge.source === node.id ? edge.target : edge.source;
-      const connectedNode = this.nodes.get(connectedNodeId);
-
-      if (connectedNode && !visited.has(connectedNode.id)) {
-        const childTreeNode = this.buildTreeNode(connectedNode, visited, level + 1);
+      const childNode = this.nodes.get(edge.target);
+      if (childNode && !visited.has(childNode.id)) {
+        const childTreeNode = this.buildNormalTreeNode(childNode, visited, level + 1);
         if (childTreeNode) {
           children.push(childTreeNode);
         }
@@ -439,326 +430,76 @@ export default class SimpleTaxonomyGraphBuilder {
     };
   }
 
-  // Legacy methods for compatibility
-  buildNormalTree(rootTaxonomyId) {
-    return this.buildTree(rootTaxonomyId);
-  }
-
   buildAssociativeTree(rootTaxonomyId) {
-    return this.buildTree(rootTaxonomyId);
+    const rootNodes = Array.from(this.nodes.values())
+      .filter(node => node.taxonomy === rootTaxonomyId);
+
+    const visited = new Set();
+    const treeData = [];
+
+    rootNodes.forEach(rootNode => {
+      const treeNode = this.buildAssociativeTreeNode(rootNode, visited, 0);
+      if (treeNode) {
+        treeData.push(treeNode);
+      }
+    });
+
+    return treeData;
   }
 
-  graphToTree(rootTaxonomyId) {
-    return this.buildTree(rootTaxonomyId);
-  }
-
-  // Generate SVG representation for graph visualization
-  generateSVG(layout = 'breadthfirst') {
-    if (!this.nodes || this.nodes.size === 0) {
-      return '';
+  buildAssociativeTreeNode(node, visited, level) {
+    if (visited.has(node.id)) {
+      return null;
     }
+    visited.add(node.id);
 
-    // Convert nodes to graph format
-    const graphNodes = Array.from(this.nodes.values()).map(node => ({
+    const children = [];
+
+    // In associative mode, consider both incoming and outgoing edges
+    const incomingEdges = this.edges.filter(edge => edge.target === node.id);
+    const outgoingEdges = this.edges.filter(edge => edge.source === node.id);
+
+    // Process incoming edges (reverse direction for tree building)
+    incomingEdges.forEach(edge => {
+      const parentNode = this.nodes.get(edge.source);
+      if (parentNode && !visited.has(parentNode.id)) {
+        const childTreeNode = this.buildAssociativeTreeNode(parentNode, visited, level + 1);
+        if (childTreeNode) {
+          children.push(childTreeNode);
+        }
+      }
+    });
+
+    // Process outgoing edges (normal direction)
+    outgoingEdges.forEach(edge => {
+      const childNode = this.nodes.get(edge.target);
+      if (childNode && !visited.has(childNode.id)) {
+        const childTreeNode = this.buildAssociativeTreeNode(childNode, visited, level + 1);
+        if (childTreeNode) {
+          children.push(childTreeNode);
+        }
+      }
+    });
+
+    return {
       id: node.id,
       name: node.name,
       taxonomy: node.taxonomy,
-      projectsCount: node.projectsCount
-    }));
-
-    // Convert edges to graph format
-    const graphEdges = this.edges.map(edge => ({
-      source: edge.source,
-      target: edge.target,
-      group: edge.group
-    }));
-
-    // Generate basic SVG layout
-    const width = 800;
-    const height = 600;
-    const nodeRadius = 30;
-
-    // Simple layout positioning
-    const positions = this.calculateLayout(graphNodes, layout, width, height);
-
-    // Generate SVG
-    let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-
-    // Add edges
-    graphEdges.forEach(edge => {
-      const sourcePos = positions[edge.source];
-      const targetPos = positions[edge.target];
-      if (sourcePos && targetPos) {
-        svg += `<line x1="${sourcePos.x}" y1="${sourcePos.y}" x2="${targetPos.x}" y2="${targetPos.y}" stroke="#94a3b8" stroke-width="2"/>`;
-      }
-    });
-
-    // Add nodes
-    graphNodes.forEach(node => {
-      const pos = positions[node.id];
-      if (pos) {
-        const color = this.getNodeColor(node.taxonomy);
-        svg += `<circle cx="${pos.x}" cy="${pos.y}" r="${nodeRadius}" fill="${color}" stroke="#1e293b" stroke-width="2"/>`;
-        svg += `<text x="${pos.x}" y="${pos.y + 5}" text-anchor="middle" fill="white" font-size="12" font-weight="bold">${node.name}</text>`;
-      }
-    });
-
-    svg += '</svg>';
-
-    return svg;
+      projectsCount: node.projectsCount,
+      level,
+      children: children.sort((a, b) => a.name.localeCompare(b.name))
+    };
   }
 
-  calculateLayout(nodes, layout, width, height) {
-    const positions = {};
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const margin = 50;
-
-    switch (layout) {
-      case 'circle':
-        return this.circleLayout(nodes, centerX, centerY, Math.min(width, height) / 2 - margin);
-
-      case 'grid':
-        return this.gridLayout(nodes, width, height, margin);
-
-      case 'breadthfirst':
-        return this.breadthFirstLayout(nodes, centerX, centerY, width, height, margin);
-
-      case 'concentric':
-        return this.concentricLayout(nodes, centerX, centerY, width, height, margin);
-
-      case 'cose':
-        return this.forceDirectedLayout(nodes, width, height, margin);
-
-      case 'random':
-        return this.randomLayout(nodes, width, height, margin);
-
-      default:
-        return this.breadthFirstLayout(nodes, centerX, centerY, width, height, margin);
-    }
-  }
-
-  circleLayout(nodes, centerX, centerY, radius) {
-    const positions = {};
-    const angleStep = (2 * Math.PI) / nodes.length;
-
-    nodes.forEach((node, index) => {
-      const angle = index * angleStep;
-      positions[node.id] = {
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle)
-      };
-    });
-
-    return positions;
-  }
-
-  gridLayout(nodes, width, height, margin) {
-    const positions = {};
-    const cols = Math.ceil(Math.sqrt(nodes.length));
-    const cellWidth = (width - 2 * margin) / cols;
-    const cellHeight = (height - 2 * margin) / Math.ceil(nodes.length / cols);
-
-    nodes.forEach((node, index) => {
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      positions[node.id] = {
-        x: margin + col * cellWidth + cellWidth / 2,
-        y: margin + row * cellHeight + cellHeight / 2
-      };
-    });
-
-    return positions;
-  }
-
-  breadthFirstLayout(nodes, centerX, centerY, width, height, margin) {
-    const positions = {};
-    const levels = this.calculateLevels(nodes);
-    const maxLevel = Math.max(...Object.values(levels));
-
-    // Group nodes by level
-    const nodesByLevel = {};
-    nodes.forEach(node => {
-      const level = levels[node.id] || 0;
-      if (!nodesByLevel[level]) {
-        nodesByLevel[level] = [];
-      }
-      nodesByLevel[level].push(node);
-    });
-
-    // Position nodes by level
-    Object.keys(nodesByLevel).forEach(level => {
-      const levelNodes = nodesByLevel[level];
-      const levelY = margin + (height - 2 * margin) * (parseInt(level) / maxLevel);
-      const levelWidth = width - 2 * margin;
-      const nodeSpacing = levelWidth / (levelNodes.length + 1);
-
-      levelNodes.forEach((node, index) => {
-        positions[node.id] = {
-          x: margin + nodeSpacing * (index + 1),
-          y: levelY
-        };
-      });
-    });
-
-    return positions;
-  }
-
-  concentricLayout(nodes, centerX, centerY, width, height, margin) {
-    const positions = {};
-    const levels = this.calculateLevels(nodes);
-    const maxLevel = Math.max(...Object.values(levels));
-    const maxRadius = Math.min(width, height) / 2 - margin;
-
-    // Group nodes by level
-    const nodesByLevel = {};
-    nodes.forEach(node => {
-      const level = levels[node.id] || 0;
-      if (!nodesByLevel[level]) {
-        nodesByLevel[level] = [];
-      }
-      nodesByLevel[level].push(node);
-    });
-
-    // Position nodes in concentric circles
-    Object.keys(nodesByLevel).forEach(level => {
-      const levelNodes = nodesByLevel[level];
-      const radius = maxRadius * (parseInt(level) / maxLevel);
-      const angleStep = (2 * Math.PI) / levelNodes.length;
-
-      levelNodes.forEach((node, index) => {
-        const angle = index * angleStep;
-        positions[node.id] = {
-          x: centerX + radius * Math.cos(angle),
-          y: centerY + radius * Math.sin(angle)
-        };
-      });
-    });
-
-    return positions;
-  }
-
-  forceDirectedLayout(nodes, width, height, margin, iterations = 100) {
-    const positions = this.randomLayout(nodes, width, height, margin);
-
-    // Simple force-directed simulation
-    for (let iter = 0; iter < iterations; iter++) {
-      const forces = {};
-
-      // Initialize forces
-      nodes.forEach(node => {
-        forces[node.id] = { x: 0, y: 0 };
-      });
-
-      // Repulsion between all nodes
-      nodes.forEach((node1, i) => {
-        nodes.forEach((node2, j) => {
-          if (i !== j) {
-            const dx = positions[node2.id].x - positions[node1.id].x;
-            const dy = positions[node2.id].y - positions[node1.id].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance > 0) {
-              const force = 1000 / (distance * distance);
-              forces[node1.id].x -= force * dx / distance;
-              forces[node1.id].y -= force * dy / distance;
-            }
-          }
-        });
-      });
-
-      // Attraction along edges
-      this.edges.forEach(edge => {
-        const sourcePos = positions[edge.source];
-        const targetPos = positions[edge.target];
-        if (sourcePos && targetPos) {
-          const dx = targetPos.x - sourcePos.x;
-          const dy = targetPos.y - sourcePos.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          const force = distance * 0.01;
-
-          forces[edge.source].x += force * dx / distance;
-          forces[edge.source].y += force * dy / distance;
-          forces[edge.target].x -= force * dx / distance;
-          forces[edge.target].y -= force * dy / distance;
-        }
-      });
-
-      // Apply forces
-      nodes.forEach(node => {
-        positions[node.id].x += forces[node.id].x * 0.1;
-        positions[node.id].y += forces[node.id].y * 0.1;
-
-        // Keep within bounds
-        positions[node.id].x = Math.max(margin, Math.min(width - margin, positions[node.id].x));
-        positions[node.id].y = Math.max(margin, Math.min(height - margin, positions[node.id].y));
-      });
-    }
-
-    return positions;
-  }
-
-  randomLayout(nodes, width, height, margin) {
-    const positions = {};
-
-    nodes.forEach(node => {
-      positions[node.id] = {
-        x: margin + Math.random() * (width - 2 * margin),
-        y: margin + Math.random() * (height - 2 * margin)
-      };
-    });
-
-    return positions;
-  }
-
-  calculateLevels(nodes) {
-    const levels = {};
-    const visited = new Set();
-
-    // Find root nodes (nodes with no incoming edges)
-    const rootNodes = nodes.filter(node =>
-      !this.edges.some(edge => edge.target === node.id)
+  graphToTree(rootTaxonomyId) {
+    const isAssociativeMode = this.edges.some(edge =>
+      edge.group && edge.group.startsWith('associative_')
     );
 
-    // BFS to calculate levels
-    const queue = rootNodes.map(node => ({ node, level: 0 }));
-
-    while (queue.length > 0) {
-      const { node, level } = queue.shift();
-
-      if (visited.has(node.id)) {
-        continue;
-      }
-
-      visited.add(node.id);
-      levels[node.id] = level;
-
-      // Add connected nodes to queue
-      const connectedEdges = this.edges.filter(edge =>
-        edge.source === node.id || edge.target === node.id
-      );
-
-      connectedEdges.forEach(edge => {
-        const connectedNodeId = edge.source === node.id ? edge.target : edge.source;
-        const connectedNode = nodes.find(n => n.id === connectedNodeId);
-
-        if (connectedNode && !visited.has(connectedNode.id)) {
-          queue.push({ node: connectedNode, level: level + 1 });
-        }
-      });
+    if (isAssociativeMode) {
+      return this.buildAssociativeTree(rootTaxonomyId);
+    } else {
+      return this.buildNormalTree(rootTaxonomyId);
     }
-
-    return levels;
-  }
-
-  getNodeColor(taxonomy) {
-    const colors = {
-      'customer': '#3b82f6',      // blue
-      'env': '#10b981',           // green
-      'deploy': '#f59e0b',        // yellow
-      'product_version': '#ef4444', // red
-      'default': '#6b7280'        // gray
-    };
-
-    return colors[taxonomy] || colors.default;
   }
 }
