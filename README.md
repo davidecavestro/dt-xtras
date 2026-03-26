@@ -4,12 +4,16 @@
 
 # dt-xtras - Dependency-Track Extensions
 
-*A comprehensive security aggregation system that extends Dependency-Track with custom taxonomy-based hierarchical views and security roll-up calculations.*
-
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-green.svg)](https://vuejs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-red.svg)](https://fastapi.tiangolo.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.x-38B2AC.svg)](https://tailwindcss.com/)
+[![GitHub Issues](https://img.shields.io/github/issues/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/issues)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/pulls)
+[![GitHub Contributors](https://img.shields.io/github/contributors/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/graphs/contributors)
+[![Last Commit](https://img.shields.io/github/last-commit/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/commits/main)
+
+*A comprehensive security aggregation system that extends Dependency-Track with custom taxonomy-based hierarchical views and security roll-up calculations.*
 
 </div>
 
@@ -439,3 +443,36 @@ The system uses a template-based approach for configuration management:
 ## License
 
 This project extends Dependency-Track and follows the same licensing terms.
+
+## Disclaimer
+
+**⚠️ IMPORTANT NOTICE**
+
+This is a **community project** and is **not endorsed by, affiliated with, or officially supported by Dependency-Track or any of its associated projects, companies, or organizations.**
+
+### Project Status
+- **Community Driven**: Developed and maintained by the open-source community
+- **Independent Extension**: Extends Dependency-Track functionality but is not part of the official Dependency-Track codebase
+- **Use at Your Own Risk**: Users should thoroughly test and evaluate this extension before using in production environments
+- **No Warranty**: This software is provided "AS IS" without warranties of any kind, either express or implied
+- **No Official Support**: Support is provided through community channels (GitHub Issues, Discussions) only
+
+### Relationship to Dependency-Track
+- **Extension Only**: This project adds functionality to Dependency-Track but does not modify the core Dependency-Track application
+- **API Integration**: Uses Dependency-Track's public APIs for data retrieval and processing
+- **Compatibility**: Designed to work with Dependency-Track's existing data models and API endpoints
+- **No Modification**: Does not require changes to Dependency-Track core functionality
+
+### Trademarks
+- **Dependency-Track®**: Is a registered trademark of OWASP Foundation
+- **Project Name**: "dt-xtras" is not associated with or endorsed by the OWASP Foundation or Dependency-Track project
+- **Third-Party References**: Any references to third-party products, services, or companies are for compatibility purposes only
+
+### Contact and Support
+- **Issues**: Report bugs, feature requests, or questions via [GitHub Issues](https://github.com/davidecavestro/dt-xtras/issues)
+- **Discussions**: Community support and discussions via [GitHub Discussions](https://github.com/davidecavestro/dt-xtras/discussions)
+- **Documentation**: Project documentation available in this repository
+- **Community**: Contributions and improvements are welcome from the community
+
+### Legal Notice
+This project is provided as a community extension without any guarantee of compatibility, fitness for purpose, or reliability. Users assume all responsibility for its use and any consequences thereof.
