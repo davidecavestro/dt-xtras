@@ -41,12 +41,18 @@ jobs:
   build-backend:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.any == 'true'
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/backend.yml
     secrets: inherit
 
   build-frontend:
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.any == 'true'
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
 
@@ -89,7 +95,7 @@ jobs:
     if: github.ref == 'refs/heads/develop' && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
     runs-on: ubuntu-latest
     environment: staging
-    
+
     steps:
     - name: Deploy to staging
       run: |
