@@ -101,7 +101,7 @@ Raw Data → Classification → Structured Data → Hierarchical Views
 taxonomies:
   - id: "customer"
     name: "Customer"
-    pattern: '^cust:(?P<id>\w+)$'
+    pattern: '^cust:(?<id>\w+)$'
     priority: 1
 ```
 
@@ -111,17 +111,17 @@ taxonomies:
 taxonomies:
   - id: "customer"
     name: "Customer"
-    pattern: '^cust:(?P<id>\w+)$'
+    pattern: '^cust:(?<id>\w+)$'
     priority: 1
 
   - id: "env"
     name: "Environment"
-    pattern: '^env:(?P<env_type>\w+)$'
+    pattern: '^env:(?<env_type>\w+)$'
     priority: 2
 
   - id: "deploy"
     name: "Deployment"
-    pattern: '^deploy:(?P<env>\w+):(?P<customer>cust:\w+):(?P<product_version>[\w-]+:[\d\.]+)$'
+    pattern: '^deploy:(?<env>\w+):(?<customer>\w+):(?<product_version>[\w-]+:[\d\.]+)$'
     priority: 3
     relations:
       - group: "env"
@@ -133,7 +133,7 @@ taxonomies:
 
   - id: "product_version"
     name: "Product Version"
-    pattern: '^(?!(?:env|cust|deploy):)(?P<product_name>[\w-]+):(?P<version>[\d\w\.-]+)$'
+    pattern: '^(?!(?:env|cust|deploy):)(?<product_name>[\w-]+):(?<version>[\d\w\.-]+)$'
     priority: 4
 ```
 
@@ -329,7 +329,7 @@ npm run format
    ```bash
    curl -X POST http://localhost:8000/api/taxonomies \
      -H "Content-Type: application/json" \
-     -d '{"id": "customer", "name": "Customer", "pattern": "^cust:(?P<id>\\w+)$", "priority": 1}'
+     -d '{"id": "customer", "name": "Customer", "pattern": "^cust:(?<id>\\w+)$", "priority": 1}'
    ```
 
 2. **Environment Level with Customer Relations:**
@@ -339,7 +339,7 @@ npm run format
      -d '{
        "id": "environment",
        "name": "Deploy Environment",
-       "pattern": "^env:(?P<env_type>\\w+):(?P<customer>cust:\\w+)$",
+       "pattern": "^deploy:(?<env>\\w+):(?<customer>cust:\\w+):(?<product_version>[\\w-]+:[\\d\\.]+)$",
        "priority": 2,
        "relations": [
          {"group": "customer", "targets": "customer"}

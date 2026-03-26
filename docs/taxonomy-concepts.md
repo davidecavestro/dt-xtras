@@ -34,7 +34,7 @@ The taxonomy system categorizes project tags and defines semantic relationships 
 
 **Example - Deployment Taxonomy:**
 ```yaml
-pattern: ^deploy:(?P<env>\w+):(?P<customer>\w+):(?P<product_version>[\w-]+:[\d\.]+)$
+pattern: ^deploy:(?<env>\w+):(?<customer>\w+):(?<product_version>[\w-]+:[\d\.]+)$
 relations:
   - group: env, targets: env
   - group: customer, targets: customer
@@ -63,7 +63,7 @@ relations:
 - **Vertices:** All tags matching taxonomy patterns
 - **Edges:** Connections between tags sharing components
 
-**Components:** Semantic parts extracted from tags (e.g., `deploy:prod:acme:myapp:1.0.0` → `{env:env:prod, customer:acme, product_version:myapp:1.0.0}`)
+**Components:** Semantic parts extracted from tags (e.g., `deploy:prod:acme:myapp:1.0.0` → `{env=prod, customer=acme, product_version=myapp:1.0.0}`)
 
 **Edge Formation:** Tags connect when they share components through taxonomy relations.
 
@@ -80,19 +80,17 @@ relations:
 **Example - Customer as Root:**
 ```
 cust:acme (root)
-├── env:prod (via deployment)
-├── env:staging (via deployment)
-├── myapp:1.0.0 (via deployment)
-└── myapp:1.0.1 (via deployment)
+├── deploy:prod:acme:myapp:1.0.0 (via deployment)
+└── deploy:prod:foo:myapp:1.0.1 (via deployment)
 ```
 
 **Example - Environment as Root (Associative Mode):**
 ```
 env:prod (root)
 ├── cust:acme (direct via deployment)
-├── cust:foo (direct via deployment)
-├── myapp:1.0.0 (direct via deployment)
-└── myapp:2.0.0 (direct via deployment)
+│    └── myapp:1.0.0 (direct via deployment)
+└── cust:foo (direct via deployment)
+     └── myapp:1.0.1 (direct via deployment)
 ```
 
 ## 🔧 Implementation Notes

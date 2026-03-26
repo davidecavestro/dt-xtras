@@ -194,7 +194,6 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { AlertCircle, RefreshCw, Shield } from 'lucide-vue-next'
-import XRegExp from 'xregexp'
 import axios from 'axios'
 import apiService from '../services/api'
 import auth from '../services/auth.js'

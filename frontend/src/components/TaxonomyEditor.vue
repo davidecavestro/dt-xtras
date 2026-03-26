@@ -67,7 +67,7 @@
               v-model="editingTaxonomy.regex_pattern"
               rows="3"
               class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
-              placeholder="e.g., ^cust:(?P<id>\w+)$"
+              placeholder="e.g., ^cust:(?<id>\w+)$"
             ></textarea>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Use named capture groups (?P&lt;name&gt;pattern) to extract values.

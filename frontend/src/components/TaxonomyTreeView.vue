@@ -465,7 +465,6 @@
 <script>
 import { ref, computed, onMounted, defineComponent } from 'vue'
 import axios from 'axios'
-import XRegExp from 'xregexp'
 import TaxonomyGraphBuilder from '../utils/taxonomyGraphBuilder.js'
 import TreeView from 'vue3-tree-vue'
 import 'vue3-tree-vue/dist/style.css'
@@ -628,8 +627,8 @@ export default {
       console.log('Total tags to filter:', tags.length)
 
       try {
-        // Use XRegExp for Python/JS regex compatibility
-        const regex = XRegExp(pattern)
+        // Use native RegExp for JS regex compatibility
+        const regex = new RegExp(pattern)
         console.log('Regex created successfully')
 
         const matchingTags = tags.filter(tag => {
@@ -1011,7 +1010,7 @@ export default {
       console.log('Full tag to validate:', fullTag)
 
       try {
-        const regex = XRegExp(taxonomy.regex_pattern)
+        const regex = new RegExp(taxonomy.regex_pattern)
         const isValid = regex.test(fullTag)
         console.log('Validation result:', isValid)
 

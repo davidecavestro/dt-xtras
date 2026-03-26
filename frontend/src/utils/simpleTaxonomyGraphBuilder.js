@@ -1,4 +1,3 @@
-import XRegExp from 'xregexp';
 
 export default class SimpleTaxonomyGraphBuilder {
   constructor() {
@@ -47,8 +46,7 @@ export default class SimpleTaxonomyGraphBuilder {
   findTaxonomyForTag(tag, taxonomies) {
     return taxonomies.find(taxonomy => {
       try {
-        const pattern = taxonomy.regex_pattern.replace(/\\\\/g, '\\');
-        const regex = XRegExp(pattern);
+        const regex = new RegExp(taxonomy.regex_pattern);
         return regex.test(tag.name);
       } catch {
         return false;
@@ -62,7 +60,7 @@ export default class SimpleTaxonomyGraphBuilder {
     }
 
     try {
-      const regex = new XRegExp(taxonomy.regex_pattern);
+      const regex = new RegExp(taxonomy.regex_pattern);
       const match = regex.exec(tagName);
 
       if (match) {
@@ -76,10 +74,10 @@ export default class SimpleTaxonomyGraphBuilder {
           });
         } else {
           // Fallback: manual extraction of capture groups
-          const groupMatches = taxonomy.regex_pattern.match(/\(\?P<([^>]+)>/g);
+          const groupMatches = taxonomy.regex_pattern.match(/\(\?<([^>]+)>/g);
           if (groupMatches) {
             groupMatches.forEach((groupMatch, index) => {
-              const groupName = groupMatch.match(/\(\?P<([^>]+)>/)[1];
+              const groupName = groupMatch.match(/\(\?<([^>]+)>/)[1];
               if (groupName && match[index + 1]) {
                 components[groupName] = match[index + 1];
               }
@@ -132,8 +130,8 @@ export default class SimpleTaxonomyGraphBuilder {
 
         const sourceTags = tags.filter(tag => {
           try {
-            const pattern = taxonomy.regex_pattern.replace(/\\\\/g, '\\');
-            const regex = XRegExp(pattern);
+            const pattern = taxonomy.regex_pattern.replace(/\\/g, '\\');
+            const regex = new RegExp(pattern);
             return regex.test(tag.name);
           } catch {
             return false;
@@ -142,8 +140,8 @@ export default class SimpleTaxonomyGraphBuilder {
 
         const targetTags = tags.filter(tag => {
           try {
-            const pattern = targetTaxonomy.regex_pattern.replace(/\\\\/g, '\\');
-            const regex = XRegExp(pattern);
+            const pattern = targetTaxonomy.regex_pattern.replace(/\\/g, '\\');
+            const regex = new RegExp(pattern);
             return regex.test(tag.name);
           } catch {
             return false;
@@ -164,11 +162,11 @@ export default class SimpleTaxonomyGraphBuilder {
     const getComponentNameForGroup = (taxonomy, group) => {
       try {
         const pattern = taxonomy.regex_pattern;
-        const matches = pattern.match(/\(\?P<([^>]+)>/g);
+        const matches = pattern.match(/\(\?<([^>]+)>/g);
 
         if (matches) {
           for (const match of matches) {
-            const componentName = match.match(/\(\?P<([^>]+)>/)[1];
+            const componentName = match.match(/\(\?<([^>]+)>/)[1];
             if (componentName.toLowerCase() === group.toLowerCase() ||
                 taxonomy.id.toLowerCase() === group.toLowerCase()) {
               return componentName;
@@ -249,7 +247,7 @@ export default class SimpleTaxonomyGraphBuilder {
     // Find connector taxonomies (those with multiple capture groups)
     const connectorTaxonomies = taxonomies.filter(t => {
       try {
-        const match = t.regex_pattern.match(/\(\?P<[^>]+>/g);
+        const match = t.regex_pattern.match(/\(\?<[^>]+>/g);
         return match && match.length > 1;
       } catch {
         return false;
@@ -267,7 +265,7 @@ export default class SimpleTaxonomyGraphBuilder {
     // Find connector tags
     const connectorTags = tags.filter(tag => {
       try {
-        const regex = XRegExp(connectorTaxonomy.regex_pattern);
+        const regex = new RegExp(connectorTaxonomy.regex_pattern);
         return regex.test(tag.name);
       } catch {
         return false;
@@ -280,11 +278,11 @@ export default class SimpleTaxonomyGraphBuilder {
     const getComponentNameForGroup = (taxonomy, group) => {
       try {
         const pattern = taxonomy.regex_pattern;
-        const matches = pattern.match(/\(\?P<([^>]+)>/g);
+        const matches = pattern.match(/\(\?<([^>]+)>/g);
 
         if (matches) {
           for (const match of matches) {
-            const componentName = match.match(/\(\?P<([^>]+)>/)[1];
+            const componentName = match.match(/\(\?<([^>]+)>/)[1];
             if (componentName.toLowerCase() === group.toLowerCase() ||
                 taxonomy.id.toLowerCase() === group.toLowerCase()) {
               return componentName;
@@ -304,10 +302,10 @@ export default class SimpleTaxonomyGraphBuilder {
 
       // Get the ordered list of capture groups from the taxonomy pattern
       const captureGroups = [];
-      const matches = connectorTaxonomy.regex_pattern.match(/\(\?P<([^>]+)>/g);
+      const matches = connectorTaxonomy.regex_pattern.match(/\(\?<([^>]+)>/g);
       if (matches) {
         matches.forEach(match => {
-          const groupName = match.match(/\(\?P<([^>]+)>/)[1];
+          const groupName = match.match(/\(\?<([^>]+)>/)[1];
           captureGroups.push(groupName);
         });
       }
