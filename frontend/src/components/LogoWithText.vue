@@ -5,7 +5,7 @@
       :variant="variant"
       class="logo-icon"
     />
-    <div class="logo-text" :style="{ fontSize: fontSize + 'px' }">
+    <div v-if="showText" class="logo-text" :style="{ fontSize: fontSize + 'px' }">
       <span class="dt">DT</span>
       <span class="xtras">xtras</span>
     </div>
