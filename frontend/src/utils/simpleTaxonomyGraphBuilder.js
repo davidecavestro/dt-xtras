@@ -276,16 +276,6 @@ export default class SimpleTaxonomyGraphBuilder {
 
     console.log(`Found ${connectorTags.length} connector tags`);
 
-    // Get all relation groups
-    const allRelationGroups = new Set();
-    taxonomies.forEach(taxonomy => {
-      taxonomy.relations?.forEach(relation => {
-        if (relation.group) {
-          allRelationGroups.add(relation.group);
-        }
-      });
-    });
-
     // Helper to get component name for group
     const getComponentNameForGroup = (taxonomy, group) => {
       try {
@@ -307,46 +297,60 @@ export default class SimpleTaxonomyGraphBuilder {
       return group;
     };
 
-    // Create associative connections
+    // Create associative connections following capture group order
     connectorTags.forEach(connectorTag => {
       const components = this.parseTagComponents(connectorTag.name, connectorTaxonomy);
       if (!components) return;
 
-      const allGroups = Array.from(allRelationGroups);
-      const componentValues = [];
+      // Get the ordered list of capture groups from the taxonomy pattern
+      const captureGroups = [];
+      const matches = connectorTaxonomy.regex_pattern.match(/\(\?P<([^>]+)>/g);
+      if (matches) {
+        matches.forEach(match => {
+          const groupName = match.match(/\(\?P<([^>]+)>/)[1];
+          captureGroups.push(groupName);
+        });
+      }
 
-      allGroups.forEach(groupName => {
+      console.log(`Capture groups order for ${connectorTag.name}:`, captureGroups);
+
+      // Find the corresponding taxonomy nodes for each capture group
+      const taxonomyNodes = [];
+      captureGroups.forEach(groupName => {
         const componentName = getComponentNameForGroup(connectorTaxonomy, groupName);
-        const value = components[componentName];
+        const componentValue = components[componentName];
 
-        if (value) {
+        if (componentValue) {
           // Find the corresponding node to get taxonomy info
-          const node = this.findNodeByComponent(value);
-          componentValues.push({
-            name: groupName,
-            value: value,
-            tag: node || this.findTagByComponent(value, tags)
-          });
+          const node = this.findNodeByComponent(componentValue);
+          if (node) {
+            taxonomyNodes.push({
+              groupName: groupName,
+              node: node,
+              value: componentValue
+            });
+          }
         }
       });
 
-      // Create edges between consecutive components
-      for (let i = 0; i < componentValues.length - 1; i++) {
-        const sourceComponent = componentValues[i];
-        const targetComponent = componentValues[i + 1];
+      console.log(`Taxonomy nodes for ${connectorTag.name}:`, taxonomyNodes.map(n => `${n.groupName}:${n.node.name}`));
 
-        if (sourceComponent.tag && targetComponent.tag) {
-          const edgeId = `${sourceComponent.tag.name}-${targetComponent.tag.name}`;
+      // Create hierarchical edges following capture group order
+      // This creates a chain: first -> second -> third -> ...
+      for (let i = 0; i < taxonomyNodes.length - 1; i++) {
+        const sourceNode = taxonomyNodes[i];
+        const targetNode = taxonomyNodes[i + 1];
 
-          if (!this.edges.find(e => e.id === edgeId || e.id === `${targetComponent.tag.name}-${sourceComponent.tag.name}`)) {
-            this.edges.push({
-              id: edgeId,
-              source: sourceComponent.tag.name,
-              target: targetComponent.tag.name,
-              group: `associative_${sourceComponent.name}_to_${targetComponent.tag.taxonomy || 'unknown'}`
-            });
-            console.log(`✅ Created associative edge: ${sourceComponent.tag.name} -> ${targetComponent.tag.name} (group: associative_${sourceComponent.name}_to_${targetComponent.tag.taxonomy || 'unknown'})`);
-          }
+        const edgeId = `${sourceNode.node.name}-${targetNode.node.name}`;
+
+        if (!this.edges.find(e => e.id === edgeId || e.id === `${targetNode.node.name}-${sourceNode.node.name}`)) {
+          this.edges.push({
+            id: edgeId,
+            source: sourceNode.node.name,
+            target: targetNode.node.name,
+            group: `associative_${sourceNode.groupName}_to_${targetNode.groupName}`
+          });
+          console.log(`✅ Created associative edge: ${sourceNode.node.name} -> ${targetNode.node.name} (group: associative_${sourceNode.groupName}_to_${targetNode.groupName})`);
         }
       }
     });

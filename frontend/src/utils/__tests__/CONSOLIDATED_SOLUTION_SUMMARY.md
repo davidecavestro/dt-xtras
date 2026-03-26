@@ -15,6 +15,7 @@
 4. ✅ **Self-Referential Edges**: Nodes connecting to themselves eliminated
 5. ✅ **Tree Building**: Simplified to treat graph as undirected
 6. ✅ **Missing SVG Generation**: Added `generateSVG` function with multiple layouts
+7. ✅ **Associative Mode Logic**: Fixed to follow capture group order instead of all relation groups
 
 ## 🔧 Solutions Implemented:
 
@@ -38,7 +39,22 @@ buildTreeNode(node, visited, level) {
 }
 ```
 
-### 3. SVG Generation with Multiple Layouts
+### 3. Corrected Associative Mode Logic
+```javascript
+// Follows capture group order from taxonomy pattern
+const captureGroups = [];
+const matches = connectorTaxonomy.regex_pattern.match(/\(\?P<([^>]+)>/g);
+// Creates: ['env', 'customer', 'product_version']
+
+// Creates hierarchical edges: env -> customer -> product_version
+for (let i = 0; i < taxonomyNodes.length - 1; i++) {
+  const sourceNode = taxonomyNodes[i];      // env:prod
+  const targetNode = taxonomyNodes[i + 1]; // cust:acme
+  // Creates edge: env:prod -> cust:acme
+}
+```
+
+### 4. SVG Generation with Multiple Layouts
 ```javascript
 generateSVG(layout = 'breadthfirst') {
   // Supports: circle, grid, breadthfirst, concentric, cose, random
@@ -47,12 +63,41 @@ generateSVG(layout = 'breadthfirst') {
 }
 ```
 
-### 4. Self-Referential Edge Prevention
+### 5. Self-Referential Edge Prevention
 ```javascript
 if (taxonomy.id === targetTaxonomyId) {
   console.log(`⚠️ Skipping self-referential connection: ${taxonomy.id} -> ${targetTaxonomyId}`);
   continue;
 }
+```
+
+## 🎯 Corrected Associative Mode Behavior:
+
+### Before (Incorrect):
+- Created edges between ALL relation groups
+- Flat structure without hierarchy
+- Did not follow capture group order
+
+### After (Correct):
+- Follows capture group order: `['env', 'customer', 'product_version']`
+- Creates hierarchical chain: `env:prod -> cust:acme -> myapp:1.0.0`
+- Removes connector nodes from visualization
+- Maintains semantic relationships
+
+### Expected Structure:
+```
+Normal Mode:
+deploy:prod:acme:myapp:1.0.0
+├── env:prod
+├── cust:acme
+└── myapp:1.0.0
+
+Associative Mode (Corrected):
+env:prod
+└── cust:acme
+    └── myapp:1.0.0
+
+Following capture group order: env ↔ customer ↔ product_version
 ```
 
 ## 📊 Test Results:
