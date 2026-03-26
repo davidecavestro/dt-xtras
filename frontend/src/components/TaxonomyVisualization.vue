@@ -13,11 +13,11 @@
             v-model="selectedTaxonomy"
             @change="updateTree"
             class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            v-if="!loading"
           >
-            <option value="customer">Customer</option>
-            <option value="env">Environment</option>
-            <option value="deploy">Deployment</option>
-            <option value="product_version">Product Version</option>
+            <option v-for="taxonomy in taxonomiesData" :key="taxonomy.id" :value="taxonomy.id">
+              {{ taxonomy.name || taxonomy.id }}
+            </option>
           </select>
         </div>
 
@@ -49,13 +49,8 @@
       </div>
 
       <!-- Mode Description -->
-      <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-        <span v-if="associativeMode" class="text-purple-600 font-medium">
-          📊 Associative Mode: Deployment tags hidden, showing direct component relationships (env ↔ customer ↔ product)
-        </span>
-        <span v-else class="text-blue-600 font-medium">
-          🌳 Normal Mode: Full tree structure with deployment tags as connectors
-        </span>
+      <div v-if="!loading" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+        {{ modeDescription }}
       </div>
     </div>
 
@@ -238,6 +233,7 @@ export default {
     const associativeMode = ref(false);
     const loading = ref(true);
     const error = ref(null);
+    const taxonomiesData = ref([]); // Store taxonomies for dynamic descriptions
 
     // New reactive variables for collapsible sections and layout
     const showJsonView = ref(false); // Collapsed by default
@@ -250,6 +246,87 @@ export default {
     const loadingProjects = ref(false);
 
     const graphBuilder = new SimpleTaxonomyGraphBuilder();
+
+    // Dynamic mode descriptions based on taxonomy relations
+    const modeDescription = computed(() => {
+      if (associativeMode.value) {
+        return generateAssociativeDescription();
+      } else {
+        return generateNormalDescription();
+      }
+    });
+
+    // Generate associative mode description dynamically
+    const generateAssociativeDescription = () => {
+      if (!taxonomiesData.value || taxonomiesData.value.length === 0) {
+        return '📊 Associative Mode: Building direct relationships between taxonomy components';
+      }
+
+      // Collect all relations from taxonomies
+      const allRelations = [];
+      taxonomiesData.value.forEach(taxonomy => {
+        if (taxonomy.relations) {
+          taxonomy.relations.forEach(relation => {
+            const targetTaxonomy = taxonomiesData.value.find(t => t.id === relation.targets);
+            if (targetTaxonomy) {
+              allRelations.push({
+                from: taxonomy.id,
+                to: relation.targets,
+                group: relation.group
+              });
+            }
+          });
+        }
+      });
+
+      if (allRelations.length === 0) {
+        return '📊 Associative Mode: No relations defined in taxonomies';
+      }
+
+      // Build dynamic description
+      const relationDescriptions = allRelations.map(rel => {
+        const fromTaxonomy = taxonomiesData.value.find(t => t.id === rel.from);
+        const toTaxonomy = taxonomiesData.value.find(t => t.id === rel.to);
+        return `${fromTaxonomy?.id || rel.from} ↔ ${toTaxonomy?.id || rel.to}`;
+      });
+
+      const uniqueRelations = [...new Set(relationDescriptions)];
+      const relationsText = uniqueRelations.join(' ↔ ');
+
+      return `📊 Associative Mode: Direct component relationships (${relationsText})`;
+    };
+
+    // Generate normal mode description dynamically
+    const generateNormalDescription = () => {
+      if (!taxonomiesData.value || taxonomiesData.value.length === 0) {
+        return '🌳 Normal Mode: Building tree structure';
+      }
+
+      // Count taxonomies with relations
+      const taxonomiesWithRelations = taxonomiesData.value.filter(t => t.relations?.length > 0);
+      const relationCount = taxonomiesWithRelations.length;
+
+      if (relationCount === 0) {
+        return '🌳 Normal Mode: Full tree structure';
+      }
+
+      // Find taxonomies that could serve as connectors (have hierarchical patterns)
+      const connectorTaxonomies = taxonomiesData.value.filter(t => {
+        try {
+          const match = t.regex_pattern.match(/\(\?P<[^>]+>/g);
+          return match && match.length > 1; // Has multiple capture groups
+        } catch {
+          return false;
+        }
+      });
+
+      if (connectorTaxonomies.length > 0) {
+        const connectorNames = connectorTaxonomies.map(t => t.id).join(', ');
+        return `🌳 Normal Mode: Tree structure with ${connectorNames} as connectors`;
+      }
+
+      return `🌳 Normal Mode: Tree structure (${relationCount} taxonomy has relations)`;
+    };
 
     const totalTreeNodes = computed(() => {
       const countAllChildren = (node) => {
@@ -277,8 +354,11 @@ export default {
         const tags = tagsResponse.data;
         const taxonomies = taxonomiesResponse.data;
 
+        // Store taxonomies data for dynamic descriptions
+        taxonomiesData.value = taxonomies;
+
         // Build graph with current mode
-        const graph = graphBuilder.buildGraph(tags.data || tags, taxonomies.data || taxonomies, associativeMode.value);
+        const graph = graphBuilder.buildGraph(tags.data || tags, taxonomiesData.value || taxonomies, associativeMode.value);
         graphData.value = graph;
         svgGraph.value = graphBuilder.generateSVG(selectedLayout.value);
 
@@ -388,6 +468,7 @@ export default {
       associativeMode,
       loading,
       error,
+      taxonomiesData,
       totalTreeNodes,
       showJsonView,
       showGraphView,
@@ -395,12 +476,14 @@ export default {
       selectedNode,
       nodeProjects,
       loadingProjects,
+      modeDescription,
       updateTree,
       updateVisualization,
       toggleJsonView,
       toggleGraphView,
       updateGraphLayout,
-      selectNode
+      selectNode,
+      loadProjectsForNode
     };
   }
 };
