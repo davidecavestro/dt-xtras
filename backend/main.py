@@ -8,6 +8,7 @@ import json
 import os
 import uuid
 import re
+import regex
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Any
 from pathlib import Path
@@ -434,12 +435,18 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
 
         # Apply taxonomies in priority order
         for taxonomy in taxonomies_list:
-            match = re.match(taxonomy.regex_pattern, project_tags)
-            if match:
-                groups = match.groupdict()
-                if taxonomy.id in groups:
-                    version_info[f'{taxonomy.id}_id'] = groups[taxonomy.id]
-                    version_info[f'{taxonomy.id}_name'] = groups[taxonomy.id]
+            try:
+                # Use regex library for better JS compatibility
+                js_pattern = regex.compile(taxonomy.regex_pattern)
+                match = js_pattern.match(project_tags)
+                if match:
+                    groups = match.groupdict()
+                    if taxonomy.id in groups:
+                        version_info[f'{taxonomy.id}_id'] = groups[taxonomy.id]
+                        version_info[f'{taxonomy.id}_name'] = groups[taxonomy.id]
+            except Exception as e:
+                print(f"Error with regex pattern '{taxonomy.regex_pattern}': {e}")
+                continue
 
         # Create ProjectVersion object
         # Convert tag objects to strings for ProjectVersion model
@@ -699,10 +706,15 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
         is_custom_tag = True
 
         for taxonomy in taxonomies:
-            if re.match(taxonomy.regex_pattern, tag_name):
-                is_custom_tag = False
-                print(f"Tag '{tag_name}' matches taxonomy '{taxonomy.id}'")
-                break
+            try:
+                js_pattern = regex.compile(taxonomy.regex_pattern)
+                if js_pattern.match(tag_name):
+                    is_custom_tag = False
+                    print(f"Tag '{tag_name}' matches taxonomy '{taxonomy.id}'")
+                    break
+            except Exception as e:
+                print(f"Error with regex pattern '{taxonomy.regex_pattern}': {e}")
+                continue
 
         headers = {}
         if dt_token:
@@ -843,10 +855,15 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
 
             # Apply taxonomies in priority order
             for taxonomy in taxonomies:
-                match = re.match(taxonomy.regex_pattern, project_tags)
-                if match:
-                    groups = match.groupdict()
-                    project_path.append((taxonomy.id, groups.get(taxonomy.id, project_version.name)))
+                try:
+                    js_pattern = regex.compile(taxonomy.regex_pattern)
+                    match = js_pattern.match(project_tags)
+                    if match:
+                        groups = match.groupdict()
+                        project_path.append((taxonomy.id, groups.get(taxonomy.id, project_version.name)))
+                except Exception as e:
+                    print(f"Error with regex pattern '{taxonomy.regex_pattern}': {e}")
+                    continue
 
             # Create or update nodes in hierarchy
             parent_id = None
@@ -912,34 +929,39 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
                         )
 
                         if project_version:
-                            match = re.match(taxonomy.regex_pattern, " ".join(project_version.tags))
-                            if match:
-                                groups = match.groupdict()
-                                relation_value = groups.get(relation.group)
-                                if relation_value:
-                                    # Find target parent node
-                                    target_node_id = f"{relation.targets}:{relation_value}"
-                                    if target_node_id in all_nodes:
-                                        # Update parent relationship
-                                        old_parent_id = node.parent_id
-                                        node.parent_id = target_node_id
+                            try:
+                                js_pattern = regex.compile(taxonomy.regex_pattern)
+                                match = js_pattern.match(" ".join(project_version.tags))
+                                if match:
+                                    groups = match.groupdict()
+                                    relation_value = groups.get(relation.group)
+                                    if relation_value:
+                                        # Find target parent node
+                                        target_node_id = f"{relation.targets}:{relation_value}"
+                                        if target_node_id in all_nodes:
+                                            # Update parent relationship
+                                            old_parent_id = node.parent_id
+                                            node.parent_id = target_node_id
 
-                                        # Remove from old parent
-                                        if old_parent_id and old_parent_id in all_nodes:
-                                            all_nodes[old_parent_id].children = [
-                                                child for child in all_nodes[old_parent_id].children
-                                                if child.id != node.id
-                                            ]
+                                            # Remove from old parent
+                                            if old_parent_id and old_parent_id in all_nodes:
+                                                all_nodes[old_parent_id].children = [
+                                                    child for child in all_nodes[old_parent_id].children
+                                                    if child.id != node.id
+                                                ]
 
-                                        # Add to new parent
-                                        all_nodes[target_node_id].children.append(node)
+                                            # Add to new parent
+                                            all_nodes[target_node_id].children.append(node)
 
-                                        # Remove from root if it was there
-                                        if node.id in [n.id for n in root_nodes.get(taxonomy.id, [])]:
-                                            root_nodes[taxonomy.id] = [
-                                                n for n in root_nodes.get(taxonomy.id, [])
-                                                if n.id != node.id
-                                            ]
+                                            # Remove from root if it was there
+                                            if node.id in [n.id for n in root_nodes.get(taxonomy.id, [])]:
+                                                root_nodes[taxonomy.id] = [
+                                                    n for n in root_nodes.get(taxonomy.id, [])
+                                                    if n.id != node.id
+                                                ]
+                            except Exception as e:
+                                print(f"Error with regex pattern '{taxonomy.regex_pattern}': {e}")
+                                continue
 
         # Calculate roll-up metrics
         def calculate_rollup(node):

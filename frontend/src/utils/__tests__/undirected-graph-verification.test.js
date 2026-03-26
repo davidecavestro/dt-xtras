@@ -9,10 +9,10 @@
 import SimpleTaxonomyGraphBuilder from '../simpleTaxonomyGraphBuilder.js';
 
 const mockTaxonomies = [
-  {id: 'customer', regex_pattern: '^cust:(?P<id>\\w+)$', relations: null},
-  {id: 'env', regex_pattern: '^env:(?P<env_type>\\w+)$', relations: null},
-  {id: 'deploy', regex_pattern: '^deploy:(?P<env>\\w+):(?P<customer>\\w+):(?P<product_version>[\\w-]+:[\\d\\.]+)$', relations: [{group: 'env', targets: 'env'}, {group: 'customer', targets: 'customer'}]},
-  {id: 'product_version', regex_pattern: '^(?!(?:env|cust|deploy):)(?P<product_name>[\\w-]+):(?P<version>[\\d\\w\\.-]+)$', relations: null}
+  {id: 'customer', regex_pattern: '^cust:(?<id>\\w+)$', relations: null},
+  {id: 'env', regex_pattern: '^env:(?<env_type>\\w+)$', relations: null},
+  {id: 'deploy', regex_pattern: '^deploy:(?<env>\\w+):(?<customer>\\w+):(?<product_version>[\\w-]+:[\\d\\.]+)$', relations: [{group: 'env', targets: 'env'}, {group: 'customer', targets: 'customer'}]},
+  {id: 'product_version', regex_pattern: '^(?!(?:env|cust|deploy):)(?<product_name>[\\w-]+):(?<version>[\\d\\w\\.-]+)$', relations: null}
 ];
 
 const mockTags = [

@@ -13,21 +13,21 @@ const mockTaxonomies = [
   {
     id: 'customer',
     name: 'Customer',
-    regex_pattern: '^cust:(?P<id>\\w+)$',
+    regex_pattern: '^cust:(?<id>\\w+)$',
     priority: 1,
     relations: null
   },
   {
     id: 'env',
     name: 'Environment',
-    regex_pattern: '^env:(?P<env_type>\\w+)$',
+    regex_pattern: '^env:(?<env_type>\\w+)$',
     priority: 2,
     relations: null
   },
   {
     id: 'deploy',
     name: 'Deployment',
-    regex_pattern: '^deploy:(?P<env>\\w+):(?P<customer>\\w+):(?P<product_version>[\\w-]+:[\\d\\.]+)$',
+    regex_pattern: '^deploy:(?<env>\\w+):(?<customer>\\w+):(?<product_version>[\\w-]+:[\\d\\.]+)$',
     priority: 3,
     relations: [
       { group: 'env', targets: 'env' },
@@ -38,7 +38,7 @@ const mockTaxonomies = [
   {
     id: 'product_version',
     name: 'Product Version',
-    regex_pattern: '^(?!(?:env|cust|deploy):)(?P<product_name>[\\w-]+):(?P<version>[\\d\\w\\.-]+)$',
+    regex_pattern: '^(?!(?:env|cust|deploy):)(?<product_name>[\\w-]+):(?<version>[\\d\\w\\.-]+)$',
     priority: 4,
     relations: null
   }

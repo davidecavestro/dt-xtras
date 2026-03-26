@@ -310,7 +310,6 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { AlertCircle, RefreshCw, Plus, X, Folder } from 'lucide-vue-next'
-import XRegExp from 'xregexp'
 import axios from 'axios'
 import auth from '../services/auth.js'
 import { useRouter } from 'vue-router'
@@ -347,8 +346,8 @@ export default {
       taxonomies.value.forEach(taxonomy => {
         // Check if current input already matches this taxonomy pattern
         try {
-          // Use XRegExp for Python/JS regex compatibility
-          const regex = XRegExp(taxonomy.regex_pattern)
+          // Use native RegExp for JS regex compatibility
+          const regex = new RegExp(taxonomy.regex_pattern)
           const match = regex.test(currentTag)
 
           if (match) {
@@ -449,8 +448,8 @@ export default {
       // Check if tag matches any taxonomy pattern
       const matchingTaxonomy = taxonomies.value.find(taxonomy => {
         try {
-          // Use XRegExp for Python/JS regex compatibility
-          const regex = XRegExp(taxonomy.regex_pattern)
+          // Use native RegExp for JS regex compatibility
+          const regex = new RegExp(taxonomy.regex_pattern)
           const matches = regex.test(tag)
           return matches
         } catch (error) {
