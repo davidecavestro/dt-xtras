@@ -7,3 +7,4 @@ api/taxonomies.yaml
 backend/__pycache__/
 .devcontainer/dtrack_db_data/
 *.bak
+*_SUMMARY.md
