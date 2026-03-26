@@ -102,3 +102,9 @@ jobs:
         echo "Deploying to staging environment..."
         # Add your deployment commands here
         # For example: kubectl apply -f k8s/staging/
+
+  release:
+    needs: [build-backend, build-frontend]
+    if: github.ref_type == 'tag' && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
+    uses: ./.github/workflows/release.yml
+    secrets: inherit
