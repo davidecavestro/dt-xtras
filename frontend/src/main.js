@@ -25,13 +25,13 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/taxonomies',
-    component: TaxonomyEditor,
+    path: '/dependency-graph',
+    component: TaxonomyVisualization,
     meta: { requiresAuth: true }
   },
   {
-    path: '/taxonomy-view',
-    component: TaxonomyVisualization,
+    path: '/taxonomy-builder',
+    component: TaxonomyEditor,
     meta: { requiresAuth: true }
   },
   {

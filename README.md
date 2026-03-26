@@ -74,7 +74,7 @@ The system provides a flexible, multi-perspective approach to security data orga
 #### Project Versions (First-Class Entities)
 
 - **Lifecycle Management**: Create, update, delete project versions via API
-- **Tag-Based Classification**: Projects are tagged with `product:version`, `customer:id`, `env:type` patterns
+- **Tag-Based Classification**: Projects are tagged with `myapp:version`, `customer:id`, `env:type` patterns
 - **Independent Operations**: Project versions can exist independently of DT project tags
 - **Aggregation Source**: Security hierarchy can be built from project versions OR raw DT projects
 
@@ -170,10 +170,10 @@ Result:
 
 #### Tag Patterns (Examples)
 
-- `product:myapp:1.0.0` → Product version classification
-- `product:webapp:0.0.1-RELEASE` → Product version with release suffix
-- `product:myapp:1.2` → Product version with two components
-- `product:myapp:1` → Simple product version
+- `myapp:1.0.0` → Product version classification
+- `webapp:0.0.1-RELEASE` → Product version with release suffix
+- `myapp:1.2` → Product version with two components
+- `myapp:1` → Simple product version
 - `cust:acme env:prod myapp:1.0.0` → Customer + Environment + Product version
 - `env:staging web:frontend:2.1.0` → Environment + Product version
 

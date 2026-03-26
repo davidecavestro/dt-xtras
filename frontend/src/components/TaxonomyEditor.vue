@@ -51,14 +51,14 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
-            <input
-              v-model.number="editingTaxonomy.priority"
-              type="number"
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Relations</label>
+            <textarea
+              v-model="editingTaxonomy.relationsText"
+              rows="3"
               class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
-              placeholder="Lower numbers = higher priority"
-            />
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Lower numbers are processed first (higher priority)</p>
+              placeholder="Optional: Define relations to other taxonomies (one per line: target_taxonomy:relation_type)"
+            ></textarea>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Priority is set by drag-and-drop order in the list below</p>
           </div>
 
           <div>
@@ -129,7 +129,7 @@
                 v-model="testTags"
                 type="text"
                 class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
-                placeholder="e.g., customer:acme env:production product:webapp"
+                placeholder="e.g., customer:acme or env:production or app:webapp"
               />
             </div>
 
@@ -186,114 +186,7 @@
         </div>
 
         <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700" style="height: 400px; position: relative; overflow: hidden;">
-          <svg
-            ref="graphSvg"
-            width="100%"
-            height="100%"
-            style="cursor: grab;"
-            @mousedown="startPan"
-            @mousemove="pan"
-            @mouseup="endPan"
-            @mouseleave="endPan"
-            @wheel="zoom"
-          >
-            <!-- Graph Group for Panning/Zooming -->
-            <g ref="graphGroup" :transform="`translate(${panX}, ${panY}) scale(${zoomLevel})`">
-              <!-- Edges (Relations) -->
-              <g v-if="graphEdges.length > 0">
-                <line
-                  v-for="edge in graphEdges"
-                  :key="`${edge.source}-${edge.target}`"
-                  :x1="edge.sourceX"
-                  :y1="edge.sourceY"
-                  :x2="edge.targetX"
-                  :y2="edge.targetY"
-                  stroke="#6B7280"
-                  stroke-width="2"
-                  opacity="0.6"
-                  :stroke-dasharray="edge.type === 'relation' ? '5,5' : 'none'"
-                />
-                <!-- Edge Labels -->
-                <text
-                  v-for="edge in graphEdges"
-                  :key="`label-${edge.source}-${edge.target}`"
-                  :x="(edge.sourceX + edge.targetX) / 2"
-                  :y="(edge.sourceY + edge.targetY) / 2"
-                  text-anchor="middle"
-                  dominant-baseline="middle"
-                  class="text-xs fill-gray-600 dark:fill-gray-400"
-                  :transform="`translate(${(edge.sourceX + edge.targetX) / 2}, ${(edge.sourceY + edge.targetY) / 2}) rotate(${edge.angle})`"
-                >
-                  {{ edge.label }}
-                </text>
-              </g>
-
-              <!-- Nodes (Taxonomies) -->
-              <g v-if="graphNodes.length > 0">
-                <g
-                  v-for="node in graphNodes"
-                  :key="node.id"
-                  @click="selectGraphNode(node)"
-                  style="cursor: pointer;"
-                >
-                  <!-- Node Circle -->
-                  <circle
-                    :cx="node.x"
-                    :cy="node.y"
-                    :r="node.selected ? 35 : 30"
-                    :fill="getNodeColor(node)"
-                    :stroke="node.selected ? '#3B82F6' : '#9CA3AF'"
-                    stroke-width="3"
-                    @mouseover="hoverNode = node.id"
-                    @mouseleave="hoverNode = null"
-                  />
-                  <!-- Node Icon -->
-                  <text
-                    :x="node.x"
-                    :y="node.y - 5"
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                    class="text-lg fill-white font-bold"
-                  >
-                    {{ getNodeIcon(node) }}
-                  </text>
-                  <!-- Node Label -->
-                  <text
-                    :x="node.x"
-                    :y="node.y + 10"
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                    class="text-xs fill-white font-medium"
-                  >
-                    {{ node.id }}
-                  </text>
-                  <!-- Hover Tooltip -->
-                  <g v-if="hoverNode === node.id">
-                    <rect
-                      :x="node.x + 40"
-                      :y="node.y - 30"
-                      width="200"
-                      height="60"
-                      :fill="isDarkMode ? '#374151' : 'white'"
-                      stroke="#9CA3AF"
-                      stroke-width="1"
-                      rx="4"
-                      opacity="0.95"
-                    />
-                    <text :x="node.x + 50" :y="node.y - 10" :class="isDarkMode ? 'fill-gray-200' : 'fill-gray-800'">
-                      {{ node.name }}
-                    </text>
-                    <text :x="node.x + 50" :y="node.y + 5" :class="isDarkMode ? 'fill-gray-300' : 'fill-gray-600'">
-                      Priority: {{ node.priority }}
-                    </text>
-                    <text :x="node.x + 50" :y="node.y + 20" :class="isDarkMode ? 'fill-gray-300' : 'fill-gray-600'">
-                      Relations: {{ node.relations?.length || 0 }}
-                    </text>
-                  </g>
-                </g>
-              </g>
-            </g>
-          </svg>
+          <div ref="cytoscapeContainer" class="w-full h-full"></div>
         </div>
 
         <!-- Graph Legend -->
@@ -326,21 +219,37 @@
           </p>
         </div>
 
-        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-          <li v-for="taxonomy in sortedTaxonomies" :key="taxonomy.id">
+        <ul class="divide-y divide-gray-200 dark:border-gray-700">
+          <li
+            v-for="(taxonomy, index) in taxonomies"
+            :key="taxonomy.id"
+            draggable="true"
+            @dragstart="handleDragStart($event, index)"
+            @dragover="handleDragOver($event)"
+            @drop="handleDrop($event, index)"
+            @dragend="handleDragEnd"
+            class="cursor-move hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
             <div class="px-4 py-4 flex items-center justify-between">
-              <div class="flex-1">
-                <div class="flex items-center">
-                  <span class="text-sm font-medium text-gray-900 dark:text-white">{{ taxonomy.name }}</span>
-                  <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                    {{ taxonomy.id }}
-                  </span>
-                  <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                    Priority: {{ taxonomy.priority }}
-                  </span>
+              <div class="flex items-center space-x-3">
+                <div class="text-gray-400 dark:text-gray-500">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                  </svg>
                 </div>
-                <div class="mt-1">
-                  <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-gray-800 dark:text-gray-200">{{ taxonomy.regex_pattern }}</code>
+                <div class="flex-1">
+                  <div class="flex items-center">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ taxonomy.name }}</span>
+                    <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                      {{ taxonomy.id }}
+                    </span>
+                    <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                      Priority: {{ index + 1 }}
+                    </span>
+                  </div>
+                  <div class="mt-1">
+                    <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-gray-800 dark:text-gray-200">{{ taxonomy.regex_pattern }}</code>
+                  </div>
                 </div>
               </div>
               <div class="flex space-x-2">
@@ -373,6 +282,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { Plus, Trash2, Edit2 } from 'lucide-vue-next'
 import axios from 'axios'
+import cytoscape from 'cytoscape'
 
 // Reactive data
 const taxonomies = ref([])
@@ -383,7 +293,7 @@ const editingTaxonomy = ref({
   priority: 1,
   relations: []
 })
-const testTags = ref('customer:acme env:production product:webapp')
+const testTags = ref('')
 const regexTestResult = ref(null)
 
 // Dark mode detection
@@ -403,17 +313,15 @@ const isPanning = ref(false)
 const panStart = ref({ x: 0, y: 0 })
 const graphSvg = ref(null)
 const graphGroup = ref(null)
-
-    const sortedTaxonomies = computed(() => {
-      return [...taxonomies.value].sort((a, b) => a.priority - b.priority)
-    })
+const cytoscapeContainer = ref(null)
+const cytoscapeInstance = ref(null)
+const draggedIndex = ref(null)
 
     const isFormValid = computed(() => {
       return editingTaxonomy.value &&
              editingTaxonomy.value.id &&
              editingTaxonomy.value.name &&
-             editingTaxonomy.value.regex_pattern !== undefined &&
-             editingTaxonomy.value.priority !== undefined
+             editingTaxonomy.value.regex_pattern !== undefined
     })
 
     const isEditingExisting = computed(() => {
@@ -430,12 +338,11 @@ const graphGroup = ref(null)
       }
     }
 
-    const createNewTaxonomy = () => {
+    const addTaxonomy = () => {
       editingTaxonomy.value = {
         id: '',
         name: '',
         regex_pattern: '^.*$', // Default pattern - matches anything
-        priority: taxonomies.value.length + 1,
         relations: []
       }
       testTags.value = ''
@@ -538,59 +445,180 @@ const graphGroup = ref(null)
     }
 
     // Graph visualization methods
-    const buildGraphData = () => {
-      const nodes = taxonomies.value.map((taxonomy, index) => {
-        const angle = (index * 2 * Math.PI) / taxonomies.value.length
-        const radius = 150
-        return {
-          id: taxonomy.id,
-          name: taxonomy.name,
-          priority: taxonomy.priority,
-          relations: taxonomy.relations,
-          x: 200 + radius * Math.cos(angle),
-          y: 200 + radius * Math.sin(angle),
-          selected: false
-        }
-      })
+    const renderCytoscapeGraph = () => {
+      if (!taxonomies.value || !cytoscapeContainer.value) return;
 
-      const edges = []
+      // Destroy existing instance
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.destroy();
+      }
+
+      // Convert taxonomies to Cytoscape nodes
+      const nodes = taxonomies.value.map(taxonomy => ({
+        data: {
+          id: taxonomy.id,
+          label: taxonomy.name,
+          priority: taxonomy.priority,
+          relations: taxonomy.relations || []
+        }
+      }));
+
+      // Convert relations to Cytoscape edges
+      const edges = [];
       taxonomies.value.forEach(taxonomy => {
         if (taxonomy.relations) {
           taxonomy.relations.forEach(relation => {
-            const sourceNode = nodes.find(n => n.id === taxonomy.id)
-            const targetNode = nodes.find(n => n.id === relation.targets)
-
-            if (sourceNode && targetNode) {
-              const dx = targetNode.x - sourceNode.x
-              const dy = targetNode.y - sourceNode.y
-              const angle = Math.atan2(dy, dx) * 180 / Math.PI
-
+            if (relation.targets) {
               edges.push({
-                source: taxonomy.id,
-                target: relation.targets,
-                sourceX: sourceNode.x,
-                sourceY: sourceNode.y,
-                targetX: targetNode.x,
-                targetY: targetNode.y,
-                label: relation.group || 'related',
-                type: 'relation',
-                angle: angle
-              })
+                data: {
+                  id: `${taxonomy.id}-${relation.targets}`,
+                  source: taxonomy.id,
+                  target: relation.targets,
+                  label: relation.group || 'related'
+                }
+              });
             }
-          })
+          });
         }
-      })
+      });
 
-      graphNodes.value = nodes
-      graphEdges.value = edges
-    }
+      console.log('🎨 Rendering TaxonomyEditor Cytoscape graph:', { nodes, edges });
+
+      // Initialize Cytoscape
+      cytoscapeInstance.value = cytoscape({
+        container: cytoscapeContainer.value,
+        elements: [...nodes, ...edges],
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': '#3B82F6',
+              'label': 'data(label)',
+              'text-valign': 'center',
+              'text-halign': 'center',
+              'color': '#ffffff',
+              'font-size': '12px',
+              'width': '60px',
+              'height': '60px',
+              'border-width': '2px',
+              'border-color': '#1E40AF'
+            }
+          },
+          {
+            selector: 'node:selected',
+            style: {
+              'background-color': '#EF4444',
+              'border-color': '#991B1B',
+              'border-width': '3px'
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'width': 2,
+              'line-color': '#6B7280',
+              'target-arrow-color': '#6B7280',
+              'target-arrow-shape': 'triangle',
+              'curve-style': 'bezier',
+              'label': 'data(label)',
+              'font-size': '10px',
+              'color': '#374151'
+            }
+          }
+        ],
+        layout: {
+          name: 'circle',
+          radius: 150,
+          animate: true,
+          animationDuration: 1000
+        }
+      });
+
+      // Add event listeners
+      cytoscapeInstance.value.on('tap', 'node', function(evt) {
+        const node = evt.target;
+        selectGraphNode(node.data());
+      });
+
+      cytoscapeInstance.value.on('tap', function(evt) {
+        if (evt.target === cytoscapeInstance.value) {
+          // Clicked on background, deselect
+          selectedGraphNode.value = null;
+          cytoscapeInstance.value.$('node').unselect();
+        }
+      });
+    };
 
     const selectGraphNode = (node) => {
-      graphNodes.value.forEach(n => n.selected = false)
-      node.selected = true
-      selectedGraphNode.value = node
-      editTaxonomy(node.id)
+      selectedGraphNode.value = node;
+      editTaxonomy(node.id);
+
+      // Select node in Cytoscape
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.$('node').unselect();
+        cytoscapeInstance.value.$(`node[id="${node.id}"]`).select();
+      }
     }
+
+    const resetGraphView = () => {
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.fit();
+      }
+    }
+
+    // Drag and Drop handlers
+    const handleDragStart = (event, index) => {
+      draggedIndex.value = index;
+      event.dataTransfer.effectAllowed = 'move';
+      event.target.style.opacity = '0.5';
+    };
+
+    const handleDragOver = (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (event, dropIndex) => {
+      event.preventDefault();
+
+      if (draggedIndex.value !== null && draggedIndex.value !== dropIndex) {
+        const draggedTaxonomy = taxonomies.value[draggedIndex.value];
+        const newTaxonomies = [...taxonomies.value];
+
+        // Remove from old position
+        newTaxonomies.splice(draggedIndex.value, 1);
+
+        // Insert at new position
+        newTaxonomies.splice(dropIndex, 0, draggedTaxonomy);
+
+        // Update the array
+        taxonomies.value = newTaxonomies;
+
+        // Save the new order to backend
+        saveTaxonomyOrder();
+      }
+    };
+
+    const handleDragEnd = (event) => {
+      event.target.style.opacity = '';
+      draggedIndex.value = null;
+    };
+
+    const saveTaxonomyOrder = async () => {
+      try {
+        const taxonomiesWithPriority = taxonomies.value.map((taxonomy, index) => ({
+          ...taxonomy,
+          priority: index + 1
+        }));
+
+        await axios.put('/api/taxonomies/reorder', taxonomiesWithPriority);
+        console.log('Taxonomy order saved successfully');
+      } catch (error) {
+        console.error('Error saving taxonomy order:', error);
+        // Optionally revert the order if save fails
+        await loadTaxonomies();
+      }
+    };
 
     const getNodeColor = (node) => {
       if (node.selected) return '#3B82F6'
@@ -632,33 +660,6 @@ const graphGroup = ref(null)
       return '📁' // Default icon
     }
 
-    const resetGraphView = () => {
-      panX.value = 0
-      panY.value = 0
-      zoomLevel.value = 1
-    }
-
-    const startPan = (event) => {
-      isPanning.value = true
-      panStart.value = { x: event.clientX - panX.value, y: event.clientY - panY.value }
-    }
-
-    const pan = (event) => {
-      if (!isPanning.value) return
-      panX.value = event.clientX - panStart.value.x
-      panY.value = event.clientY - panStart.value.y
-    }
-
-    const endPan = () => {
-      isPanning.value = false
-    }
-
-    const zoom = (event) => {
-      event.preventDefault()
-      const delta = event.deltaY > 0 ? 0.9 : 1.1
-      zoomLevel.value = Math.max(0.5, Math.min(3, zoomLevel.value * delta))
-    }
-
     onMounted(() => {
       loadTaxonomies()
     })
@@ -666,7 +667,7 @@ const graphGroup = ref(null)
     // Rebuild graph when taxonomies change
     watch(taxonomies, () => {
       nextTick(() => {
-        buildGraphData()
+        renderCytoscapeGraph();
       })
     }, { deep: true })
 </script>
