@@ -117,6 +117,7 @@ class Taxonomy(BaseModel):
     id: str
     name: str
     regex_pattern: str
+    color: str = '#ef4444'  # Default color
     priority: int
     relations: Optional[List[TaxonomyRelation]] = None
     associative: Optional[bool] = None
