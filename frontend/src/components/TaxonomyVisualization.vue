@@ -214,15 +214,16 @@ export default {
 
     const graphBuilder = new SimpleTaxonomyGraphBuilder();
 
-    // Taxonomy colors
-    const taxonomyColors = {
-      customer: '#ef4444',
-      env: '#14b8a6',
-      deploy: '#3b82f6',
-      product_version: '#22c55e',
-      environment: '#14b8a6',
-      deployment: '#3b82f6'
-    };
+    // Taxonomy colors - now dynamic based on user choices
+    const taxonomyColors = computed(() => {
+      const colors = {};
+      if (taxonomiesData.value) {
+        taxonomiesData.value.forEach(taxonomy => {
+          colors[taxonomy.id] = taxonomy.color || '#6b7280'; // Use user color or fallback
+        });
+      }
+      return colors;
+    });
 
     // Computed properties
     const modeDescription = computed(() => {
@@ -355,7 +356,7 @@ export default {
             selector: 'node',
             style: {
               'shape': function(ele) {
-                return ele.data('associative') ? 'rectangle' : 'circle';
+                return ele.data('associative') ? 'round-rectangle' : 'round-tag';
               },
               'background-color': 'data(taxonomy)',
               'background-color': function(ele) {
@@ -440,6 +441,19 @@ export default {
           'font-size': '14px',
           'z-index': 1
         });
+      });
+
+      // Enable editing from graph
+      cytoscapeInstance.value.on('dblclick', 'node', function(evt) {
+        const node = evt.target;
+        const taxonomyData = taxonomiesData.value?.find(t => t.id === node.data('taxonomy'));
+        if (taxonomyData) {
+          // Emit event to open TaxonomyEditor with this taxonomy
+          const editEvent = new CustomEvent('editTaxonomyFromGraph', {
+            detail: { taxonomy: taxonomyData }
+          });
+          window.dispatchEvent(editEvent);
+        }
       });
     };
 
