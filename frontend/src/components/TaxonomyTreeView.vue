@@ -100,7 +100,7 @@
               Pattern: {{ selectedTaxonomyPattern }}
             </div>
             <div v-if="directTagValidation.isValid" class="mt-1 text-xs text-green-600 dark:text-green-400">
-              ✓ Tag matches pattern
+              ✓ Tag matches regex_pattern
             </div>
             <div v-else-if="directTagName" class="mt-1 text-xs text-red-600 dark:text-red-400">
               ✗ {{ directTagValidation.error }}
@@ -580,7 +580,7 @@ export default {
           return
         }
 
-        console.log('Found taxonomy:', taxonomy.id, 'with pattern:', taxonomy.regex_pattern)
+        console.log('Found taxonomy:', taxonomy.id, 'with regex_pattern:', taxonomy.regex_pattern)
         console.log('Taxonomy relations:', taxonomy.relations)
 
         // Set relations for tag creation
@@ -621,20 +621,20 @@ export default {
       }
     }
 
-    // Filter tags by regex pattern (kept for tag creation)
-    const filterTagsByPattern = (tags, pattern) => {
-      console.log('Filtering tags with pattern:', pattern)
+    // Filter tags by regex regex_pattern (kept for tag creation)
+    const filterTagsByPattern = (tags, regex_pattern) => {
+      console.log('Filtering tags with regex_pattern:', regex_pattern)
       console.log('Total tags to filter:', tags.length)
 
       try {
         // Use native RegExp for JS regex compatibility
-        const regex = new RegExp(pattern)
+        const regex = new RegExp(regex_pattern)
         console.log('Regex created successfully')
 
         const matchingTags = tags.filter(tag => {
           const matches = regex.test(tag.name)
           if (matches && tags.length < 20) {
-            console.log('Tag matches pattern:', tag.name)
+            console.log('Tag matches regex_pattern:', tag.name)
           }
           return matches
         })
@@ -642,7 +642,7 @@ export default {
         console.log('Found', matchingTags.length, 'matching tags')
         return matchingTags
       } catch (error) {
-        console.error('Invalid regex pattern:', pattern, error)
+        console.error('Invalid regex regex_pattern:', regex_pattern, error)
         return []
       }
     }
@@ -927,8 +927,8 @@ export default {
           }
 
           // Check if tag name contains any known patterns
-          for (const [pattern, icon] of Object.entries(suggestions)) {
-            if (node.name.toLowerCase().includes(pattern)) {
+          for (const [regex_pattern, icon] of Object.entries(suggestions)) {
+            if (node.name.toLowerCase().includes(regex_pattern)) {
               return icon
             }
           }
@@ -988,7 +988,7 @@ export default {
     const validateDirectTag = () => {
       console.log('Validating direct tag...')
       console.log('Selected taxonomy:', selectedTaxonomy.value)
-      console.log('Available taxonomies:', availableTaxonomies.value.map(t => ({ id: t.id, pattern: t.regex_pattern })))
+      console.log('Available taxonomies:', availableTaxonomies.value.map(t => ({ id: t.id, regex_pattern: t.regex_pattern })))
 
       if (!selectedTaxonomy.value || !availableTaxonomies.value || !directTagName.value) {
         directTagValidation.value = { isValid: false, error: '' }
@@ -1002,7 +1002,7 @@ export default {
       }
 
       console.log('Found taxonomy:', taxonomy)
-      console.log('Using pattern:', taxonomy.regex_pattern)
+      console.log('Using regex_pattern:', taxonomy.regex_pattern)
 
       // For most taxonomies, the full tag is taxonomy:value
       // But for product_version, the tag should be just the user input
@@ -1016,13 +1016,13 @@ export default {
 
         directTagValidation.value = {
           isValid,
-          error: isValid ? '' : `Tag does not match pattern: ${taxonomy.regex_pattern}`
+          error: isValid ? '' : `Tag does not match regex_pattern: ${taxonomy.regex_pattern}`
         }
       } catch (error) {
         console.error('Error validating direct tag:', error)
         directTagValidation.value = {
           isValid: false,
-          error: 'Invalid regex pattern'
+          error: 'Invalid regex regex_pattern'
         }
       }
     }
@@ -1046,7 +1046,7 @@ export default {
 
     // Tag creation functions
     const getRelatedTags = (targetTaxonomy) => {
-      // Find tags that match the target taxonomy pattern
+      // Find tags that match the target taxonomy regex_pattern
       const targetTax = availableTaxonomies.value.find(t => t.id === targetTaxonomy)
       if (!targetTax) return []
 
@@ -1057,10 +1057,10 @@ export default {
       const taxonomy = availableTaxonomies.value.find(t => t.id === selectedTaxonomy.value)
       if (!taxonomy || !taxonomy.relations) return ''
 
-      // Build tag based on taxonomy pattern and selected values
+      // Build tag based on taxonomy regex_pattern and selected values
       let tagPattern = taxonomy.id
 
-      // Order relations according to the taxonomy pattern or user-defined order
+      // Order relations according to the taxonomy regex_pattern or user-defined order
       // This should be configurable by the user in the future
       const relationOrder = taxonomy.relation_order ||
         taxonomy.relations.map(r => r.group).filter(Boolean) ||
@@ -1318,9 +1318,9 @@ export default {
         return false
       }
 
-      // Check if tag pattern contains relationship indicators
+      // Check if tag regex_pattern contains relationship indicators
       const hasRelationIndicators = taxonomy.relations.some(relation => {
-        const relationPattern = relation.pattern
+        const relationPattern = relation.regex_pattern
         // Simple check: does tag name contain relation indicators like ':' or '_'?
         return relationPattern.includes(':') || relationPattern.includes('_')
       })

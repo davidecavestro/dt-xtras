@@ -1,17 +1,17 @@
 taxonomies:
   - id: "customer"
     name: "Customer"
-    pattern: '^cust:(?P<id>\w+)$'
+    regex_pattern: '^cust:(?P<id>\w+)$'
     priority: 1
 
   - id: "env"
     name: "Environment"
-    pattern: '^env:(?P<env_type>\w+)$'
+    regex_pattern: '^env:(?P<env_type>\w+)$'
     priority: 2
 
   - id: "deploy"
     name: "Deployment"
-    pattern: '^deploy:(?P<env>\w+):(?P<customer>cust:\w+):(?P<product_version>[\w-]+:[\d\.]+)$'
+    regex_pattern: '^deploy:(?P<env>\w+):(?P<customer>cust:\w+):(?P<product_version>[\w-]+:[\d\.]+)$'
     priority: 3
     relations:
       - group: "env"
@@ -23,5 +23,5 @@ taxonomies:
 
   - id: "product_version"
     name: "Product Version"
-    pattern: '^(?!(?:env|cust|deploy):)(?P<product_name>[\w-]+):(?P<version>[\d\w\.-]+)$'
+    regex_pattern: '^(?!(?:env|cust|deploy):)(?P<product_name>[\w-]+):(?P<version>[\d\w\.-]+)$'
     priority: 4

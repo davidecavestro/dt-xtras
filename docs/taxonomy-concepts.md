@@ -34,7 +34,7 @@ The taxonomy system categorizes project tags and defines semantic relationships 
 
 **Example - Deployment Taxonomy:**
 ```yaml
-pattern: ^deploy:(?<env>\w+):(?<customer>\w+):(?<product_version>[\w-]+:[\d\.]+)$
+regex_pattern: ^deploy:(?<env>\w+):(?<customer>\w+):(?<product_version>[\w-]+:[\d\.]+)$
 relations:
   - group: env, targets: env
   - group: customer, targets: customer

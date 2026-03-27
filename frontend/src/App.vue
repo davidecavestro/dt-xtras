@@ -10,7 +10,10 @@
     ]">
       <!-- Sidebar Header -->
       <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
-        <div class="flex items-center flex-1 min-w-0">
+        <div :class="[
+          'flex items-center flex-1 min-w-0',
+          { 'pl-2': !sidebarOpen }
+        ]">
           <LogoWithText
             :size="sidebarOpen ? 'medium' : 'small'"
             :variant="isDark ? 'dark' : 'default'"
@@ -178,7 +181,7 @@
       </div>
 
       <!-- Bottom Toggle Handle (always visible) -->
-      <div class="hidden lg:flex absolute bottom-0 left-0 right-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div class="hidden lg:flex fixed bottom-0 left-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-50" :class="sidebarOpen ? 'w-64' : 'w-16'">
         <button
           @click="toggleSidebar"
           class="w-full flex items-center justify-center p-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"

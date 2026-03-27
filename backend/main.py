@@ -119,13 +119,11 @@ class Taxonomy(BaseModel):
     regex_pattern: str
     priority: int
     relations: Optional[List[TaxonomyRelation]] = None
-    special: Optional[bool] = None
-    special_type: Optional[str] = None
-    hierarchy_order: Optional[List[str]] = None
+    associative: Optional[bool] = None
 
     # For backward compatibility with new YAML format
     @property
-    def pattern(self) -> str:
+    def regex_pattern(self) -> str:
         return self.regex_pattern
 
 class DTProject(BaseModel):
@@ -199,26 +197,13 @@ def load_taxonomies() -> List[Taxonomy]:
             data = yaml.safe_load(f)
             print(f"Loaded YAML data: {data}")
 
-            # Handle both new format (with taxonomies key) and old format (direct array)
             if isinstance(data, dict) and "taxonomies" in data:
                 print(f"Loading {len(data['taxonomies'])} taxonomies from new format")
-                # Map 'pattern' field to 'regex_pattern' for Pydantic model
                 taxonomies = []
                 for item in data["taxonomies"]:
                     item_data = item.copy()
-                    if 'pattern' in item_data:
-                        item_data['regex_pattern'] = item_data.pop('pattern')
-                    taxonomies.append(Taxonomy(**item_data))
-                return taxonomies
-            elif isinstance(data, list):
-                # Backward compatibility for old format
-                print(f"Loading {len(data)} taxonomies from old format")
-                # Map 'pattern' field to 'regex_pattern' for Pydantic model
-                taxonomies = []
-                for item in data:
-                    item_data = item.copy()
-                    if 'pattern' in item_data:
-                        item_data['regex_pattern'] = item_data.pop('pattern')
+                    # Mark as associative if item_data has as much relations as the number of capture groups obtained from the compiled regex regex_pattern
+                    item_data['associative'] = len(item_data.get('relations', [])) == regex.compile(item_data['regex_pattern']).groups
                     taxonomies.append(Taxonomy(**item_data))
                 return taxonomies
             else:
@@ -234,13 +219,9 @@ def save_taxonomies(taxonomies: List[Taxonomy]):
     try:
         os.makedirs(os.path.dirname(TAXONOMIES_FILE), exist_ok=True)
         with open(TAXONOMIES_FILE, 'w') as f:
-            # Save in new format with taxonomies key, mapping regex_pattern back to pattern
             taxonomy_data = []
             for t in taxonomies:
                 item = t.dict()
-                # Map regex_pattern back to pattern for YAML format
-                if 'regex_pattern' in item:
-                    item['pattern'] = item.pop('regex_pattern')
                 taxonomy_data.append(item)
             yaml.dump({"taxonomies": taxonomy_data}, f, default_flow_style=False)
     except Exception as e:
@@ -445,7 +426,7 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
                         version_info[f'{taxonomy.id}_id'] = groups[taxonomy.id]
                         version_info[f'{taxonomy.id}_name'] = groups[taxonomy.id]
             except Exception as e:
-                print(f"Error with regex pattern '{taxonomy.regex_pattern}': {e}")
+                print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
                 continue
 
         # Create ProjectVersion object
@@ -638,7 +619,7 @@ async def delete_project_version(version_id: str, dt_token: str = Depends(get_dt
 # Tag Management (using DT native API)
 @app.get("/api/tags")
 async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
-    """Get all tags from DT with project counts"""
+    """Get all tags from DT with project counts and taxonomy information"""
     try:
         headers = {}
         if dt_token:
@@ -672,15 +653,36 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
             dt_tags = response.json()
             print(f"Successfully retrieved {len(dt_tags)} tags from DT")
 
-            # DT API already returns project counts, so just transform the format
-            tags_with_counts = []
+            # Load taxonomies to determine taxonomy for each tag
+            taxonomies = load_taxonomies()
+            print(f"Loaded {len(taxonomies)} taxonomies for tag categorization")
+
+            # Transform tags and add taxonomy information
+            tags_with_taxonomy = []
             for dt_tag in dt_tags:
-                tags_with_counts.append({
-                    'name': dt_tag.get('name', ''),
-                    'projectsCount': dt_tag.get('projectCount', 0)
+                tag_name = dt_tag.get('name', '')
+                taxonomy_id = None
+
+                # Find taxonomy that matches this tag
+                for taxonomy in taxonomies:
+                    try:
+                        # Use regex library for better JS compatibility
+                        js_pattern = regex.compile(taxonomy.regex_pattern)
+                        match = js_pattern.match(tag_name)
+                        if match:
+                            taxonomy_id = taxonomy.id
+                            break
+                    except Exception as e:
+                        print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
+                        continue
+
+                tags_with_taxonomy.append({
+                    'name': tag_name,
+                    'projectsCount': dt_tag.get('projectCount', 0),
+                    'taxonomy': taxonomy_id
                 })
 
-            return tags_with_counts
+            return tags_with_taxonomy
 
     except httpx.HTTPError as e:
         error_msg = f"DT API connection failed: {e}"
@@ -713,7 +715,7 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
                     print(f"Tag '{tag_name}' matches taxonomy '{taxonomy.id}'")
                     break
             except Exception as e:
-                print(f"Error with regex pattern '{taxonomy.regex_pattern}': {e}")
+                print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
                 continue
 
         headers = {}
@@ -862,7 +864,7 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
                         groups = match.groupdict()
                         project_path.append((taxonomy.id, groups.get(taxonomy.id, project_version.name)))
                 except Exception as e:
-                    print(f"Error with regex pattern '{taxonomy.regex_pattern}': {e}")
+                    print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
                     continue
 
             # Create or update nodes in hierarchy
@@ -960,7 +962,7 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
                                                     if n.id != node.id
                                                 ]
                             except Exception as e:
-                                print(f"Error with regex pattern '{taxonomy.regex_pattern}': {e}")
+                                print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
                                 continue
 
         # Calculate roll-up metrics
