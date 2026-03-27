@@ -13,43 +13,57 @@
       </div>
 
       <!-- Taxonomy Form -->
-      <div v-if="editingTaxonomy" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+      <div v-if="editingTaxonomy" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
           {{ isEditingExisting ? 'Edit Taxonomy' : 'Create Taxonomy' }}
         </h3>
-
-        <div class="grid grid-cols-1 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- ID Field -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              ID
-              <span v-if="isEditingExisting" class="ml-2 text-xs text-gray-500 dark:text-gray-400">(read-only when editing)</span>
-            </label>
-            <input
-              :value="editingTaxonomy.id"
-              @input="editingTaxonomy.id = $event.target.value"
-              type="text"
-              :disabled="isEditingExisting"
-              :class="[
-                'mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm',
-                isEditingExisting
-                  ? 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                  : 'border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
-              ]"
-              placeholder="e.g., customer, env, product"
-            />
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Unique identifier for this taxonomy level</p>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">ID</label>
+            <div class="flex items-center gap-2">
+              <input
+                :value="editingTaxonomy.id"
+                @input="editingTaxonomy.id = $event.target.value"
+                type="text"
+                :disabled="isEditingExisting"
+                class="mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+                placeholder="e.g., customer, env, product"
+              />
+            </div>
           </div>
 
+          <!-- Name Field -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
             <input
               v-model="editingTaxonomy.name"
               type="text"
-              class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+              class="mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
               placeholder="e.g., Customer, Environment, Product"
             />
           </div>
 
+          <!-- Color Field -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="editingTaxonomy.color"
+                type="color"
+                class="w-16 h-8 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                :title="`Color for ${editingTaxonomy.name || 'taxonomy'}`"
+              />
+              <input
+                type="text"
+                v-model="editingTaxonomy.color"
+                class="hidden"
+                placeholder="#ef4444"
+              />
+            </div>
+          </div>
+
+          <!-- Relations Field -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Relations</label>
             <textarea
@@ -61,6 +75,7 @@
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Priority is set by drag-and-drop order in the list below</p>
           </div>
 
+          <!-- Regex Pattern Field -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regex Pattern</label>
             <textarea
@@ -69,6 +84,23 @@
               class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
               placeholder="e.g., ^cust:(?<id>\w+)$"
             ></textarea>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
+              <div class="flex items-center gap-2">
+                <input
+                  v-model="editingTaxonomy.color"
+                  type="color"
+                  class="w-16 h-8 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                  :title="`Color for ${editingTaxonomy.name || 'taxonomy'}`"
+                />
+                <input
+                  type="text"
+                  v-model="editingTaxonomy.color"
+                  class="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+                  placeholder="#ef4444"
+                />
+              </div>
+            </div>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Use named capture groups (?P&lt;name&gt;regex_patternattern) to extract values.
               The group name should match the taxonomy ID for relations.
@@ -290,6 +322,7 @@ const editingTaxonomy = ref({
   id: '',
   name: '',
   regex_pattern: '^.*$', // Default regex_patternattern - matches anything
+  color: '#ef4444', // Default color
   priority: 1,
   relations: []
 })
@@ -494,7 +527,7 @@ const draggedIndex = ref(null)
             selector: 'node',
             style: {
               'shape': function(ele) {
-                return ele.data('associative') ? 'rectangle' : 'circle';
+                return ele.data('associative') ? 'round-rectangle' : 'round-tag';
               },
               'background-color': '#3B82F6',
               'label': 'data(label)',
@@ -666,6 +699,12 @@ const draggedIndex = ref(null)
 
     onMounted(() => {
       loadTaxonomies()
+
+      // Listen for edit events from graph
+      window.addEventListener('editTaxonomyFromGraph', (event) => {
+        const { taxonomy } = event.detail;
+        editTaxonomy(taxonomy);
+      });
     })
 
     // Rebuild graph when taxonomies change
