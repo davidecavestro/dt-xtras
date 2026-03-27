@@ -344,7 +344,7 @@ export default {
 
       // Generate suggestions based on current input and taxonomies
       taxonomies.value.forEach(taxonomy => {
-        // Check if current input already matches this taxonomy pattern
+        // Check if current input already matches this taxonomy regex_pattern
         try {
           // Use native RegExp for JS regex compatibility
           const regex = new RegExp(taxonomy.regex_pattern)
@@ -376,7 +376,7 @@ export default {
             }
           }
         } catch (error) {
-          console.error('Invalid regex pattern:', taxonomy.regex_pattern, error)
+          console.error('Invalid regex regex_patternattern:', taxonomy.regex_pattern, error)
         }
       })
 
@@ -445,7 +445,7 @@ export default {
         return
       }
 
-      // Check if tag matches any taxonomy pattern
+      // Check if tag matches any taxonomy regex_patternattern
       const matchingTaxonomy = taxonomies.value.find(taxonomy => {
         try {
           // Use native RegExp for JS regex compatibility
@@ -453,7 +453,7 @@ export default {
           const matches = regex.test(tag)
           return matches
         } catch (error) {
-          console.error('Invalid regex pattern:', taxonomy.regex_pattern, error)
+          console.error('Invalid regex regex_pattern:', taxonomy.regex_pattern, error)
           return false
         }
       })

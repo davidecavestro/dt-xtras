@@ -79,8 +79,8 @@ console.log('\n=== VERIFICATION ===');
 
 // Verify capture group order is followed
 const expectedEdges = [
-  { source: 'env:prod', target: 'cust:acme', pattern: 'env_to_customer' },
-  { source: 'cust:acme', target: 'myapp:1.0.0', pattern: 'customer_to_product_version' }
+  { source: 'env:prod', target: 'cust:acme', regex_pattern: 'env_to_customer' },
+  { source: 'cust:acme', target: 'myapp:1.0.0', regex_pattern: 'customer_to_product_version' }
 ];
 
 let allEdgesCorrect = true;
@@ -90,10 +90,10 @@ expectedEdges.forEach(expected => {
     (edge.target === expected.source && edge.source === expected.target)
   );
 
-  if (found && found.group.includes(expected.pattern)) {
-    console.log(`✅ Correct edge: ${expected.source} -> ${expected.target} (${expected.pattern})`);
+  if (found && found.group.includes(expected.regex_pattern)) {
+    console.log(`✅ Correct edge: ${expected.source} -> ${expected.target} (${expected.regex_pattern})`);
   } else {
-    console.log(`❌ Missing edge: ${expected.source} -> ${expected.target} (${expected.pattern})`);
+    console.log(`❌ Missing edge: ${expected.source} -> ${expected.target} (${expected.regex_pattern})`);
     allEdgesCorrect = false;
   }
 });

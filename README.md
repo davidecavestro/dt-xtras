@@ -31,7 +31,7 @@
 
 - **Hierarchical Dashboard**: Tree-table view with expandable/collapsible nodes
 - **DT-style Visualizations**: Vulnerability severity bars and risk score badges
-- **Taxonomy Editor**: Interactive regex pattern testing and taxonomy management
+- **Taxonomy Builder**: Interactive regex regex_pattern testing and taxonomy management
 - **Tag Manager**: Complete CRUD operations for tags with project linking
 - **Real-time Updates**: Live data refresh with loading states
 - **Dark Theme Support**: Complete dark mode implementation with user preference persistence
@@ -101,7 +101,7 @@ Raw Data → Classification → Structured Data → Hierarchical Views
 taxonomies:
   - id: "customer"
     name: "Customer"
-    pattern: '^cust:(?<id>\w+)$'
+    regex_pattern: '^cust:(?<id>\w+)$'
     priority: 1
 ```
 
@@ -111,17 +111,17 @@ taxonomies:
 taxonomies:
   - id: "customer"
     name: "Customer"
-    pattern: '^cust:(?<id>\w+)$'
+    regex_pattern: '^cust:(?<id>\w+)$'
     priority: 1
 
   - id: "env"
     name: "Environment"
-    pattern: '^env:(?<env_type>\w+)$'
+    regex_pattern: '^env:(?<env_type>\w+)$'
     priority: 2
 
   - id: "deploy"
     name: "Deployment"
-    pattern: '^deploy:(?<env>\w+):(?<customer>\w+):(?<product_version>[\w-]+:[\d\.]+)$'
+    regex_pattern: '^deploy:(?<env>\w+):(?<customer>\w+):(?<product_version>[\w-]+:[\d\.]+)$'
     priority: 3
     relations:
       - group: "env"
@@ -133,7 +133,7 @@ taxonomies:
 
   - id: "product_version"
     name: "Product Version"
-    pattern: '^(?!(?:env|cust|deploy):)(?<product_name>[\w-]+):(?<version>[\d\w\.-]+)$'
+    regex_pattern: '^(?!(?:env|cust|deploy):)(?<product_name>[\w-]+):(?<version>[\d\w\.-]+)$'
     priority: 4
 ```
 
@@ -189,7 +189,7 @@ The product version taxonomy supports various version formats:
 
 - **`id`**: Unique identifier for the taxonomy level
 - **`name`**: Display name for the UI
-- **`pattern`**: Regex pattern with named capture groups
+- **`regex_pattern`**: Regex regex_pattern with named capture groups
 - **`priority`**: Processing order (lower numbers = higher priority)
 - **`relations`**: Optional parent-child relationship definitions
   - **`group`**: Capture group name to match
@@ -329,7 +329,7 @@ npm run format
    ```bash
    curl -X POST http://localhost:8000/api/taxonomies \
      -H "Content-Type: application/json" \
-     -d '{"id": "customer", "name": "Customer", "pattern": "^cust:(?<id>\\w+)$", "priority": 1}'
+     -d '{"id": "customer", "name": "Customer", "regex_pattern": "^cust:(?<id>\\w+)$", "priority": 1}'
    ```
 
 2. **Environment Level with Customer Relations:**
@@ -339,7 +339,7 @@ npm run format
      -d '{
        "id": "environment",
        "name": "Deploy Environment",
-       "pattern": "^deploy:(?<env>\\w+):(?<customer>cust:\\w+):(?<product_version>[\\w-]+:[\\d\\.]+)$",
+       "regex_pattern": "^deploy:(?<env>\\w+):(?<customer>cust:\\w+):(?<product_version>[\\w-]+:[\\d\\.]+)$",
        "priority": 2,
        "relations": [
          {"group": "customer", "targets": "customer"}

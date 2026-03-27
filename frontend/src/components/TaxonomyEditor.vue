@@ -2,7 +2,7 @@
   <div class="px-4 py-6 sm:px-0">
     <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Taxonomy Editor</h2>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Taxonomy Builder</h2>
         <button
           @click="createNewTaxonomy"
           class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -70,7 +70,7 @@
               placeholder="e.g., ^cust:(?<id>\w+)$"
             ></textarea>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Use named capture groups (?P&lt;name&gt;pattern) to extract values.
+              Use named capture groups (?P&lt;name&gt;regex_patternattern) to extract values.
               The group name should match the taxonomy ID for relations.
             </p>
           </div>
@@ -289,7 +289,7 @@ const taxonomies = ref([])
 const editingTaxonomy = ref({
   id: '',
   name: '',
-  regex_pattern: '^.*$', // Default pattern - matches anything
+  regex_pattern: '^.*$', // Default regex_patternattern - matches anything
   priority: 1,
   relations: []
 })
@@ -342,7 +342,7 @@ const draggedIndex = ref(null)
       editingTaxonomy.value = {
         id: '',
         name: '',
-        regex_pattern: '^.*$', // Default pattern - matches anything
+        regex_pattern: '^.*$', // Default regex_pattern - matches anything
         relations: []
       }
       testTags.value = ''
@@ -458,6 +458,7 @@ const draggedIndex = ref(null)
         data: {
           id: taxonomy.id,
           label: taxonomy.name,
+          associative: taxonomy.associative || false,
           priority: taxonomy.priority,
           relations: taxonomy.relations || []
         }
@@ -492,13 +493,16 @@ const draggedIndex = ref(null)
           {
             selector: 'node',
             style: {
+              'shape': function(ele) {
+                return ele.data('associative') ? 'rectangle' : 'circle';
+              },
               'background-color': '#3B82F6',
               'label': 'data(label)',
               'text-valign': 'center',
               'text-halign': 'center',
               'color': '#ffffff',
-              'font-size': '12px',
-              'width': '60px',
+              'font-size': '14px',
+              'width': '150px',
               'height': '60px',
               'border-width': '2px',
               'border-color': '#1E40AF'
@@ -527,7 +531,7 @@ const draggedIndex = ref(null)
           }
         ],
         layout: {
-          name: 'circle',
+          name: 'dagre',
           radius: 150,
           animate: true,
           animationDuration: 1000
@@ -633,7 +637,7 @@ const draggedIndex = ref(null)
     }
 
     const getNodeIcon = (node) => {
-      // Use user-defined icon or suggest based on ID pattern
+      // Use user-defined icon or suggest based on ID regex_pattern
       if (node.icon) return node.icon
 
       // Suggest icons based on common patterns (optional, can be overridden)
@@ -651,8 +655,8 @@ const draggedIndex = ref(null)
       }
 
       // Check if ID contains any known patterns
-      for (const [pattern, icon] of Object.entries(suggestions)) {
-        if (node.id.toLowerCase().includes(pattern)) {
+      for (const [regex_pattern, icon] of Object.entries(suggestions)) {
+        if (node.id.toLowerCase().includes(regex_pattern)) {
           return icon
         }
       }
