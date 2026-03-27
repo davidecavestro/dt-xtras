@@ -1,3 +1,62 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Global font size increases for better readability */
+html {
+  font-size: 20px !important;
+  /* Increase from default 14px */
+}
+
+body {
+  font-size: 22px !important;
+  /* Ensure consistent font size */
+}
+
+/* Larger text for better readability - override Tailwind defaults */
+.text-base {
+  font-size: 1rem !important;
+  /* 16px instead of 14px */
+}
+
+.text-sm {
+  font-size: 0.875rem !important;
+  /* 14px instead of 12px */
+}
+
+.text-xs {
+  font-size: 0.75rem !important;
+  /* 12px instead of 10px */
+}
+
+/* Even larger for headers */
+.text-lg {
+  font-size: 1.125rem !important;
+  /* 18px instead of 16px */
+}
+
+.text-xl {
+  font-size: 1.25rem !important;
+  /* 20px instead of 18px */
+}
+
+.text-2xl {
+  font-size: 1.5rem !important;
+  /* 24px instead of 20px */
+}
+
+/* Force larger fonts for all elements */
+div,
+p,
+span,
+button,
+h1,
+h2,
+h3,
+h4,
+label,
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
