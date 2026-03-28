@@ -2,7 +2,7 @@
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6">
-      <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Tag Graph</h1>
+      <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Tags Graph</h1>
 
       <!-- Controls -->
       <div class="flex items-center space-x-6">
@@ -70,7 +70,7 @@
       <!-- Cytoscape Graph -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
         <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Visualization</h2>
-        <div ref="cytoscapeContainer" class="w-full h-96 lg:h-[600px] border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700"></div>
+        <div ref="cytoscapeContainer" class="w-full h-96 lg:h-[600px] border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 resize overflow-hidden"></div>
       </div>
 
       <!-- Graph Controls -->
@@ -108,17 +108,6 @@
               class="mt-1 block w-full"
             />
             <div class="text-sm text-gray-600 dark:text-gray-400">{{ nodeSpacing }}px</div>
-          </div>
-
-          <!-- Show Labels Toggle -->
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show Labels:</label>
-            <input
-              v-model="showLabels"
-              @change="updateGraphLayout"
-              type="checkbox"
-              class="mt-1"
-            />
           </div>
         </div>
       </div>
@@ -176,28 +165,28 @@ export default {
   setup() {
     // Reactive variables
     const graphData = ref(null);
-    const selectedTaxonomy = ref(null);
-    const associativeMode = ref(true);
     const loading = ref(true);
     const error = ref(null);
-    const taxonomiesData = ref([]);
-
-    // Cytoscape controls
-    const layoutAlgorithm = ref('dagre');
-    const nodeSpacing = ref(100);
-    const showLabels = ref(true);
+    const tags = ref(null);
+    const taxonomies = ref(null);
+    const taxonomiesData = ref(null);
+    const allTaxonomiesData = ref(null); // For color mapping
+    const selectedTaxonomy = ref(null);
+    const associativeMode = ref(false);
     const selectedNode = ref(null);
     const cytoscapeContainer = ref(null);
     const cytoscapeInstance = ref(null);
+    const layoutAlgorithm = ref('dagre');
+    const nodeSpacing = ref(50);
 
     const graphBuilder = new SimpleTaxonomyGraphBuilder();
 
     // Taxonomy colors - now dynamic based on user choices
     const taxonomyColors = computed(() => {
       const colors = {};
-      if (taxonomiesData.value) {
-        taxonomiesData.value.forEach(taxonomy => {
-          colors[taxonomy.id] = taxonomy.color || '#6b7280'; // Use user color or fallback
+      if (allTaxonomiesData.value) {
+        allTaxonomiesData.value.forEach(taxonomy => {
+          colors[taxonomy.id] = taxonomy.color || '#6b7280';
         });
       }
       return colors;
@@ -242,11 +231,12 @@ export default {
           throw new Error('Failed to fetch data');
         }
 
-        // Store taxonomies data filtering associative taxonomies
+        // Store taxonomies data filtering associative taxonomies for graph building, but keep all for colors
+        allTaxonomiesData.value = taxonomies; // Store all taxonomies for color mapping
         taxonomiesData.value = associativeMode.value ? taxonomies.filter(taxonomy => taxonomy.relations !== undefined) : taxonomies;
 
         // Build graph with current mode
-        const graph = graphBuilder.buildGraph(tags.data || tags, taxonomies, selectedTaxonomy.value, associativeMode.value);
+        const graph = graphBuilder.buildGraph(tags.data || tags, taxonomiesData.value, selectedTaxonomy.value, associativeMode.value);
         graphData.value = graph;
 
       } catch (err) {
@@ -334,24 +324,34 @@ export default {
             selector: 'node',
             style: {
               'shape': function(ele) {
-                return ele.data('associative') ? 'round-rectangle' : 'round-tag';
+                return ele.data('associative') ? 'round-rectangle' : 'barrel';
               },
-              'background-color': 'data(taxonomy)',
               'background-color': function(ele) {
-                return taxonomyColors[ele.data('taxonomy')] || '#6b7280';
+                const colors = taxonomyColors.value;
+                return colors[ele.data('taxonomy')] || '#6b7280';
               },
-              'label': showLabels.value ? 'data(label)' : '',
+              'color': function(ele) {
+                // Get background color
+                const colors = taxonomyColors.value;
+                const bgColor = colors[ele.data('taxonomy')] || '#6b7280';
+                // Convert hex to RGB for luminance calculation
+                const hex = bgColor.replace('#', '');
+                const r = parseInt(hex.substr(0, 2), 16);
+                const g = parseInt(hex.substr(2, 2), 16);
+                const b = parseInt(hex.substr(4, 2), 16);
+                // Calculate luminance
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                // Return black text for light backgrounds, white for dark
+                return luminance > 0.5 ? '#000000' : '#FFFFFF';
+              },
+              'label': 'data(label)',
               'text-valign': 'center',
               'text-halign': 'center',
-              'color': '#ffffff',
               'font-size': '14px',
               'width': function(ele) {
                 return ele.data('associative') ? '250px' : '150px';
               },
-              'height': '60px',
-              'text-outline-width': 2,
-              'text-outline-color': '#000000',
-              'text-outline-opacity': 0.3
+              'height': '60px'
             }
           },
           {
@@ -478,10 +478,20 @@ export default {
     // Lifecycle
     onMounted(() => {
       loadData();
+
+      // Add resize observer to handle container resizing
+      if (cytoscapeContainer.value) {
+        const resizeObserver = new ResizeObserver(() => {
+          if (cytoscapeInstance.value) {
+            cytoscapeInstance.value.resize();
+          }
+        });
+        resizeObserver.observe(cytoscapeContainer.value);
+      }
     });
 
     // Watch for data changes
-    watch([graphData, layoutAlgorithm, nodeSpacing, showLabels], () => {
+    watch([graphData, layoutAlgorithm, nodeSpacing], () => {
       if (graphData.value) {
         nextTick(() => {
           renderCytoscapeGraph();
@@ -506,7 +516,6 @@ export default {
       taxonomiesData,
       layoutAlgorithm,
       nodeSpacing,
-      showLabels,
       selectedNode,
       cytoscapeContainer,
       taxonomyColors,
