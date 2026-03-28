@@ -111,6 +111,75 @@
           </div>
         </div>
       </div>
+
+      <!-- Related Projects Section -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Related Projects</h2>
+
+        <!-- Selected Node Info -->
+        <div v-if="selectedNode" class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
+          <div class="text-sm font-medium text-gray-700 dark:text-gray-300">Selected Node:</div>
+          <div class="text-sm text-gray-900 dark:text-white">{{ selectedNode.label || selectedNode.id }}</div>
+        </div>
+
+        <!-- Projects List -->
+        <div v-if="relatedProjects.length > 0" class="space-y-2">
+          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ relatedProjects.length }} projects found
+          </div>
+          <div class="max-h-96 overflow-y-auto space-y-2">
+            <div
+              v-for="project in relatedProjects"
+              :key="project.uuid"
+              class="p-3 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
+            >
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
+                </div>
+                <a
+                  :href="getDependencyTrackUrl(project.uuid)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
+                  title="View in Dependency-Track"
+                >
+                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
+                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                  </svg>
+                  DT
+                </a>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ project.tags.join(', ') }}</div>
+
+              <!-- Security Info -->
+              <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
+                <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
+                  🔴 {{ project.metrics.critical }} Critical
+                </span>
+                <span v-if="project.metrics.high > 0" class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
+                  🟠 {{ project.metrics.high }} High
+                </span>
+                <span v-if="project.metrics.medium > 0" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">
+                  🟡 {{ project.metrics.medium }} Medium
+                </span>
+                <span v-if="project.metrics.low > 0" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                  🔵 {{ project.metrics.low }} Low
+                </span>
+                <span v-if="getTotalVulnerabilities(project.metrics) === 0" class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
+                  ✅ No Vulnerabilities
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="text-sm text-gray-500 dark:text-gray-400">
+          {{ selectedNode ? 'No projects found for this selection' : 'Select a node to see related projects' }}
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -143,6 +212,7 @@ export default {
     const cytoscapeInstance = ref(null);
     const layoutAlgorithm = ref('dagre');
     const nodeSpacing = ref(50);
+    const relatedProjects = ref([]);
 
     const graphBuilder = new SimpleTaxonomyGraphBuilder();
 
@@ -450,6 +520,7 @@ export default {
 
     const selectNode = (node) => {
       selectedNode.value = node;
+      updateRelatedProjects(node);
       console.log('Selected node:', node);
     };
 
@@ -461,6 +532,84 @@ export default {
     const getNodeConnections = (nodeId, direction) => {
       if (!graphData.value?.edges) return 0;
       return graphData.value.edges.filter(edge => edge[direction] === nodeId);
+    };
+
+    // Find all reachable tags from a selected node
+    const findReachableTags = (startNodeId) => {
+      if (!graphData.value?.nodes || !graphData.value?.edges) return new Set();
+
+      const visited = new Set();
+      const queue = [startNodeId];
+      const reachableTags = new Set();
+
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        if (visited.has(currentId)) continue;
+
+        visited.add(currentId);
+        reachableTags.add(currentId);
+
+        // Find all connected nodes (both incoming and outgoing)
+        const connectedNodes = graphData.value.edges
+          .filter(edge => edge.source === currentId || edge.target === currentId)
+          .map(edge => edge.source === currentId ? edge.target : edge.source);
+
+        connectedNodes.forEach(nodeId => {
+          if (!visited.has(nodeId)) {
+            queue.push(nodeId);
+          }
+        });
+      }
+
+      return reachableTags;
+    };
+
+    // Get projects for a set of tags
+    const getProjectsForTags = async (tagIds) => {
+      if (!tagIds || tagIds.size === 0) return [];
+
+      try {
+        // Get all projects first, then filter by tags
+        const response = await axios.get('/api/projects');
+        const allProjects = response.data;
+
+        // Filter projects that have any of the specified tags
+        const filteredProjects = allProjects.filter(project => {
+          const projectTags = project.tags || [];
+          return Array.from(tagIds).some(tagId => projectTags.includes(tagId));
+        });
+
+        return filteredProjects;
+      } catch (error) {
+        console.error('Error fetching projects for tags:', error);
+        return [];
+      }
+    };
+
+    // Update related projects when node is selected
+    const updateRelatedProjects = async (node) => {
+      if (!node) {
+        relatedProjects.value = [];
+        return;
+      }
+
+      const reachableTags = findReachableTags(node.id);
+      const projects = await getProjectsForTags(reachableTags);
+      relatedProjects.value = projects;
+    };
+
+    // Helper function to get Dependency-Track URL for a project
+    const getDependencyTrackUrl = (projectUuid) => {
+      // Assuming DT runs on the same host but different port/path
+      // This might need to be adjusted based on your DT configuration
+      const dtBaseUrl = window.location.origin.replace(':5173', ':8080'); // Adjust port if needed
+      return `${dtBaseUrl}/#/project/${projectUuid}`;
+    };
+
+    // Helper function to get total vulnerability count
+    const getTotalVulnerabilities = (metrics) => {
+      if (!metrics) return 0;
+      return (metrics.critical || 0) + (metrics.high || 0) + (metrics.medium || 0) + (metrics.low || 0);
     };
 
     // Zoom control functions
@@ -542,6 +691,7 @@ export default {
       taxonomyColors,
       modeDescription,
       taxonomyNodes,
+      relatedProjects,
 
       // Methods
       loadData,
@@ -551,6 +701,11 @@ export default {
       selectNode,
       getTaxonomyDisplayName,
       getNodeConnections,
+      findReachableTags,
+      getProjectsForTags,
+      updateRelatedProjects,
+      getDependencyTrackUrl,
+      getTotalVulnerabilities,
       zoomIn,
       zoomOut,
       resetZoom

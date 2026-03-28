@@ -130,6 +130,7 @@ class Taxonomy(BaseModel):
 class DTProject(BaseModel):
     uuid: str
     name: str
+    version: Optional[str] = None
     tags: List[str]
     metrics: Optional[Dict[str, Any]] = None
 
