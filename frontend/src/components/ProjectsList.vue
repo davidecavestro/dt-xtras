@@ -156,7 +156,7 @@
 
         <!-- Empty State -->
         <div v-if="data.length === 0 && !pagination.loading.value" class="text-center py-8 text-gray-500 dark:text-gray-400">
-          <component :is="Folder" class="mx-auto h-12 w-12 text-gray-400" />
+          <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
           <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {{ filters.search || filters.activeOnly ? 'Try adjusting your filters.' : 'No projects have been created yet.' }}
