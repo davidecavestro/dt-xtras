@@ -1,6 +1,6 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
-    <!-- Row 2: Tree (1/3) + Related Projects (2/3) -->
+    <!-- Row 1: Tree (1/3) + Selected Node + Related Projects (2/3) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Tree Panel (1/3) -->
       <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
@@ -21,16 +21,16 @@
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
-
+        
         <div class="p-4 max-h-96 overflow-y-auto">
           <div v-if="loading" class="text-center py-4">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           </div>
-
+          
           <div v-else-if="treeData.length === 0" class="text-center py-4 text-gray-500 dark:text-gray-400">
             No tree data available
           </div>
-
+          
           <div v-else class="space-y-1">
             <TreeNode
               v-for="node in filteredTreeData"
@@ -46,16 +46,26 @@
         </div>
       </div>
 
-      <!-- Related Projects (2/3) -->
-      <div v-if="selectedTreeNode" class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
+      <!-- Selected Node + Related Projects (2/3) -->
+      <div v-if="selectedTreeNode" class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
         <div class="p-4">
+          <!-- Selected Node Info -->
+          <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Selected Node</h4>
+          <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1 mb-4">
+            <div><strong>Type:</strong> {{ selectedTreeNode.type }}</div>
+            <div><strong>Name:</strong> {{ selectedTreeNode.name }}</div>
+            <div v-if="selectedTreeNode.projectsCount !== undefined">
+              <strong>Projects:</strong> {{ selectedTreeNode.projectsCount }}
+            </div>
+          </div>
+          
           <!-- Related Projects -->
           <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
             <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
               {{ relatedProjects.length }} projects found for "{{ selectedTreeNode.name }}"
             </div>
-
+            
             <!-- Projects List -->
             <div v-if="relatedProjects.length === 0" class="text-center py-8">
               <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
@@ -64,10 +74,10 @@
                 Try selecting a different node or check your connections.
               </p>
             </div>
-
+            
             <div v-else class="max-h-96 overflow-y-auto space-y-2">
-              <div
-                v-for="project in relatedProjects"
+              <div 
+                v-for="project in relatedProjects" 
                 :key="project.uuid"
                 class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
               >
@@ -82,7 +92,7 @@
                     </div>
                   </div>
                 </div>
-
+                
                 <!-- Security Info -->
                 <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
                   <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
@@ -106,16 +116,10 @@
           </div>
         </div>
       </div>
-      <div v-else class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
-        <div class="p-4">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
-          <p class="text-gray-500 dark:text-gray-400">No project selected. Please select a project from the tree to view details.</p>
-        </div>
-      </div>
     </div>
 
-    <!-- Row 2: Security Dashboard -->
-    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-3 mt-6">
+    <!-- Row 2: Security Dashboard (3/3) -->
+    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
       <div class="flex justify-between items-center mb-6 p-6">
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Security Dashboard</h2>
@@ -157,7 +161,8 @@
       <div v-else class="px-4 py-5 sm:px-6">
         <!-- Security Overview -->
         <div class="flex justify-between items-center mb-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Security Overview</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
               <div class="text-center">
                 <div class="text-3xl font-bold text-blue-600 dark:text-blue-300">{{ totalVulnerabilities }}</div>
@@ -201,7 +206,7 @@
 
 <script>
 import { ref, onMounted, computed, watch } from 'vue'
-import { AlertCircle, RefreshCw, Folder, FolderOpen } from 'lucide-vue-next'
+import { AlertCircle, RefreshCw, Folder } from 'lucide-vue-next'
 import axios from 'axios'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import VulnerabilityBar from './VulnerabilityBar.vue'
@@ -214,7 +219,6 @@ export default {
     AlertCircle,
     RefreshCw,
     Folder,
-    FolderOpen,
     RiskScoreBadge,
     VulnerabilityBar,
     TreeNode
@@ -257,28 +261,19 @@ export default {
     })
 
     const filteredSecurityData = computed(() => {
-      // If no node selected, return empty array (no projects to show)
-      if (!selectedTreeNode.value) return []
+      if (!selectedTreeNode.value) return securityData.value
 
-      // Get related projects for the selected node
-      const related = relatedProjects.value
+      // Find all tags reachable from selected node using same logic as graph
+      const reachableTags = findReachableTags(selectedTreeNode.value.id)
 
-      // If no related projects, return empty array
-      if (!related || related.length === 0) return []
-
-      // Extract security data from related projects only
-      return related
-        .filter(project => project.metrics)
-        .map(project => ({
-          name: project.name,
-          type: 'project',
-          vulnerabilities: getProjectVulnerabilities(project.metrics),
-          critical: project.metrics.critical || 0,
-          high: project.metrics.high || 0,
-          medium: project.metrics.medium || 0,
-          low: project.metrics.low || 0,
-          uuid: project.uuid
-        }))
+      // Filter security data by reachable tags
+      return securityData.value.filter(node => {
+        // For SecurityNode, check if node matches any reachable tag
+        return reachableTags && reachableTags.size > 0 && Array.from(reachableTags).some(tag =>
+          node.name.toLowerCase().includes(tag.toLowerCase()) ||
+          node.type?.toLowerCase().includes(tag.toLowerCase())
+        )
+      })
     })
 
     // Reuse computed properties from original dashboard but with filtered data
@@ -618,7 +613,6 @@ export default {
       searchQuery,
       treeData,
       filteredTreeData,
-      filteredSecurityData,
       associativeMode,
       relatedProjects,
       refreshData,
