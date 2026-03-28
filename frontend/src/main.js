@@ -7,6 +7,7 @@ import TaxonomyEditor from './components/TaxonomyEditor.vue'
 import TaxonomyVisualization from './components/TaxonomyVisualization.vue'
 import TagManager from './components/TagManager.vue'
 import ProjectsList from './components/ProjectsList.vue'
+import ProjectCleanup from './components/ProjectCleanup.vue'
 import VulnerabilitiesList from './components/VulnerabilitiesList.vue'
 import Login from './components/Login.vue'
 import authService from './services/auth'
@@ -42,6 +43,11 @@ const routes = [
   {
     path: '/projects',
     component: ProjectsList,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/cleanup',
+    component: ProjectCleanup,
     meta: { requiresAuth: true }
   }
 ]

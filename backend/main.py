@@ -133,6 +133,9 @@ class DTProject(BaseModel):
     version: Optional[str] = None
     tags: List[str]
     metrics: Optional[Dict[str, Any]] = None
+    active: Optional[bool] = True
+    lastActivity: Optional[str] = None
+    lastSbomUpload: Optional[str] = None
 
     @field_validator('tags', mode='before')
     @classmethod
@@ -357,8 +360,42 @@ async def get_dt_projects(dt_token: str) -> List[Dict]:
         projects_data = response.json()
         print(f"Successfully parsed {len(projects_data)} projects")
 
+        # Enrich projects with additional fields
+        enriched_projects = []
+        for project in projects_data:
+            enriched_project = project.copy()
+
+            # Add active field (DT API includes this)
+            if 'active' not in enriched_project:
+                enriched_project['active'] = True  # Default to active if not specified
+
+            # Add lastActivity from lastBomImport or created date (convert timestamps to strings)
+            if 'lastBomImport' in enriched_project:
+                last_bom_import = enriched_project['lastBomImport']
+                if isinstance(last_bom_import, (int, float)):
+                    # Convert Unix timestamp to ISO string
+                    from datetime import datetime
+                    enriched_project['lastActivity'] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
+                    enriched_project['lastSbomUpload'] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
+                else:
+                    enriched_project['lastActivity'] = str(last_bom_import)
+                    enriched_project['lastSbomUpload'] = str(last_bom_import)
+            elif 'created' in enriched_project:
+                created = enriched_project['created']
+                if isinstance(created, (int, float)):
+                    # Convert Unix timestamp to ISO string
+                    from datetime import datetime
+                    enriched_project['lastActivity'] = datetime.fromtimestamp(created / 1000).isoformat()
+                else:
+                    enriched_project['lastActivity'] = str(created)
+            else:
+                enriched_project['lastActivity'] = None
+                enriched_project['lastSbomUpload'] = None
+
+            enriched_projects.append(enriched_project)
+
         # The field_validator in DTProject will handle tag conversion automatically
-        return projects_data
+        return enriched_projects
 
 # Taxonomy CRUD Operations
 @app.get("/api/taxonomies", response_model=List[Taxonomy])
@@ -573,6 +610,55 @@ async def update_project_version(version_id: str, project_version: ProjectVersio
         raise HTTPException(status_code=500, detail=f"Error updating project: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating project version: {e}")
+
+@app.delete("/api/projects/{project_uuid}")
+async def delete_project(project_uuid: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
+    """Delete a project from Dependency-Track"""
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get project first to check if it's active
+            headers = {}
+            if dt_token:
+                headers["Authorization"] = f"Bearer {dt_token}"
+            elif DT_API_KEY:
+                headers["X-Api-Key"] = DT_API_KEY
+
+            # Get project details
+            get_response = await client.get(
+                f"{DT_API_URL}/api/v1/project/{project_uuid}",
+                headers=headers
+            )
+
+            if get_response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Project not found")
+            elif get_response.status_code != 200:
+                raise HTTPException(status_code=get_response.status_code, detail=f"Failed to get project: {get_response.text}")
+
+            project_data = get_response.json()
+
+            # Check if project is active - prevent deletion of active projects
+            if project_data.get('active', True):
+                raise HTTPException(status_code=400, detail="Cannot delete active project. Please deactivate the project first.")
+
+            # Delete project via DT API
+            response = await client.delete(
+                f"{DT_API_URL}/api/v1/project/{project_uuid}",
+                headers=headers
+            )
+
+            if response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Project not found")
+            elif response.status_code == 403:
+                raise HTTPException(status_code=403, detail="Forbidden")
+            elif response.status_code != 204:
+                raise HTTPException(status_code=response.status_code, detail=f"Failed to delete project: {response.text}")
+
+            return {"message": "Project deleted successfully"}
+
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting project: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting project: {e}")
 
 @app.delete("/api/project-versions/{version_id}")
 async def delete_project_version(version_id: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):

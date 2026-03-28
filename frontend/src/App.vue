@@ -70,6 +70,23 @@
         </router-link>
 
         <router-link
+          to="/cleanup"
+          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          :class="[
+            $route.path === '/cleanup'
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+            sidebarOpen ? 'px-3' : 'px-2 justify-center'
+          ]"
+          @click="closeSidebarOnMobile"
+        >
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+          <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Project Cleanup</span>
+        </router-link>
+
+        <router-link
           to="/tags"
           class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
           :class="[
