@@ -12,22 +12,113 @@
         </button>
       </div>
 
+      <div class="grid grid-cols-1 md:grid-cols-2 bg-white dark:bg-gray-800 shadow rounded-lg p-1">
+        <!-- Taxonomy Graph Visualization -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Taxonomy Relations Graph</h3>
+            <button
+              @click="resetGraphView"
+              class="px-3 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700"
+            >
+              Reset View
+            </button>
+          </div>
+
+          <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700" style="height: 400px; position: relative; overflow: hidden;">
+            <div ref="cytoscapeContainer" class="w-full h-full"></div>
+          </div>
+        </div>
+
+        <!-- Taxonomies List -->
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+          <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Existing Taxonomies</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+              Taxonomies are processed in priority order (lower numbers first)
+            </p>
+          </div>
+
+          <ul class="divide-y divide-gray-200 dark:border-gray-700">
+            <li
+              v-for="(taxonomy, index) in taxonomies"
+              :key="taxonomy.id"
+              draggable="true"
+              @dragstart="handleDragStart($event, index)"
+              @dragover="handleDragOver($event)"
+              @drop="handleDrop($event, index)"
+              @dragend="handleDragEnd"
+              class="cursor-move hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div class="px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                  <div class="text-gray-400 dark:text-gray-500">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex items-center">
+                      <span class="text-sm font-medium text-gray-900 dark:text-white">{{ taxonomy.name }}</span>
+                      <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                        {{ taxonomy.id }}
+                      </span>
+                      <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                        Priority: {{ index + 1 }}
+                      </span>
+                    </div>
+                    <div class="mt-1">
+                      <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-gray-800 dark:text-gray-200">{{ taxonomy.regex_pattern }}</code>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex space-x-2">
+                  <button
+                    @click="editTaxonomy(taxonomy)"
+                    class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                  >
+                    <Edit2 class="w-4 h-4" />
+                  </button>
+                  <button
+                    @click="deleteTaxonomy(taxonomy.id)"
+                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+
+          <div v-if="taxonomies.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+            No taxonomies defined yet. Create your first taxonomy to get started.
+          </div>
+        </div>
+      </div>
       <!-- Taxonomy Form -->
-      <div v-if="editingTaxonomy" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+      <div v-if="editingTaxonomy" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mt-5">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
           {{ isEditingExisting ? 'Edit Taxonomy' : 'Create Taxonomy' }}
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- ID Field -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">ID</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              ID
+              <span v-if="isEditingExisting" class="ml-2 text-xs text-gray-500 dark:text-gray-400">(read-only when editing)</span>
+            </label>
             <div class="flex items-center gap-2">
               <input
                 :value="editingTaxonomy.id"
                 @input="editingTaxonomy.id = $event.target.value"
                 type="text"
                 :disabled="isEditingExisting"
-                class="mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+                :class="[
+                  'mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white',
+                  isEditingExisting
+                    ? 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                    : 'border-gray-300 dark:border-gray-600 dark:bg-gray-700'
+                ]"
                 placeholder="e.g., customer, env, product"
               />
             </div>
@@ -42,6 +133,21 @@
               class="mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
               placeholder="e.g., Customer, Environment, Product"
             />
+          </div>
+
+          <!-- Regex Pattern Field -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regex Pattern</label>
+            <textarea
+              v-model="editingTaxonomy.regex_pattern"
+              rows="3"
+              class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+              placeholder="e.g., ^cust:(?<id>\w+)$"
+            ></textarea>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Use named capture groups <code><strong>(?&lt;name&gt;regex_pattern)</strong></code> to extract values.
+              The group name should match the taxonomy ID for relations.
+            </p>
           </div>
 
           <!-- Color Field -->
@@ -63,56 +169,12 @@
             </div>
           </div>
 
-          <!-- Relations Field -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Relations</label>
-            <textarea
-              v-model="editingTaxonomy.relationsText"
-              rows="3"
-              class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
-              placeholder="Optional: Define relations to other taxonomies (one per line: target_taxonomy:relation_type)"
-            ></textarea>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Priority is set by drag-and-drop order in the list below</p>
-          </div>
-
-          <!-- Regex Pattern Field -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regex Pattern</label>
-            <textarea
-              v-model="editingTaxonomy.regex_pattern"
-              rows="3"
-              class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
-              placeholder="e.g., ^cust:(?<id>\w+)$"
-            ></textarea>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="editingTaxonomy.color"
-                  type="color"
-                  class="w-16 h-8 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
-                  :title="`Color for ${editingTaxonomy.name || 'taxonomy'}`"
-                />
-                <input
-                  type="text"
-                  v-model="editingTaxonomy.color"
-                  class="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
-                  placeholder="#ef4444"
-                />
-              </div>
-            </div>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Use named capture groups (?P&lt;name&gt;regex_patternattern) to extract values.
-              The group name should match the taxonomy ID for relations.
-            </p>
-          </div>
-
           <!-- Relations Section -->
           <div class="mt-6">
             <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Relations (Optional)</h4>
             <div class="space-y-4">
               <div v-for="(relation, index) in editingTaxonomy.relations" :key="index" class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                <div class="grid grid-cols-1 gap-4">
+                <div class="grid grid-cols-3 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Group Name</label>
                     <input
@@ -134,9 +196,11 @@
                   <div class="mt-2">
                     <button
                       @click="removeRelation(index)"
-                      class="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+                      class="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 inline-flex items-center gap-1"
                     >
-                      Remove Relation
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg> Remove
                     </button>
                   </div>
                 </div>
@@ -149,40 +213,40 @@
               </button>
             </div>
           </div>
-        </div>
 
-        <!-- Regex Tester -->
-        <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Test Regex Pattern</h4>
-          <div class="grid grid-cols-1 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Test Tags</label>
-              <input
-                v-model="testTags"
-                type="text"
-                class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
-                placeholder="e.g., customer:acme or env:production or app:webapp"
-              />
-            </div>
-
-            <div>
-              <button
-                @click="testRegex"
-                :disabled="!editingTaxonomy.regex_pattern || !testTags"
-                class="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                Test Pattern
-              </button>
-            </div>
-
-            <div v-if="regexTestResult" class="mt-3">
-              <div v-if="regexTestResult.match" class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-                <p class="text-sm font-medium text-green-800 dark:text-green-200">✅ Match Found</p>
-                <pre class="mt-2 text-xs text-green-700 dark:text-green-300">{{ JSON.stringify(regexTestResult.groups, null, 2) }}</pre>
+          <!-- Regex Tester -->
+          <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Test Regex Pattern</h4>
+            <div class="grid grid-cols-1 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Test Tags</label>
+                <input
+                  v-model="testTags"
+                  type="text"
+                  class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+                  placeholder="e.g., customer:acme or env:production or app:webapp"
+                />
               </div>
-              <div v-else class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                <p class="text-sm font-medium text-red-800 dark:text-red-200">❌ No Match</p>
-                <p v-if="regexTestResult.error" class="mt-1 text-xs text-red-700 dark:text-red-300">{{ regexTestResult.error }}</p>
+
+              <div>
+                <button
+                  @click="testRegex"
+                  :disabled="!editingTaxonomy.regex_pattern || !testTags"
+                  class="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Test Pattern
+                </button>
+              </div>
+
+              <div v-if="regexTestResult" class="mt-3">
+                <div v-if="regexTestResult.match" class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                  <p class="text-sm font-medium text-green-800 dark:text-green-200">✅ Match Found</p>
+                  <pre class="mt-2 text-xs text-green-700 dark:text-green-300">{{ JSON.stringify(regexTestResult.groups, null, 2) }}</pre>
+                </div>
+                <div v-else class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <p class="text-sm font-medium text-red-800 dark:text-red-200">❌ No Match</p>
+                  <p v-if="regexTestResult.error" class="mt-1 text-xs text-red-700 dark:text-red-300">{{ regexTestResult.error }}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -205,107 +269,6 @@
         </div>
       </div>
 
-      <!-- Taxonomy Graph Visualization -->
-      <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white">Taxonomy Relations Graph</h3>
-          <button
-            @click="resetGraphView"
-            class="px-3 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700"
-          >
-            Reset View
-          </button>
-        </div>
-
-        <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700" style="height: 400px; position: relative; overflow: hidden;">
-          <div ref="cytoscapeContainer" class="w-full h-full"></div>
-        </div>
-
-        <!-- Graph Legend -->
-        <div class="mt-4 flex flex-wrap gap-4 text-xs text-gray-600 dark:text-gray-400">
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 bg-blue-500 rounded-full"></div>
-            <span>Selected Taxonomy</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 bg-gray-500 rounded-full"></div>
-            <span>Taxonomy Node</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-0 border-t-2 border-gray-400"></div>
-            <span>Relation</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-0 border-t-2 border-dashed border-gray-400"></div>
-            <span>Group Relation</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Taxonomies List -->
-      <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-        <div class="px-4 py-5 sm:px-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Existing Taxonomies</h3>
-          <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-            Taxonomies are processed in priority order (lower numbers first)
-          </p>
-        </div>
-
-        <ul class="divide-y divide-gray-200 dark:border-gray-700">
-          <li
-            v-for="(taxonomy, index) in taxonomies"
-            :key="taxonomy.id"
-            draggable="true"
-            @dragstart="handleDragStart($event, index)"
-            @dragover="handleDragOver($event)"
-            @drop="handleDrop($event, index)"
-            @dragend="handleDragEnd"
-            class="cursor-move hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            <div class="px-4 py-4 flex items-center justify-between">
-              <div class="flex items-center space-x-3">
-                <div class="text-gray-400 dark:text-gray-500">
-                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <div class="flex items-center">
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ taxonomy.name }}</span>
-                    <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                      {{ taxonomy.id }}
-                    </span>
-                    <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                      Priority: {{ index + 1 }}
-                    </span>
-                  </div>
-                  <div class="mt-1">
-                    <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-gray-800 dark:text-gray-200">{{ taxonomy.regex_pattern }}</code>
-                  </div>
-                </div>
-              </div>
-              <div class="flex space-x-2">
-                <button
-                  @click="editTaxonomy(taxonomy)"
-                  class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
-                >
-                  <Edit class="w-4 h-4" />
-                </button>
-                <button
-                  @click="deleteTaxonomy(taxonomy.id)"
-                  class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-
-        <div v-if="taxonomies.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-          No taxonomies defined yet. Create your first taxonomy to get started.
-        </div>
-      </div>
     </div>
   </div>
 </template>
