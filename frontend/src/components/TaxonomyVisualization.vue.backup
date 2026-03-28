@@ -1,0 +1,503 @@
+<template>
+  <div class="p-6 max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6">
+      <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Tag Graph</h1>
+
+      <!-- Controls -->
+      <div class="flex items-center space-x-6">
+        <!-- Taxonomy Selector -->
+        <div class="flex items-center space-x-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Root Taxonomy:</label>
+          <select
+            v-model="selectedTaxonomy"
+            @change="updateVisualization"
+            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            v-if="!loading"
+          >
+            <option v-for="taxonomy in taxonomiesData" :key="taxonomy.id" :value="taxonomy.id">
+              {{ taxonomy.name || taxonomy.id }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Associative Mode Toggle -->
+        <div class="flex items-center space-x-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Mode:</label>
+          <div class="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="normal-mode"
+              v-model="associativeMode"
+              :value="false"
+              @change="updateVisualization"
+              class="text-blue-600 focus:ring-blue-500"
+            >
+            <label for="normal-mode" class="text-sm text-gray-700 dark:text-gray-300">Normal</label>
+
+            <input
+              type="radio"
+              id="associative-mode"
+              v-model="associativeMode"
+              :value="true"
+              @change="updateVisualization"
+              class="text-blue-600 focus:ring-blue-500"
+            >
+            <label for="associative-mode" class="text-sm text-gray-700 dark:text-gray-300">Associative</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode Description -->
+      <div v-if="!loading" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+        {{ modeDescription }}
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="flex justify-center items-center h-64">
+      <div class="text-lg">Loading taxonomy data...</div>
+    </div>
+
+    <!-- Error State -->
+    <div v-if="error" class="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-6">
+      <strong>Error:</strong> {{ error }}
+    </div>
+
+    <!-- Main Graph Content -->
+    <div v-if="!loading && !error">
+      <!-- Graph Controls -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Controls</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Layout Algorithm -->
+          <div>
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Layout Algorithm:</label>
+            <select
+              v-model="layoutAlgorithm"
+              @change="updateGraphLayout"
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="breadthfirst">Breadth-First</option>
+              <option value="depthfirst">Depth-First</option>
+              <option value="cose">CoSE (Force-Directed)</option>
+              <option value="circle">Circular</option>
+              <option value="grid">Grid</option>
+              <option value="concentric">Concentric</option>
+              <option value="random">Random</option>
+            </select>
+          </div>
+
+          <!-- Node Spacing -->
+          <div>
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Node Spacing:</label>
+            <input
+              v-model.number="nodeSpacing"
+              @change="updateGraphLayout"
+              type="range"
+              min="50"
+              max="200"
+              step="10"
+              class="mt-1 block w-full"
+            />
+            <div class="text-sm text-gray-600 dark:text-gray-400">{{ nodeSpacing }}px</div>
+          </div>
+
+          <!-- Show Labels Toggle -->
+          <div>
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show Labels:</label>
+            <input
+              v-model="showLabels"
+              @change="updateGraphLayout"
+              type="checkbox"
+              class="mt-1"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Cytoscape Graph -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Visualization</h2>
+        <div ref="cytoscapeContainer" class="w-full h-96 lg:h-[600px] border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700"></div>
+      </div>
+
+      <!-- Graph Statistics -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Statistics</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="text-center">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ graphData?.nodes?.length || 0 }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Total Nodes</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ graphData?.edges?.length || 0 }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Total Edges</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ Object.keys(taxonomyNodes).length }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Taxonomy Types</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ selectedTaxonomy }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Selected Root</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Legend</h2>
+        <div class="flex flex-wrap gap-4">
+          <div v-for="(color, taxonomy) in taxonomyColors" :key="taxonomy" class="flex items-center">
+            <div class="w-4 h-4 rounded-full mr-2" :style="{ backgroundColor: color }"></div>
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ getTaxonomyDisplayName(taxonomy) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected Node Details -->
+      <div v-if="selectedNode" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Selected Node</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Node Details</h3>
+            <div class="mt-2 space-y-1 text-sm">
+              <div><strong>ID:</strong> {{ selectedNode.id }}</div>
+              <div><strong>Name:</strong> {{ selectedNode.label }}</div>
+              <div><strong>Taxonomy:</strong> {{ getTaxonomyDisplayName(selectedNode.taxonomy) }}</div>
+              <div><strong>Projects:</strong> {{ selectedNode.projectsCount || 0 }}</div>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Connections</h3>
+            <div class="mt-2 space-y-1 text-sm">
+              <div><strong>Incoming:</strong> {{ getNodeConnections(selectedNode.id, 'target').length }}</div>
+              <div><strong>Outgoing:</strong> {{ getNodeConnections(selectedNode.id, 'source').length }}</div>
+              <div><strong>Total:</strong> {{ getNodeConnections(selectedNode.id, 'source').length + getNodeConnections(selectedNode.id, 'target').length }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js';
+import axios from 'axios';
+import cytoscape from 'cytoscape';
+
+export default {
+  name: 'TaxonomyVisualization',
+  setup() {
+    // Reactive variables
+    const graphData = ref(null);
+    const selectedTaxonomy = ref('customer');
+    const associativeMode = ref(false);
+    const loading = ref(true);
+    const error = ref(null);
+    const taxonomiesData = ref([]);
+
+    // Cytoscape controls
+    const layoutAlgorithm = ref('cose');
+    const nodeSpacing = ref(100);
+    const showLabels = ref(true);
+    const selectedNode = ref(null);
+    const cytoscapeContainer = ref(null);
+    const cytoscapeInstance = ref(null);
+
+    const graphBuilder = new SimpleTaxonomyGraphBuilder();
+
+    // Taxonomy colors
+    const taxonomyColors = {
+      customer: '#ef4444',
+      env: '#14b8a6',
+      deploy: '#3b82f6',
+      product_version: '#22c55e',
+      environment: '#14b8a6',
+      deployment: '#3b82f6'
+    };
+
+    // Computed properties
+    const modeDescription = computed(() => {
+      if (associativeMode.value) {
+        return 'Associative mode creates direct connections between related taxonomies, hiding intermediate connector nodes. Each connection represents a semantic relationship between taxonomy elements.';
+      } else {
+        return 'Normal mode creates hierarchical relationships where child nodes connect to parent nodes through defined taxonomy relations.';
+      }
+    });
+
+    const taxonomyNodes = computed(() => {
+      if (!graphData.value?.nodes) return {};
+      const nodes = {};
+      Array.from(graphData.value.nodes.values()).forEach(node => {
+        if (!nodes[node.taxonomy]) {
+          nodes[node.taxonomy] = [];
+        }
+        nodes[node.taxonomy].push(node);
+      });
+      return nodes;
+    });
+
+    // Methods
+    const loadData = async () => {
+      try {
+        loading.value = true;
+        error.value = null;
+
+        const [tagsResponse, taxonomiesResponse] = await Promise.all([
+          axios.get('/api/tags'),
+          axios.get('/api/taxonomies')
+        ]);
+
+        const tags = tagsResponse.data;
+        const taxonomies = taxonomiesResponse.data;
+
+        if (!tags || !taxonomies) {
+          throw new Error('Failed to fetch data');
+        }
+
+        // Store taxonomies data
+        taxonomiesData.value = taxonomies;
+
+        // Build graph with current mode
+        const graph = graphBuilder.buildGraph(tags.data || tags, taxonomies, associativeMode.value);
+        graphData.value = graph;
+
+      } catch (err) {
+        console.error('Error loading data:', err);
+        error.value = err.response?.data?.detail || err.message;
+
+        if (err.response?.status === 403) {
+          error.value = 'Authentication required. Please log in first.';
+        }
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const updateVisualization = () => {
+      if (taxonomiesData.value) {
+        // Rebuild graph with new mode
+        rebuildGraph();
+      }
+    };
+
+    const rebuildGraph = async () => {
+      try {
+        loading.value = true;
+
+        // Get fresh tags data
+        const tagsResponse = await axios.get('/api/tags');
+        const tags = tagsResponse.data;
+
+        if (!tags) {
+          throw new Error('Failed to fetch tags');
+        }
+
+        // Rebuild graph with current mode
+        const graph = graphBuilder.buildGraph(tags, taxonomiesData.value, associativeMode.value);
+        graphData.value = graph;
+
+        // Re-render Cytoscape after graph is built
+        nextTick(() => {
+          renderCytoscapeGraph();
+        });
+
+      } catch (err) {
+        console.error('Error rebuilding graph:', err);
+        error.value = err.response?.data?.detail || err.message;
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const renderCytoscapeGraph = () => {
+      if (!graphData.value || !cytoscapeContainer.value) return;
+
+      // Destroy existing instance
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.destroy();
+      }
+
+      // Convert graph data to Cytoscape format
+      const nodes = Array.from(graphData.value.nodes.values()).map(node => ({
+        data: {
+          id: node.id,
+          label: node.name,
+          taxonomy: node.taxonomy,
+          projectsCount: node.projectsCount || 0
+        }
+      }));
+
+      const edges = graphData.value.edges.map(edge => ({
+        data: {
+          id: edge.id || `${edge.source}-${edge.target}`,
+          source: edge.source,
+          target: edge.target,
+          group: edge.group || 'default'
+        }
+      }));
+
+      // Initialize Cytoscape
+      cytoscapeInstance.value = cytoscape({
+        container: cytoscapeContainer.value,
+        elements: [...nodes, ...edges],
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': 'data(taxonomy)',
+              'background-color': function(ele) {
+                return taxonomyColors[ele.data('taxonomy')] || '#6b7280';
+              },
+              'label': showLabels.value ? 'data(label)' : '',
+              'text-valign': 'center',
+              'text-halign': 'center',
+              'color': '#ffffff',
+              'font-size': '14px',
+              'width': '60px',
+              'height': '60px',
+              'text-outline-width': 2,
+              'text-outline-color': '#000000',
+              'text-outline-opacity': 0.3
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'width': 3,
+              'line-color': '#9ca3af',
+              'target-arrow-color': '#9ca3af',
+              'target-arrow-shape': 'triangle',
+              'curve-style': 'bezier',
+              'arrow-scale': 1.2,
+              'label': showLabels.value ? 'data(group)' : '',
+              'font-size': '10px',
+              'text-rotation': 'autorotate',
+              'text-margin-y': -10
+            }
+          }
+        ],
+        layout: {
+          name: layoutAlgorithm.value,
+          nodeSpacing: nodeSpacing.value,
+          animate: true,
+          animationDuration: 1000,
+          fit: true,
+          padding: 50
+        }
+      });
+
+      // Add event listeners
+      cytoscapeInstance.value.on('tap', 'node', function(evt) {
+        const node = evt.target;
+        selectNode(node.data());
+      });
+
+      cytoscapeInstance.value.on('tap', 'edge', function(evt) {
+        const edge = evt.target;
+        console.log('Edge clicked:', edge.data());
+      });
+
+      // Add hover effects
+      cytoscapeInstance.value.on('mouseover', 'node', function(evt) {
+        const node = evt.target;
+        node.style({
+          'width': '80px',
+          'height': '80px',
+          'font-size': '16px',
+          'z-index': 1000
+        });
+      });
+
+      cytoscapeInstance.value.on('mouseout', 'node', function(evt) {
+        const node = evt.target;
+        node.style({
+          'width': '60px',
+          'height': '60px',
+          'font-size': '14px',
+          'z-index': 1
+        });
+      });
+    };
+
+    const updateGraphLayout = () => {
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.layout({
+          name: layoutAlgorithm.value,
+          nodeSpacing: nodeSpacing.value,
+          animate: true,
+          animationDuration: 1000,
+          fit: true,
+          padding: 50
+        }).run();
+      }
+    };
+
+    const selectNode = (node) => {
+      selectedNode.value = node;
+      console.log('Selected node:', node);
+    };
+
+    const getTaxonomyDisplayName = (taxonomyId) => {
+      const taxonomy = taxonomiesData.value.find(t => t.id === taxonomyId);
+      return taxonomy ? taxonomy.name || taxonomy.id : taxonomyId;
+    };
+
+    const getNodeConnections = (nodeId, direction) => {
+      if (!graphData.value?.edges) return 0;
+      return graphData.value.edges.filter(edge => edge[direction] === nodeId);
+    };
+
+    // Lifecycle
+    onMounted(() => {
+      loadData();
+    });
+
+    // Watch for data changes
+    watch([graphData, layoutAlgorithm, nodeSpacing, showLabels], () => {
+      if (graphData.value) {
+        nextTick(() => {
+          renderCytoscapeGraph();
+        });
+      }
+    });
+
+    // Watch for mode changes to rebuild graph
+    watch(associativeMode, () => {
+      if (taxonomiesData.value) {
+        rebuildGraph();
+      }
+    });
+
+    return {
+      // Reactive data
+      graphData,
+      selectedTaxonomy,
+      associativeMode,
+      loading,
+      error,
+      taxonomiesData,
+      layoutAlgorithm,
+      nodeSpacing,
+      showLabels,
+      selectedNode,
+      cytoscapeContainer,
+      taxonomyColors,
+      modeDescription,
+      taxonomyNodes,
+
+      // Methods
+      loadData,
+      updateVisualization,
+      rebuildGraph,
+      updateGraphLayout,
+      selectNode,
+      getTaxonomyDisplayName,
+      getNodeConnections
+    };
+</script>
