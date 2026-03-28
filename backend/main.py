@@ -660,6 +660,92 @@ async def delete_project(project_uuid: str, dt_token: str = Depends(get_dt_token
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting project: {e}")
 
+@app.patch("/api/projects/{project_uuid}/activate")
+async def activate_project(project_uuid: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
+    """Activate a project in Dependency-Track"""
+    try:
+        async with httpx.AsyncClient() as client:
+            headers = {}
+            if dt_token:
+                headers["Authorization"] = f"Bearer {dt_token}"
+            elif DT_API_KEY:
+                headers["X-Api-Key"] = DT_API_KEY
+
+            response = await client.patch(
+                f"{DT_API_URL}/api/v1/project/{project_uuid}",
+                json={"active": True},
+                headers=headers
+            )
+
+            if response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Project not found")
+            elif response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=f"Failed to activate project: {response.text}")
+
+            return {"message": "Project activated successfully"}
+
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Error activating project: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error activating project: {e}")
+
+@app.patch("/api/projects/{project_uuid}/deactivate")
+async def deactivate_project(project_uuid: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
+    """Deactivate a project in Dependency-Track"""
+    try:
+        async with httpx.AsyncClient() as client:
+            headers = {}
+            if dt_token:
+                headers["Authorization"] = f"Bearer {dt_token}"
+            elif DT_API_KEY:
+                headers["X-Api-Key"] = DT_API_KEY
+
+            response = await client.patch(
+                f"{DT_API_URL}/api/v1/project/{project_uuid}",
+                json={"active": False},
+                headers=headers
+            )
+
+            if response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Project not found")
+            elif response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=f"Failed to deactivate project: {response.text}")
+
+            return {"message": "Project deactivated successfully"}
+
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Error deactivating project: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deactivating project: {e}")
+
+@app.put("/api/projects/{project_uuid}/refresh")
+async def refresh_project(project_uuid: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
+    """Refresh a project in Dependency-Track (trigger re-analysis)"""
+    try:
+        async with httpx.AsyncClient() as client:
+            headers = {}
+            if dt_token:
+                headers["Authorization"] = f"Bearer {dt_token}"
+            elif DT_API_KEY:
+                headers["X-Api-Key"] = DT_API_KEY
+
+            response = await client.post(
+                f"{DT_API_URL}/api/v1/project/{project_uuid}/analysis",
+                headers=headers
+            )
+
+            if response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Project not found")
+            elif response.status_code not in [200, 202]:
+                raise HTTPException(status_code=response.status_code, detail=f"Failed to refresh project: {response.text}")
+
+            return {"message": "Project refresh triggered successfully"}
+
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Error refreshing project: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error refreshing project: {e}")
+
 @app.delete("/api/project-versions/{version_id}")
 async def delete_project_version(version_id: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
     """Delete a project version (remove version tag from project)"""
