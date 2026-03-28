@@ -55,7 +55,7 @@ export default class SimpleTaxonomyGraphBuilder {
       if (taxonomy) {
         // create edges based on the taxonomy's capture groups' relation
         const captureGroups = this.getTagValues(tag, taxonomy);
-        if (captureGroups && taxonomy.relations) {
+        if (captureGroups && taxonomy.relations && taxonomy.relations.length > 0) {
           if (taxonomy.relations.length === Object.keys(captureGroups).length) {
             associativeNodesToHide.add(tag.name); // mark associative tags to hide
           }
@@ -108,7 +108,7 @@ export default class SimpleTaxonomyGraphBuilder {
       if (taxonomy) {
         // create edges based on the taxonomy's capture groups' relation
         const captureGroups = this.getTagValues(tag, taxonomy);
-        if (captureGroups && taxonomy.relations) {
+        if (captureGroups && taxonomy.relations && taxonomy.relations.length > 0) {
           // captureGroups is an object with keys as group names and values as group values
           Object.keys(captureGroups).forEach( key => {
             const relation = taxonomy.relations.find(r => r.group === key);

@@ -6,21 +6,6 @@
 
       <!-- Controls -->
       <div class="flex items-center space-x-6">
-        <!-- Taxonomy Selector -->
-        <div class="flex items-center space-x-2">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Force Root Taxonomy:</label>
-          <select
-            v-model="selectedTaxonomy"
-            @change="updateVisualization"
-            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            v-if="!loading"
-          >
-            <option v-for="taxonomy in taxonomiesData" :key="taxonomy.id" :value="taxonomy.id">
-              {{ taxonomy.name || taxonomy.id }}
-            </option>
-          </select>
-        </div>
-
         <!-- Associative Mode Toggle -->
         <div class="flex items-center space-x-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Mode:</label>
@@ -46,6 +31,22 @@
               <label for="normal-mode" class="text-sm text-gray-700 dark:text-gray-300">Raw</label>
           </div>
         </div>
+
+        <!-- Taxonomy Selector -->
+        <div class="flex items-center space-x-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Force Root Taxonomy:</label>
+          <select
+            v-model="selectedTaxonomy"
+            @change="updateVisualization"
+            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            v-if="!loading"
+            :disabled="!associativeMode"
+          >
+            <option v-for="taxonomy in taxonomiesData" :key="taxonomy.id" :value="taxonomy.id">
+              {{ taxonomy.name || taxonomy.id }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <!-- Mode Description -->
@@ -70,29 +71,6 @@
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
         <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Visualization</h2>
         <div ref="cytoscapeContainer" class="w-full h-96 lg:h-[600px] border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700"></div>
-      </div>
-
-      <!-- Graph Statistics -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Statistics</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div class="text-center">
-            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ graphData?.nodes?.length || 0 }}</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">Total Nodes</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ graphData?.edges?.length || 0 }}</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">Total Edges</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ Object.keys(taxonomyNodes).length }}</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">Taxonomy Types</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ selectedTaxonomy }}</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">Forced Root</div>
-          </div>
-        </div>
       </div>
 
       <!-- Graph Controls -->
