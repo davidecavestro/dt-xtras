@@ -111,41 +111,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Legend -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Legend</h2>
-        <div class="flex flex-wrap gap-4">
-          <div v-for="(color, taxonomy) in taxonomyColors" :key="taxonomy" class="flex items-center">
-            <div class="w-4 h-4 rounded-full mr-2" :style="{ backgroundColor: color }"></div>
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ getTaxonomyDisplayName(taxonomy) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Selected Node Details -->
-      <div v-if="selectedNode" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Selected Node</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Node Details</h3>
-            <div class="mt-2 space-y-1 text-sm">
-              <div><strong>ID:</strong> {{ selectedNode.id }}</div>
-              <div><strong>Name:</strong> {{ selectedNode.label }}</div>
-              <div><strong>Taxonomy:</strong> {{ getTaxonomyDisplayName(selectedNode.taxonomy) }}</div>
-              <div><strong>Projects:</strong> {{ selectedNode.projectsCount || 0 }}</div>
-            </div>
-          </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Connections</h3>
-            <div class="mt-2 space-y-1 text-sm">
-              <div><strong>Incoming:</strong> {{ getNodeConnections(selectedNode.id, 'target').length }}</div>
-              <div><strong>Outgoing:</strong> {{ getNodeConnections(selectedNode.id, 'source').length }}</div>
-              <div><strong>Total:</strong> {{ getNodeConnections(selectedNode.id, 'source').length + getNodeConnections(selectedNode.id, 'target').length }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -367,7 +332,7 @@ export default {
               'label': 'data(label)',
               'text-valign': 'center',
               'text-halign': 'center',
-              'font-size': '12px',
+              'font-size': '14px',
               'text-wrap': 'wrap',
               'text-max-width': '120px',
               'width': function(ele) {
@@ -417,7 +382,7 @@ export default {
 
       cytoscapeInstance.value.on('tap', 'edge', function(evt) {
         const edge = evt.target;
-        console.log('Edge clicked:', edge.data());
+        selectNode(edge.data());
       });
 
       // Add hover effects
@@ -498,6 +463,39 @@ export default {
       return graphData.value.edges.filter(edge => edge[direction] === nodeId);
     };
 
+    // Zoom control functions
+    const zoomIn = () => {
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.animate({
+          zoom: cytoscapeInstance.value.zoom() * 1.2
+        }, {
+          duration: 200
+        });
+      }
+    };
+
+    const zoomOut = () => {
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.animate({
+          zoom: cytoscapeInstance.value.zoom() / 1.2
+        }, {
+          duration: 200
+        });
+      }
+    };
+
+    const resetZoom = () => {
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.animate({
+          fit: {
+            padding: 50
+          }
+        }, {
+          duration: 300
+        });
+      }
+    };
+
     // Lifecycle
     onMounted(() => {
       loadData();
@@ -552,7 +550,10 @@ export default {
       updateGraphLayout,
       selectNode,
       getTaxonomyDisplayName,
-      getNodeConnections
+      getNodeConnections,
+      zoomIn,
+      zoomOut,
+      resetZoom
     };
   }
 };
