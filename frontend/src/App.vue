@@ -235,7 +235,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import authService from './services/auth'
 import LogoWithText from './components/LogoWithText.vue'
@@ -251,6 +251,20 @@ export default {
     const isAuthenticated = ref(false)
     const currentUser = ref('')
     const sidebarOpen = ref(true) // Start with sidebar open
+    const screenWidth = ref(window.innerWidth)
+
+    // Update screen width on window resize
+    const updateScreenWidth = () => {
+      screenWidth.value = window.innerWidth
+    }
+
+    onMounted(() => {
+      window.addEventListener('resize', updateScreenWidth)
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', updateScreenWidth)
+    })
 
     const checkAuth = () => {
       isAuthenticated.value = authService.isAuthenticated()
@@ -336,6 +350,7 @@ export default {
       isAuthenticated,
       currentUser,
       sidebarOpen,
+      screenWidth,
       handleLogout,
       toggleDarkMode,
       toggleSidebar,
