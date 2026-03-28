@@ -113,7 +113,7 @@
       </div>
 
       <!-- Related Projects Section -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
+      <div v-if="associativeMode" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
         <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Related Projects</h2>
 
         <!-- Selected Node Info -->
@@ -126,7 +126,55 @@
         <div v-if="relatedProjects.length > 0" class="space-y-2">
           <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ relatedProjects.length }} projects found
+            <span v-if="relatedProjectsTotal > relatedProjects.length" class="text-xs text-gray-500">
+              (showing {{ relatedProjects.length }} of {{ relatedProjectsTotal }})
+            </span>
           </div>
+
+          <!-- Pagination Controls -->
+          <div v-if="relatedProjectsTotal > pageSize" class="flex justify-between items-center mb-4">
+            <button
+              @click="loadRelatedProjectsPage(1)"
+              :disabled="relatedProjectsPage === 1"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              First
+            </button>
+
+            <button
+              @click="loadRelatedProjectsPage(relatedProjectsPage - 1)"
+              :disabled="relatedProjectsPage === 1"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+              Page {{ relatedProjectsPage }} of {{ relatedProjectsTotalPages }}
+            </div>
+
+            <button
+              @click="loadRelatedProjectsPage(relatedProjectsPage + 1)"
+              :disabled="relatedProjectsPage >= relatedProjectsTotalPages"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+
+            <button
+              @click="loadRelatedProjectsPage(relatedProjectsTotalPages)"
+              :disabled="relatedProjectsPage >= relatedProjectsTotalPages"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Last
+            </button>
+          </div>
+
+          <div v-if="loadingRelatedProjects" class="text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading projects...</p>
+          </div>
+
           <div class="max-h-96 overflow-y-auto space-y-2">
             <div
               v-for="project in relatedProjects"
@@ -213,6 +261,11 @@ export default {
     const layoutAlgorithm = ref('dagre');
     const nodeSpacing = ref(50);
     const relatedProjects = ref([]);
+    const relatedProjectsPage = ref(1);
+    const relatedProjectsTotal = ref(0);
+    const relatedProjectsTotalPages = ref(1);
+    const pageSize = ref(20); // Dashboard shows fewer projects per page
+    const loadingRelatedProjects = ref(false);
 
     const graphBuilder = new SimpleTaxonomyGraphBuilder();
 
@@ -564,13 +617,20 @@ export default {
       return reachableTags;
     };
 
-    // Get projects for a set of tags
-    const getProjectsForTags = async (tagIds) => {
+    // Get projects for a set of tags (with pagination)
+    const getProjectsForTags = async (tagIds, page = 1) => {
       if (!tagIds || tagIds.size === 0) return [];
 
       try {
-        // Get all projects first, then filter by tags
-        const response = await axios.get('/api/projects');
+        loadingRelatedProjects.value = true;
+
+        // Get projects with pagination support
+        const response = await axios.get('/api/projects', {
+          params: {
+            limit: pageSize.value,
+            offset: (page - 1) * pageSize.value
+          }
+        });
         const allProjects = response.data;
 
         // Filter projects that have any of the specified tags
@@ -579,10 +639,33 @@ export default {
           return Array.from(tagIds).some(tagId => projectTags.includes(tagId));
         });
 
+        // Get total count for pagination
+        try {
+          const countResponse = await axios.get('/api/projects/count');
+          relatedProjectsTotal.value = countResponse.data.total;
+          relatedProjectsTotalPages.value = Math.ceil(relatedProjectsTotal.value / pageSize.value);
+        } catch (countError) {
+          console.warn('Could not get project count:', countError);
+          relatedProjectsTotal.value = filteredProjects.length;
+          relatedProjectsTotalPages.value = 1;
+        }
+
+        relatedProjects.value = filteredProjects;
+        relatedProjectsPage.value = page;
         return filteredProjects;
       } catch (error) {
         console.error('Error fetching projects for tags:', error);
         return [];
+      } finally {
+        loadingRelatedProjects.value = false;
+      }
+    };
+
+    // Load a specific page of related projects
+    const loadRelatedProjectsPage = (page) => {
+      if (selectedNode.value) {
+        const reachableTags = findReachableTags(selectedNode.value.id);
+        getProjectsForTags(reachableTags, page);
       }
     };
 
@@ -590,12 +673,13 @@ export default {
     const updateRelatedProjects = async (node) => {
       if (!node) {
         relatedProjects.value = [];
+        relatedProjectsTotal.value = 0;
+        relatedProjectsTotalPages.value = 1;
         return;
       }
 
       const reachableTags = findReachableTags(node.id);
-      const projects = await getProjectsForTags(reachableTags);
-      relatedProjects.value = projects;
+      await getProjectsForTags(reachableTags, 1); // Start with page 1
     };
 
     // Helper function to get Dependency-Track URL for a project
@@ -692,17 +776,19 @@ export default {
       modeDescription,
       taxonomyNodes,
       relatedProjects,
+      relatedProjectsPage,
+      relatedProjectsTotal,
+      relatedProjectsTotalPages,
+      pageSize,
+      loadingRelatedProjects,
 
       // Methods
       loadData,
-      updateVisualization,
-      rebuildGraph,
-      updateGraphLayout,
-      selectNode,
       getTaxonomyDisplayName,
       getNodeConnections,
       findReachableTags,
       getProjectsForTags,
+      loadRelatedProjectsPage,
       updateRelatedProjects,
       getDependencyTrackUrl,
       getTotalVulnerabilities,

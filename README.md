@@ -16,9 +16,12 @@
 
 ## 🎯 About
 
-The project provides a set of features that complement Dependency-Track.<br>
+The project provides a set of features that complement Dependency-Track.
+
 The taxonomy system categorizes project tags and defines semantic relationships between them,
 enabling both direct categorization and inferred labeling through graph-based relationships.
+
+Bulk actions provide a way to activate/deactivate/delete multiple projects at once.
 
 ### Use Cases
 

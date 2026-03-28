@@ -334,8 +334,8 @@ async def logout():
     return {"message": "Successfully logged out"}
 
 # DT API Client
-async def get_dt_projects(dt_token: str) -> List[Dict]:
-    """Get projects from DT API with proper authentication"""
+async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search: Optional[str] = None) -> List[Dict]:
+    """Get projects from DT API with proper authentication and pagination"""
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
@@ -346,12 +346,26 @@ async def get_dt_projects(dt_token: str) -> List[Dict]:
     else:
         print(f"No authentication available")
 
+    # Build query parameters for DT API pagination
+    params = {
+        "pageNumber": str(page),  # DT uses 1-based paging and string type
+        "pageSize": str(limit)     # DT uses string type
+    }
+
+    # IMPORTANT: Don't exclude inactive projects to see all projects
+    params["excludeInactive"] = "false"
+
+    if search:
+        params["name"] = search  # DT uses 'name' parameter, not 'searchText'
+
     print(f"Making request to: {DT_API_URL}/api/v1/project")
     print(f"Headers: {headers}")
+    print(f"Params: {params}")
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, timeout=30.0)
+        response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)
         print(f"DT API response status: {response.status_code}")
+        print(f"DT API response headers: {dict(response.headers)}")
         print(f"DT API response: {response.text[:200]}...")
 
         response.raise_for_status()
@@ -360,42 +374,56 @@ async def get_dt_projects(dt_token: str) -> List[Dict]:
         projects_data = response.json()
         print(f"Successfully parsed {len(projects_data)} projects")
 
-        # Enrich projects with additional fields
-        enriched_projects = []
-        for project in projects_data:
-            enriched_project = project.copy()
+        # Get total count from header
+        total_count = response.headers.get("X-Total-Count")
+        if total_count:
+            print(f"Total projects from header: {total_count}")
 
-            # Add active field (DT API includes this)
-            if 'active' not in enriched_project:
-                enriched_project['active'] = True  # Default to active if not specified
+        # Log project details for debugging
+        if projects_data:
+            print(f"Sample project: {projects_data[0]}")
+            # Check for active field
+            if 'active' in projects_data[0]:
+                print(f"Active field present: {projects_data[0]['active']}")
+        else:
+            print("No projects found")
 
-            # Add lastActivity from lastBomImport or created date (convert timestamps to strings)
-            if 'lastBomImport' in enriched_project:
-                last_bom_import = enriched_project['lastBomImport']
-                if isinstance(last_bom_import, (int, float)):
-                    # Convert Unix timestamp to ISO string
-                    from datetime import datetime
-                    enriched_project['lastActivity'] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
-                    enriched_project['lastSbomUpload'] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
-                else:
-                    enriched_project['lastActivity'] = str(last_bom_import)
-                    enriched_project['lastSbomUpload'] = str(last_bom_import)
-            elif 'created' in enriched_project:
-                created = enriched_project['created']
-                if isinstance(created, (int, float)):
-                    # Convert Unix timestamp to ISO string
-                    from datetime import datetime
-                    enriched_project['lastActivity'] = datetime.fromtimestamp(created / 1000).isoformat()
-                else:
-                    enriched_project['lastActivity'] = str(created)
+    # Enrich projects with additional fields
+    enriched_projects = []
+    for project in projects_data:
+        enriched_project = project.copy()
+
+        # Add active field (DT API includes this)
+        if 'active' not in enriched_project:
+            enriched_project['active'] = True  # Default to active if not specified
+
+        # Add lastActivity from lastBomImport or created date (convert timestamps to strings)
+        if 'lastBomImport' in enriched_project:
+            last_bom_import = enriched_project['lastBomImport']
+            if isinstance(last_bom_import, (int, float)):
+                # Convert Unix timestamp to ISO string
+                from datetime import datetime
+                enriched_project['lastActivity'] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
+                enriched_project['lastSbomUpload'] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
             else:
-                enriched_project['lastActivity'] = None
-                enriched_project['lastSbomUpload'] = None
+                enriched_project['lastActivity'] = str(last_bom_import)
+                enriched_project['lastSbomUpload'] = str(last_bom_import)
+        elif 'created' in enriched_project:
+            created = enriched_project['created']
+            if isinstance(created, (int, float)):
+                # Convert Unix timestamp to ISO string
+                from datetime import datetime
+                enriched_project['lastActivity'] = datetime.fromtimestamp(created / 1000).isoformat()
+            else:
+                enriched_project['lastActivity'] = str(created)
+        else:
+            enriched_project['lastActivity'] = None
+            enriched_project['lastSbomUpload'] = None
 
-            enriched_projects.append(enriched_project)
+        enriched_projects.append(enriched_project)
 
-        # The field_validator in DTProject will handle tag conversion automatically
-        return enriched_projects
+    # The field_validator in DTProject will handle tag conversion automatically
+    return enriched_projects
 
 # Taxonomy CRUD Operations
 @app.get("/api/taxonomies", response_model=List[Taxonomy])
@@ -490,11 +518,16 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
     return project_versions
 
 @app.get("/api/projects", response_model=List[DTProject])
-async def get_projects(dt_token: str = Depends(get_dt_token_from_request)):
-    """Get all projects from DT API"""
+async def get_projects(
+    dt_token: str = Depends(get_dt_token_from_request),
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None
+):
+    """Get projects from DT API with pagination"""
     try:
         print(f"Getting projects with DT token: {dt_token[:50] if dt_token else 'None'}...")
-        projects = await get_dt_projects(dt_token)
+        projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search)
         print(f"Successfully retrieved {len(projects)} projects")
         return projects
     except Exception as e:
@@ -502,6 +535,42 @@ async def get_projects(dt_token: str = Depends(get_dt_token_from_request)):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error fetching projects: {e}")
+
+@app.get("/api/projects/count")
+async def get_projects_count(dt_token: str = Depends(get_dt_token_from_request), search: Optional[str] = None):
+    """Get total count of projects for pagination"""
+    try:
+        headers = {}
+        if dt_token:
+            headers["Authorization"] = f"Bearer {dt_token}"
+        elif DT_API_KEY:
+            headers["X-Api-Key"] = DT_API_KEY
+
+        # Get first page with minimal data to get total count from header
+        params = {
+            "pageNumber": "1",
+            "pageSize": "1",
+            "excludeInactive": "false"  # Include inactive projects
+        }
+        if search:
+            params["name"] = search
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)
+            response.raise_for_status()
+
+            # Get total count from X-Total-Count header
+            total_count = response.headers.get("X-Total-Count")
+            if total_count:
+                return {"total": int(total_count), "page_size": 50}
+            else:
+                # Fallback - count the actual results
+                projects = response.json()
+                return {"total": len(projects), "page_size": 50}
+
+    except Exception as e:
+        print(f"Error getting projects count: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching projects count: {e}")
 
 @app.get("/api/project-versions", response_model=List[ProjectVersion])
 async def get_project_versions(dt_token: str = Depends(get_dt_token_from_request)):
