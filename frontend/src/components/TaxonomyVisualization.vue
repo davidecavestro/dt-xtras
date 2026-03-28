@@ -172,7 +172,7 @@ export default {
     const taxonomiesData = ref(null);
     const allTaxonomiesData = ref(null); // For color mapping
     const selectedTaxonomy = ref(null);
-    const associativeMode = ref(false);
+    const associativeMode = ref(true);
     const selectedNode = ref(null);
     const cytoscapeContainer = ref(null);
     const cytoscapeInstance = ref(null);
@@ -296,15 +296,35 @@ export default {
       }
 
       // Convert graph data to Cytoscape format
-      const nodes = Array.from(graphData.value.nodes.values()).map(node => ({
-        data: {
-          id: node.id,
-          label: node.name,
-          taxonomy: node.taxonomy,
-          associative: node.associative || false,
-          projectsCount: node.projectsCount || 0
+      const nodes = Array.from(graphData.value.nodes.values()).map(node => {
+        // Extract capture group from tag name if it matches taxonomy pattern
+        const taxonomy = taxonomiesData.value?.find(t => t.id === node.taxonomy);
+        let captureGroups = [];
+        if (taxonomy && taxonomy.regex_pattern) {
+          try {
+            const regex = new RegExp(taxonomy.regex_pattern);
+            const match = regex.exec(node.id);
+            if (match && match.groups) {
+              captureGroups = Object.values(match.groups).filter(g => g); // Get all non-empty capture groups
+            }
+          } catch (e) {
+            console.warn('Invalid regex pattern:', taxonomy.regex_pattern);
+          }
         }
-      }));
+
+        const taxonomyName = taxonomy?.name || node.taxonomy;
+
+        return {
+          data: {
+            id: node.id,
+            label: `${taxonomyName}\n${captureGroups.length > 0 ? '\n' + captureGroups.join('\n') : ''}`, // Show taxonomy name and capture groups
+            taxonomy: node.taxonomy,
+            captureGroups: captureGroups,
+            associative: node.associative || false,
+            projectsCount: node.projectsCount || 0
+          }
+        };
+      });
 
       const edges = graphData.value.edges.map(edge => ({
         data: {
@@ -347,11 +367,14 @@ export default {
               'label': 'data(label)',
               'text-valign': 'center',
               'text-halign': 'center',
-              'font-size': '14px',
+              'font-size': '12px',
+              'text-wrap': 'wrap',
+              'text-max-width': '120px',
               'width': function(ele) {
-                return ele.data('associative') ? '250px' : '150px';
+                return ele.data('associative') ? '250px' : '180px';
               },
-              'height': '60px'
+              'height': '80px',
+              'padding': '10px'
             }
           },
           {
