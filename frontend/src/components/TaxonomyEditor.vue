@@ -26,7 +26,7 @@
             </button>
           </div>
 
-          <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700" style="height: 400px; position: relative; overflow: hidden;">
+          <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 resize overflow-hidden" style="height: 400px; position: relative; overflow: hidden;">
             <div ref="cytoscapeContainer" class="w-full h-full"></div>
           </div>
         </div>
@@ -504,7 +504,7 @@ const draggedIndex = ref(null)
             selector: 'node',
             style: {
               'shape': function(ele) {
-                return ele.data('associative') ? 'round-rectangle' : 'round-tag';
+                return ele.data('associative') ? 'round-rectangle' : 'barrel';
               },
               'background-color': 'data(color)',
               'color': function(ele) {
@@ -709,6 +709,16 @@ const draggedIndex = ref(null)
         const { taxonomy } = event.detail;
         editTaxonomy(taxonomy);
       });
+
+      // Add resize observer to handle container resizing
+      if (cytoscapeContainer.value) {
+        const resizeObserver = new ResizeObserver(() => {
+          if (cytoscapeInstance.value) {
+            cytoscapeInstance.value.resize();
+          }
+        });
+        resizeObserver.observe(cytoscapeContainer.value);
+      }
     })
 
     // Rebuild graph when taxonomies change
