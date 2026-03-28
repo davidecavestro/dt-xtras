@@ -1,7 +1,7 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
     <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-      <div class="flex justify-between items-center mb-6">
+      <div class="flex justify-between items-center mb-6 p-6">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Security Dashboard</h2>
         <button
           @click="refreshData"
