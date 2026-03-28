@@ -5,9 +5,9 @@
       <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex justify-between items-center">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Project Cleanup</h1>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Project Bulk Actions</h1>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Manage and remove inactive or outdated projects
+              Manage multiple projects at once with bulk operations for cleanup, activation, and maintenance.
             </p>
           </div>
           <div class="flex space-x-3">
@@ -120,13 +120,45 @@
               </span>
             </label>
           </div>
-          <div class="flex space-x-2">
+          <div class="flex flex-wrap gap-2">
+            <!-- Bulk Delete -->
             <button
               v-if="selectedProjects.length > 0"
               @click="showDeleteConfirmation = true"
               class="px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
+              <Trash2 class="mr-2 h-4 w-4" />
               Delete Selected ({{ selectedProjects.length }})
+            </button>
+
+            <!-- Bulk Activate -->
+            <button
+              v-if="selectedProjects.length > 0"
+              @click="showActivateConfirmation = true"
+              class="px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              <Power class="mr-2 h-4 w-4" />
+              Activate Selected ({{ selectedProjects.length }})
+            </button>
+
+            <!-- Bulk Deactivate -->
+            <button
+              v-if="selectedProjects.length > 0"
+              @click="showDeactivateConfirmation = true"
+              class="px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+            >
+              <PowerOff class="mr-2 h-4 w-4" />
+              Deactivate Selected ({{ selectedProjects.length }})
+            </button>
+
+            <!-- Bulk Refresh -->
+            <button
+              v-if="selectedProjects.length > 0"
+              @click="refreshSelectedProjects"
+              class="px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <RefreshCw class="mr-2 h-4 w-4" />
+              Refresh Selected ({{ selectedProjects.length }})
             </button>
           </div>
         </div>
@@ -272,22 +304,137 @@
         </div>
       </div>
     </div>
+
+    <!-- Activate Confirmation Modal -->
+    <div
+      v-if="showActivateConfirmation"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 sm:mx-0 sm:h-10 sm:w-10">
+                <Power class="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+                  Activate Projects
+                </h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Are you sure you want to activate {{ selectedProjects.length }} project(s)? This will make them visible and active in Dependency-Track.
+                  </p>
+                  <div class="mt-3 max-h-32 overflow-y-auto">
+                    <ul class="text-sm text-gray-600 dark:text-gray-400">
+                      <li v-for="uuid in selectedProjects" :key="uuid" class="py-1">
+                        • {{ getProjectName(uuid) }}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button
+              @click="confirmActivate"
+              type="button"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Activate
+            </button>
+            <button
+              @click="showActivateConfirmation = false"
+              type="button"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deactivate Confirmation Modal -->
+    <div
+      v-if="showDeactivateConfirmation"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900 sm:mx-0 sm:h-10 sm:w-10">
+                <PowerOff class="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+                  Deactivate Projects
+                </h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Are you sure you want to deactivate {{ selectedProjects.length }} project(s)? This will make them inactive but they won't be deleted.
+                  </p>
+                  <div class="mt-3 max-h-32 overflow-y-auto">
+                    <ul class="text-sm text-gray-600 dark:text-gray-400">
+                      <li v-for="uuid in selectedProjects" :key="uuid" class="py-1">
+                        • {{ getProjectName(uuid) }}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button
+              @click="confirmDeactivate"
+              type="button"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Deactivate
+            </button>
+            <button
+              @click="showDeactivateConfirmation = false"
+              type="button"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import { RefreshCw, FolderOpen, Clock, Package, AlertCircle } from 'lucide-vue-next'
+import { ref, onMounted, computed } from 'vue'
+import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff } from 'lucide-vue-next'
 import axios from 'axios'
 
 export default {
-  name: 'ProjectCleanup',
+  name: 'ProjectBulkActions',
   components: {
     RefreshCw,
     FolderOpen,
     Clock,
     Package,
-    AlertCircle
+    AlertCircle,
+    Trash2,
+    Power,
+    PowerOff
   },
   setup() {
     const loading = ref(false)
@@ -298,6 +445,8 @@ export default {
     const selectedProjects = ref([])
     const selectAll = ref(false)
     const showDeleteConfirmation = ref(false)
+    const showActivateConfirmation = ref(false)
+    const showDeactivateConfirmation = ref(false)
 
     // Computed properties
     const filteredProjects = computed(() => {
@@ -526,6 +675,69 @@ export default {
       }
     }
 
+    const confirmActivate = async () => {
+      try {
+        const activatePromises = selectedProjects.value.map(uuid =>
+          axios.patch(`/api/projects/${uuid}/activate`)
+        )
+        await Promise.all(activatePromises)
+
+        // Update local project data
+        selectedProjects.value.forEach(uuid => {
+          const project = projects.value.find(p => p.uuid === uuid)
+          if (project) {
+            project.active = true
+          }
+        })
+
+        selectedProjects.value = []
+        selectAll.value = false
+        showActivateConfirmation.value = false
+      } catch (error) {
+        console.error('Failed to activate projects:', error)
+        alert('Failed to activate some projects. Please try again.')
+      }
+    }
+
+    const confirmDeactivate = async () => {
+      try {
+        const deactivatePromises = selectedProjects.value.map(uuid =>
+          axios.patch(`/api/projects/${uuid}/deactivate`)
+        )
+        await Promise.all(deactivatePromises)
+
+        // Update local project data
+        selectedProjects.value.forEach(uuid => {
+          const project = projects.value.find(p => p.uuid === uuid)
+          if (project) {
+            project.active = false
+          }
+        })
+
+        selectedProjects.value = []
+        selectAll.value = false
+        showDeactivateConfirmation.value = false
+      } catch (error) {
+        console.error('Failed to deactivate projects:', error)
+        alert('Failed to deactivate some projects. Please try again.')
+      }
+    }
+
+    const refreshSelectedProjects = async () => {
+      try {
+        const refreshPromises = selectedProjects.value.map(uuid =>
+          axios.put(`/api/projects/${uuid}/refresh`)
+        )
+        await Promise.all(refreshPromises)
+
+        // Refresh the full project list
+        await refreshProjects()
+      } catch (error) {
+        console.error('Failed to refresh projects:', error)
+        alert('Failed to refresh some projects. Please try again.')
+      }
+    }
+
     onMounted(() => {
       refreshProjects()
     })
@@ -539,6 +751,8 @@ export default {
       selectedProjects,
       selectAll,
       showDeleteConfirmation,
+      showActivateConfirmation,
+      showDeactivateConfirmation,
       filteredProjects,
       refreshProjects,
       setQuickFilter,
@@ -554,7 +768,10 @@ export default {
       getProjectVulnerabilities,
       getProjectName,
       deleteProject,
-      confirmDelete
+      confirmDelete,
+      confirmActivate,
+      confirmDeactivate,
+      refreshSelectedProjects
     }
   }
 }
