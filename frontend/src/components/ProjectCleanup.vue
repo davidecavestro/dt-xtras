@@ -171,6 +171,35 @@
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading projects...</p>
         </div>
 
+        <div v-else-if="projects.length === 0" class="text-center py-8">
+          <Package class="mx-auto h-12 w-12 text-gray-400" />
+          <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <span v-if="searchQuery || activityFilter !== 'all' || sbomFilter !== 'all'">
+              Try adjusting your search or filters.
+            </span>
+            <span v-else>
+              No projects exist in Dependency-Track, or you don't have permission to view them.
+            </span>
+          </p>
+          <div class="mt-6">
+            <button
+              @click="clearFilters"
+              v-if="searchQuery || activityFilter !== 'all' || sbomFilter !== 'all'"
+              class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Clear Filters
+            </button>
+            <button
+              @click="refreshProjects"
+              class="ml-3 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <RefreshCw class="mr-2 h-4 w-4" />
+              Refresh
+            </button>
+          </div>
+        </div>
+
         <div v-else-if="filteredProjects.length === 0" class="text-center py-8">
           <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
           <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
@@ -244,6 +273,64 @@
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div class="px-4 py-4 sm:px-6 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
+            Showing {{ projects.length }} of {{ totalProjects }} projects
+            <span v-if="totalPages > 1"> (Page {{ currentPage }} of {{ totalPages }})</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="prevPage"
+              :disabled="currentPage === 1 || loading"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+
+            <div class="flex items-center space-x-1">
+              <button
+                v-for="page in Math.min(5, totalPages)"
+                :key="page"
+                @click="goToPage(page)"
+                :class="[
+                  'px-3 py-1 text-sm border rounded-md',
+                  page === currentPage
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                ]"
+              >
+                {{ page }}
+              </button>
+
+              <span v-if="totalPages > 5" class="px-2 text-gray-500">...</span>
+
+              <button
+                v-if="totalPages > 5"
+                @click="goToPage(totalPages)"
+                :class="[
+                  'px-3 py-1 text-sm border rounded-md',
+                  totalPages === currentPage
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                ]"
+              >
+                {{ totalPages }}
+              </button>
+            </div>
+
+            <button
+              @click="nextPage"
+              :disabled="currentPage === totalPages || loading"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
@@ -420,7 +507,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff } from 'lucide-vue-next'
 import axios from 'axios'
 
@@ -447,6 +534,10 @@ export default {
     const showDeleteConfirmation = ref(false)
     const showActivateConfirmation = ref(false)
     const showDeactivateConfirmation = ref(false)
+    const currentPage = ref(1)
+    const pageSize = ref(50)
+    const totalProjects = ref(0)
+    const totalPages = ref(1)
 
     // Computed properties
     const filteredProjects = computed(() => {
@@ -520,12 +611,36 @@ export default {
     const refreshProjects = async () => {
       loading.value = true
       try {
-        const response = await axios.get('/api/projects')
-        projects.value = response.data.map(project => ({
-          ...project,
-          lastActivity: project.lastActivity || project.created || new Date('1970-01-01'),
-          lastSbomUpload: project.lastSbomUpload || project.created || new Date('1970-01-01')
-        }))
+        const params = {
+          page: currentPage.value,
+          limit: pageSize.value
+        }
+
+        // Add search parameter if exists
+        if (searchQuery.value) {
+          params.search = searchQuery.value
+        }
+
+        const response = await axios.get('/api/projects', { params })
+        projects.value = response.data
+
+        // Get total count for pagination
+        try {
+          const countResponse = await axios.get('/api/projects/count', {
+            params: { search: searchQuery.value }
+          })
+          totalProjects.value = countResponse.data.total
+          totalPages.value = Math.ceil(totalProjects.value / pageSize.value)
+        } catch (countError) {
+          console.warn('Could not get project count:', countError)
+          // Fallback: assume current page has full results
+          totalProjects.value = projects.value.length
+          totalPages.value = 1
+        }
+
+        // Clear selection when refreshing
+        selectedProjects.value = []
+        selectAll.value = false
       } catch (error) {
         console.error('Failed to load projects:', error)
       } finally {
@@ -536,22 +651,27 @@ export default {
     const setQuickFilter = (type) => {
       if (type === 'inactive-dt') {
         activityFilter.value = 'inactive-dt'
-        sbomFilter.value = 'all'
-      } else if (type === 'old-sbom') {
-        activityFilter.value = 'all'
-        sbomFilter.value = 'old'
       } else if (type === 'cleanup-candidates') {
         activityFilter.value = 'inactive-dt'
-        sbomFilter.value = 'old'
+        sbomFilter.value = 'none'
+      } else if (type === 'cleanup-candidates-with-sbom') {
+        activityFilter.value = 'inactive-dt'
+        sbomFilter.value = 'yes'
       }
+
+      // Reset to first page when filters change
+      currentPage.value = 1
+      refreshProjects()
     }
 
     const clearFilters = () => {
       searchQuery.value = ''
       activityFilter.value = 'all'
       sbomFilter.value = 'all'
-      selectedProjects.value = []
-      selectAll.value = false
+
+      // Reset to first page when clearing filters
+      currentPage.value = 1
+      refreshProjects()
     }
 
     const toggleSelectAll = () => {
@@ -738,6 +858,33 @@ export default {
       }
     }
 
+    const goToPage = (page) => {
+      if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page
+        refreshProjects()
+      }
+    }
+
+    const nextPage = () => {
+      if (currentPage.value < totalPages.value) {
+        currentPage.value++
+        refreshProjects()
+      }
+    }
+
+    const prevPage = () => {
+      if (currentPage.value > 1) {
+        currentPage.value--
+        refreshProjects()
+      }
+    }
+
+    // Watch for search changes and reset pagination
+    watch(searchQuery, () => {
+      currentPage.value = 1
+      refreshProjects()
+    })
+
     onMounted(() => {
       refreshProjects()
     })
@@ -753,6 +900,10 @@ export default {
       showDeleteConfirmation,
       showActivateConfirmation,
       showDeactivateConfirmation,
+      currentPage,
+      pageSize,
+      totalProjects,
+      totalPages,
       filteredProjects,
       refreshProjects,
       setQuickFilter,
@@ -771,7 +922,10 @@ export default {
       confirmDelete,
       confirmActivate,
       confirmDeactivate,
-      refreshSelectedProjects
+      refreshSelectedProjects,
+      goToPage,
+      nextPage,
+      prevPage
     }
   }
 }
