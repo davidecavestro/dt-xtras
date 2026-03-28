@@ -70,6 +70,23 @@
         </router-link>
 
         <router-link
+          to="/projects-grid"
+          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          :class="[
+            $route.path === '/projects-grid'
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+            sidebarOpen ? 'px-3' : 'px-2 justify-center'
+          ]"
+          @click="closeSidebarOnMobile"
+        >
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m0 0l3-3m-3 3l-3-3"></path>
+          </svg>
+          <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Projects Grid</span>
+        </router-link>
+
+        <router-link
           to="/cleanup"
           class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
           :class="[
