@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
+    "@revolist/vue3-datagrid": "^4.21.2",
     "axios": "^1.6.2",
     "cytoscape": "^3.33.1",
     "cytoscape-dagre": "^2.5.0",

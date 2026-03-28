@@ -1,121 +1,7 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
-    <!-- Row 2: Tree (1/3) + Related Projects (2/3) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Tree Panel (1/3) -->
-      <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Navigation Tree</h3>
-            <button
-              @click="clearSelection"
-              v-if="selectedTreeNode"
-              class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-            >
-              Clear Selection
-            </button>
-          </div>
-          <input
-            v-model="searchQuery"
-            placeholder="Search tags, projects..."
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          />
-        </div>
-
-        <div class="p-4 max-h-96 overflow-y-auto">
-          <div v-if="loading" class="text-center py-4">
-            <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          </div>
-
-          <div v-else-if="treeData.length === 0" class="text-center py-4 text-gray-500 dark:text-gray-400">
-            No tree data available
-          </div>
-
-          <div v-else class="space-y-1">
-            <TreeNode
-              v-for="node in filteredTreeData"
-              :key="node.id"
-              :node="node"
-              :selected-node="selectedTreeNode"
-              :expanded-nodes="expandedNodes"
-              :search-query="searchQuery"
-              @select="selectTreeNode"
-              @toggle="toggleTreeNode"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- Related Projects (2/3) -->
-      <div v-if="selectedTreeNode" class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
-        <div class="p-4">
-          <!-- Related Projects -->
-          <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
-            <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {{ relatedProjects.length }} projects found for "{{ selectedTreeNode.name }}"
-            </div>
-
-            <!-- Projects List -->
-            <div v-if="relatedProjects.length === 0" class="text-center py-8">
-              <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
-              <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No related projects found</h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Try selecting a different node or check your connections.
-              </p>
-            </div>
-
-            <div v-else class="max-h-96 overflow-y-auto space-y-2">
-              <div
-                v-for="project in relatedProjects"
-                :key="project.uuid"
-                class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
-              >
-                <div class="flex justify-between items-start mb-2">
-                  <div class="flex-1">
-                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ project.tags.join(', ') }}
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Security Info -->
-                <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
-                  <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
-                    🔴 {{ project.metrics.critical }} Critical
-                  </span>
-                  <span v-if="project.metrics.high > 0" class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
-                    🟠 {{ project.metrics.high }} High
-                  </span>
-                  <span v-if="project.metrics.medium > 0" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">
-                    🟡 {{ project.metrics.medium }} Medium
-                  </span>
-                  <span v-if="project.metrics.low > 0" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                    🔵 {{ project.metrics.low }} Low
-                  </span>
-                  <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-                    ✅ No Vulnerabilities
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-else class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
-        <div class="p-4">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
-          <p class="text-gray-500 dark:text-gray-400">No project selected. Please select a project from the tree to view details.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Row 2: Security Dashboard -->
-    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-3 mt-6">
+    <!-- Security Dashboard -->
+    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-3">
       <div class="flex justify-between items-center mb-6 p-6">
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Security Dashboard</h2>
@@ -193,6 +79,119 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+    <!-- Tree (1/3) + Related Projects (2/3) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <!-- Tree Panel (1/3) -->
+      <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Navigation Tree</h3>
+            <button
+              @click="clearSelection"
+              v-if="selectedTreeNode"
+              class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              Clear Selection
+            </button>
+          </div>
+          <input
+            v-model="searchQuery"
+            placeholder="Search tags, projects..."
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div class="p-4 max-h-96 overflow-y-auto">
+          <div v-if="loading" class="text-center py-4">
+            <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          </div>
+
+          <div v-else-if="treeData.length === 0" class="text-center py-4 text-gray-500 dark:text-gray-400">
+            No tree data available
+          </div>
+
+          <div v-else class="space-y-1">
+            <TreeNode
+              v-for="node in filteredTreeData"
+              :key="node.id"
+              :node="node"
+              :selected-node="selectedTreeNode"
+              :expanded-nodes="expandedNodes"
+              :search-query="searchQuery"
+              @select="selectTreeNode"
+              @toggle="toggleTreeNode"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Related Projects (2/3) -->
+      <div v-if="selectedTreeNode" class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
+        <div class="p-4">
+          <!-- Related Projects -->
+          <div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {{ relatedProjects.length }} projects found for "{{ selectedTreeNode.name }}"
+            </div>
+
+            <!-- Projects List -->
+            <div v-if="relatedProjects.length === 0" class="text-center py-8">
+              <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
+              <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No related projects found</h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Try selecting a different node or check your connections.
+              </p>
+            </div>
+
+            <div v-else class="max-h-96 overflow-y-auto space-y-2">
+              <div
+                v-for="project in relatedProjects"
+                :key="project.uuid"
+                class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <div class="flex-1">
+                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ project.tags.join(', ') }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Security Info -->
+                <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
+                  <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
+                    🔴 {{ project.metrics.critical }} Critical
+                  </span>
+                  <span v-if="project.metrics.high > 0" class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
+                    🟠 {{ project.metrics.high }} High
+                  </span>
+                  <span v-if="project.metrics.medium > 0" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">
+                    🟡 {{ project.metrics.medium }} Medium
+                  </span>
+                  <span v-if="project.metrics.low > 0" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                    🔵 {{ project.metrics.low }} Low
+                  </span>
+                  <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
+                    ✅ No Vulnerabilities
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
+        <div class="p-4">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
+          <p class="text-gray-500 dark:text-gray-400">No project selected. Please select a project from the tree to view details.</p>
         </div>
       </div>
     </div>

@@ -45,7 +45,7 @@ jobs:
 
       - name: "Build and push backend image"
         id: backend_build
-        uses: "docker/build-push-action@v5"
+        uses: "docker/build-push-action@v7"
         with:
           context: ./backend
           push: true
@@ -57,7 +57,7 @@ jobs:
 
       - name: "Build and push frontend image"
         id: frontend_build
-        uses: "docker/build-push-action@v5"
+        uses: "docker/build-push-action@v7"
         with:
           context: ./frontend
           push: true
