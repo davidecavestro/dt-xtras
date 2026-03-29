@@ -51,7 +51,7 @@
       <div v-else class="px-4 py-5 sm:px-6">
         <!-- Security Overview -->
         <div class="flex justify-between items-center mb-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 p-4">
             <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
               <div class="text-center">
                 <div class="text-3xl font-bold text-blue-600 dark:text-blue-300">{{ totalVulnerabilities }}</div>
@@ -91,9 +91,9 @@
       </div>
     </div>
     <!-- Tree (1/3) + Related Projects (2/3) -->
-    <div class="flex flex-col lg:flex-row gap-6 mt-6" style="height: calc(100vh - 400px); min-height: 400px;">
+    <div class="flex flex-col lg:flex-row gap-6 mt-6" style="min-height: 300px;">
       <!-- Tree Panel (1/3) -->
-      <div class="flex-1 lg:flex-none lg:w-1/3 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
+      <div class="lg:w-1/3 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Navigation Tree</h3>
@@ -137,7 +137,7 @@
       </div>
 
       <!-- Related Projects (2/3) -->
-      <div class="flex-1 lg:flex-1 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
+      <div class="lg:w-2/3 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
         <div class="p-4 flex-shrink-0">
           <!-- Related Projects -->
           <div>
@@ -273,7 +273,7 @@
                   </p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
                   <ProjectCard
                     v-for="project in relatedProjects"
                     :key="project.uuid"
