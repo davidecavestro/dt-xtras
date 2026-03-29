@@ -3,7 +3,7 @@ name: "Release"
 on:
   push:
     tags:
-      - v[0-9]+.[0-9]+.[0-9]+
+      - v[0-9]+.[0-9]*
   workflow_dispatch:
   workflow_call:
 
@@ -89,7 +89,7 @@ jobs:
         with:
           allowUpdates: true
           draft: true
-          makeLatest: {{is_default_branch}}
+          makeLatest: false
           name: ${{ github.ref_name }}
           # in the body, show both the changes and the reference to the backend and frontend images
           body: |
