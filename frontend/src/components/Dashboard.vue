@@ -8,6 +8,9 @@
           <p v-if="selectedTreeNode" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Filtered by: {{ selectedTreeNode.name }} ({{ selectedTreeNode.type }})
           </p>
+          <p v-else class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Showing all projects reachable from any root taxonomy
+          </p>
         </div>
         <button
           @click="refreshData"
@@ -34,10 +37,15 @@
         </div>
       </div>
 
-      <div v-else-if="!filteredSecurityData || filteredSecurityData.length === 0" class="text-center py-8">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No security data available</h3>
-        <p class="mt-1 text-gray-600 dark:text-gray-400">Try adjusting your filters or check your connection.</p>
+      <div v-else-if="(!treeData || treeData.length === 0) || (!filteredSecurityData || filteredSecurityData.length === 0)" class="text-center py-8">
+        <div v-if="loading" class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div v-else class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+          {{ loading ? 'Loading security data...' : 'No security data available' }}
+        </h3>
+        <p class="mt-1 text-gray-600 dark:text-gray-400">
+          {{ loading ? 'Please wait while we load your security data.' : 'Try adjusting your filters or check your connection.' }}
+        </p>
       </div>
 
       <div v-else class="px-4 py-5 sm:px-6">
@@ -129,13 +137,18 @@
       </div>
 
       <!-- Related Projects (2/3) -->
-      <div v-if="selectedTreeNode" class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
+      <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
         <div class="p-4">
           <!-- Related Projects -->
           <div>
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
             <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {{ relatedProjects.length }} projects found for "{{ selectedTreeNode.name }}"
+              <span v-if="selectedTreeNode">
+                {{ relatedProjects.length }} projects found for "{{ selectedTreeNode.name }}"
+              </span>
+              <span v-else>
+                {{ relatedProjects.length }} projects found (all projects reachable from any root taxonomy)
+              </span>
             </div>
 
             <!-- Projects List -->
@@ -186,12 +199,6 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
-      <div v-else class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
-        <div class="p-4">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
-          <p class="text-gray-500 dark:text-gray-400">No project selected. Please select a project from the tree to view details.</p>
         </div>
       </div>
     </div>
@@ -256,10 +263,7 @@ export default {
     })
 
     const filteredSecurityData = computed(() => {
-      // If no node selected, return empty array (no projects to show)
-      if (!selectedTreeNode.value) return []
-
-      // Get related projects for the selected node
+      // Get related projects for the selected node (or all projects if no node selected)
       const related = relatedProjects.value
 
       // If no related projects, return empty array
@@ -276,6 +280,7 @@ export default {
           high: project.metrics.high || 0,
           medium: project.metrics.medium || 0,
           low: project.metrics.low || 0,
+          metrics: project.metrics,
           uuid: project.uuid
         }))
     })
@@ -438,7 +443,20 @@ export default {
     }
 
     const relatedProjects = computed(() => {
-      if (!selectedTreeNode.value) return []
+      // Wait for tree data to be available
+      if (!treeData.value || treeData.value.length === 0) return []
+
+      if (!selectedTreeNode.value) {
+        // When no node selected, return all projects reachable from any root
+        const allReachableNodes = findAllReachableFromRoots()
+
+        return allProjects.value.filter(project => {
+          if (!project.tags || project.tags.length === 0) return false
+          return project.tags.some(tag =>
+            allReachableNodes.has(tag.toLowerCase())
+          )
+        })
+      }
 
       // Find all nodes reachable from selected node to root (upward traversal)
       const reachableNodes = findNodesToRoot(selectedTreeNode.value.id)
@@ -452,6 +470,87 @@ export default {
         )
       })
     })
+
+    // Helper function to find all nodes reachable from any root
+    const findAllReachableFromRoots = () => {
+      // Build graph from current data
+      const graph = graphBuilder.buildGraph(tags.value, taxonomiesData.value, null, associativeMode.value)
+
+      if (!graph) return new Set()
+
+      // Handle different graph structures
+      let nodes = []
+      let edges = []
+
+      if (Array.isArray(graph.nodes)) {
+        nodes = graph.nodes
+      } else if (graph.nodes && typeof graph.nodes === 'object') {
+        // Check if it's a Map
+        if (graph.nodes instanceof Map) {
+          nodes = Array.from(graph.nodes.values())
+        } else {
+          // If nodes is a regular object, try to get values
+          nodes = Object.values(graph.nodes)
+        }
+      } else {
+        return new Set()
+      }
+
+      if (Array.isArray(graph.edges)) {
+        edges = graph.edges
+      } else if (graph.edges && typeof graph.edges === 'object') {
+        // Check if it's a Map
+        if (graph.edges instanceof Map) {
+          edges = Array.from(graph.edges.values())
+        } else {
+          // If edges is a regular object, try to get values
+          edges = Object.values(graph.edges)
+        }
+      } else {
+        return new Set()
+      }
+
+      if (nodes.length === 0) return new Set()
+
+      const allReachableNodes = new Set()
+      const visited = new Set()
+
+      // Find all root nodes
+      const allTargetIds = new Set(edges.map(edge => edge.target))
+      const allSourceIds = new Set(edges.map(edge => edge.source))
+
+      const rootNodes = nodes
+        .filter(node => !allTargetIds.has(node.id) && allSourceIds.has(node.id))
+        .map(node => node.id)
+
+      // If no root nodes found, try alternative approach - use all nodes as starting points
+      const startNodes = rootNodes.length > 0 ? rootNodes : nodes.map(n => n.id)
+
+      // Start BFS from all root nodes (or all nodes if no roots found)
+      const queue = [...startNodes]
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()
+
+        if (visited.has(currentId)) continue
+        visited.add(currentId)
+        allReachableNodes.add(currentId)
+
+        // Find all child nodes
+        const childNodes = edges
+          .filter(edge => edge.source === currentId)
+          .map(edge => edge.target)
+          .filter(nodeId => nodeId !== null)
+
+        childNodes.forEach(nodeId => {
+          if (!visited.has(nodeId)) {
+            queue.push(nodeId)
+          }
+        })
+      }
+
+      return allReachableNodes
+    }
 
     // Helper function to find all nodes from selected node up to root
     const findNodesToRoot = (startNodeId) => {
