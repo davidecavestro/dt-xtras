@@ -124,6 +124,7 @@
         :filter="true"
         :resize="true"
         :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
+        :stretch="true"
         @page-changed="onPageChanged"
         @filter-changed="onFilterChanged"
         @search="onSearch"
