@@ -2,7 +2,12 @@
   <div class="px-4 py-6 sm:px-0 lg:px-8">
     <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Taxonomy Builder</h2>
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Taxonomy Builder</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Taxonomies define rules for tag patterns and create hierarchical relationships, forming tree structures that organize and categorize your tags
+          </p>
+        </div>
         <button
           @click="addTaxonomy"
           class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -52,56 +57,55 @@
               class="cursor-move hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <div class="flex flex-col gap-2">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-3">
-                    <div class="text-gray-400 dark:text-gray-500">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-center space-x-3 flex-1 min-w-0">
+                    <div class="text-gray-400 dark:text-gray-500 flex-shrink-0">
                       <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
                       </svg>
                     </div>
-                    <div class="flex-1">
-                      <div class="flex items-center">
-                        <div
-                          class="w-4 h-4 rounded-full mr-2 border border-gray-300 dark:border-gray-600"
-                          :style="{ backgroundColor: taxonomy.color || '#3B82F6' }"
-                          :title="`Color: ${taxonomy.color || '#3B82F6'}`"
-                        ></div>
-                        <span class="text-sm font-medium text-gray-900 dark:text-white">{{ taxonomy.name }}</span>
-                        <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                          {{ taxonomy.id }}
-                        </span>
-                      </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium text-gray-900 dark:text-white truncate">{{ taxonomy.name }}</div>
                       <div class="mt-1">
                         <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-gray-800 dark:text-gray-200 truncate max-w-xs inline-block" :title="taxonomy.regex_pattern">{{ taxonomy.regex_pattern }}</code>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div class="flex gap-2 justify-end mx-3 mb-3">
-                  <button
-                    @click="showTaxonomyTags(taxonomy)"
-                    class="px-3 py-1 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 inline-flex items-center gap-1"
-                  >
-                    <Folder class="w-4 h-4" /> Show Tags
-                  </button>
-                  <button
-                    @click="createTaxonomyTag(taxonomy)"
-                    class="px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 inline-flex items-center gap-1"
-                  >
-                    <Plus class="w-4 h-4" /> Create Tag
-                  </button>
-                  <button
-                    @click="editTaxonomy(taxonomy)"
-                    class="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 inline-flex items-center gap-1"
-                  >
-                    <Edit2 class="w-4 h-4" /> Edit
-                  </button>
-                  <button
-                    @click="deleteTaxonomy(taxonomy.id)"
-                    class="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 inline-flex items-center gap-1"
-                  >
-                    <Trash2 class="w-4 h-4" /> Remove
-                  </button>
+                  <div class="flex items-center gap-3 flex-shrink-0">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                      {{ taxonomy.id }}
+                    </span>
+                    <div class="flex gap-1 p-2 flex-shrink-0">
+                      <button
+                        @click="showTaxonomyTags(taxonomy)"
+                        class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-colors"
+                        title="Show Tags"
+                      >
+                        <Folder class="w-3 h-3" />
+                      </button>
+                      <button
+                        @click="createTaxonomyTag(taxonomy)"
+                        class="p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 inline-flex items-center justify-center transition-colors"
+                        title="Create Tag"
+                      >
+                        <Plus class="w-3 h-3" />
+                      </button>
+                      <button
+                        @click="editTaxonomy(taxonomy)"
+                        class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 class="w-3 h-3" />
+                      </button>
+                      <button
+                        @click="deleteTaxonomy(taxonomy.id)"
+                        class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
+                        title="Remove"
+                      >
+                        <Trash2 class="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </li>
