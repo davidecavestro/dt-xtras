@@ -133,6 +133,7 @@
         :show-selection="true"
         class="w-full border border border-gray-200 dark:border-gray-700"
         style="height: 500px;"
+        :readonly="true"
       >
       </vue3-datagrid>
 
