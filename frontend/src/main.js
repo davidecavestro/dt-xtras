@@ -8,6 +8,7 @@ import TaxonomyVisualization from './components/TaxonomyVisualization.vue'
 import TagManager from './components/TagManager.vue'
 import ProjectsList from './components/ProjectsList.vue'
 import ProjectsGrid from './components/ProjectsGrid.vue'
+import Projects from './components/Projects.vue'
 import ProjectBulkActions from './components/ProjectCleanup.vue'
 import VulnerabilitiesList from './components/VulnerabilitiesList.vue'
 import Login from './components/Login.vue'
@@ -43,15 +44,17 @@ const routes = [
   },
   {
     path: '/projects',
-    name: 'ProjectsList',
-    component: ProjectsList,
+    name: 'Projects',
+    component: Projects,
     meta: { requiresAuth: true }
   },
   {
+    path: '/projects-list',
+    redirect: '/projects'
+  },
+  {
     path: '/projects-grid',
-    name: 'ProjectsGrid',
-    component: ProjectsGrid,
-    meta: { requiresAuth: true }
+    redirect: '/projects'
   },
   {
     path: '/cleanup',

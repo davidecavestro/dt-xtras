@@ -91,10 +91,10 @@
       </div>
     </div>
     <!-- Tree (1/3) + Related Projects (2/3) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+    <div class="flex flex-col lg:flex-row gap-6 mt-6" style="height: calc(100vh - 400px); min-height: 400px;">
       <!-- Tree Panel (1/3) -->
-      <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex-1 lg:flex-none lg:w-1/3 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Navigation Tree</h3>
             <button
@@ -112,7 +112,7 @@
           />
         </div>
 
-        <div class="p-4 max-h-96 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto p-4">
           <div v-if="loading" class="text-center py-4">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           </div>
@@ -137,11 +137,51 @@
       </div>
 
       <!-- Related Projects (2/3) -->
-      <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-2">
-        <div class="p-4">
+      <div class="flex-1 lg:flex-1 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
+        <div class="p-4 flex-shrink-0">
           <!-- Related Projects -->
           <div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Related Projects</h3>
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Related Projects</h3>
+
+              <!-- View Mode Controls -->
+              <div class="flex items-center space-x-2">
+                <button
+                  @click="projectsViewMode = 'list'"
+                  :class="[
+                    'px-3 py-1 text-sm rounded-md',
+                    projectsViewMode === 'list'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  ]"
+                >
+                  List
+                </button>
+                <button
+                  @click="projectsViewMode = 'grid'"
+                  :class="[
+                    'px-3 py-1 text-sm rounded-md',
+                    projectsViewMode === 'grid'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  ]"
+                >
+                  Grid
+                </button>
+                <button
+                  @click="projectsViewMode = 'deck'"
+                  :class="[
+                    'px-3 py-1 text-sm rounded-md',
+                    projectsViewMode === 'deck'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  ]"
+                >
+                  Deck
+                </button>
+              </div>
+            </div>
+
             <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
               <span v-if="selectedTreeNode">
                 {{ relatedProjects.length }} projects found for "{{ selectedTreeNode.name }}"
@@ -151,50 +191,98 @@
               </span>
             </div>
 
-            <!-- Projects List -->
-            <div v-if="relatedProjects.length === 0" class="text-center py-8">
-              <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
-              <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No related projects found</h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Try selecting a different node or check your connections.
-              </p>
-            </div>
+            <!-- Projects Display -->
+            <div class="flex-1 overflow-hidden">
+              <div v-if="relatedProjects.length === 0" class="text-center py-8 h-full flex items-center justify-center">
+                <div>
+                  <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No related projects found</h3>
+                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Try selecting a different node or check your connections.
+                  </p>
+                </div>
+              </div>
 
-            <div v-else class="max-h-96 overflow-y-auto space-y-2">
-              <div
-                v-for="project in relatedProjects"
-                :key="project.uuid"
-                class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
-              >
-                <div class="flex justify-between items-start mb-2">
-                  <div class="flex-1">
-                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ project.tags.join(', ') }}
+              <!-- List View -->
+              <div v-else-if="projectsViewMode === 'list'" class="h-full overflow-y-auto space-y-2 p-4">
+                <div
+                  v-for="project in relatedProjects"
+                  :key="project.uuid"
+                  class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
+                >
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1">
+                      <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ project.tags.join(', ') }}
+                      </div>
                     </div>
                   </div>
+
+                  <!-- Security Info -->
+                  <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
+                    <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
+                      🔴 {{ project.metrics.critical }} Critical
+                    </span>
+                    <span v-if="project.metrics.high > 0" class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
+                      🟠 {{ project.metrics.high }} High
+                    </span>
+                    <span v-if="project.metrics.medium > 0" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">
+                      🟡 {{ project.metrics.medium }} Medium
+                    </span>
+                    <span v-if="project.metrics.low > 0" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                      🔵 {{ project.metrics.low }} Low
+                    </span>
+                    <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
+                      No Vulnerabilities
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <!-- Grid View -->
+              <div v-else-if="projectsViewMode === 'grid'" class="h-full overflow-y-auto">
+                <vue3-datagrid
+                  :columns="gridColumns"
+                  :source="relatedProjects"
+                  :row-height="50"
+                  :virtual="true"
+                  :page-size="50"
+                  :page="1"
+                  :total="relatedProjects.length"
+                  :theme="isDarkMode ? 'darkCompact' : 'compact'"
+                  :resize="true"
+                  :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
+                  :stretch="true"
+                  class="w-full border-gray-200 dark:border-gray-700"
+                  style="height: 100%;"
+                >
+                </vue3-datagrid>
+              </div>
+
+              <!-- Deck View -->
+              <div v-else-if="projectsViewMode === 'deck'" class="h-full overflow-y-auto">
+                <div class="px-4 py-5 sm:px-6">
+                  <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                    Projects ({{ relatedProjects.length }} total)
+                  </h3>
+                  <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                    Software projects being tracked
+                  </p>
                 </div>
 
-                <!-- Security Info -->
-                <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
-                  <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
-                    🔴 {{ project.metrics.critical }} Critical
-                  </span>
-                  <span v-if="project.metrics.high > 0" class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
-                    🟠 {{ project.metrics.high }} High
-                  </span>
-                  <span v-if="project.metrics.medium > 0" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">
-                    🟡 {{ project.metrics.medium }} Medium
-                  </span>
-                  <span v-if="project.metrics.low > 0" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                    🔵 {{ project.metrics.low }} Low
-                  </span>
-                  <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-                    ✅ No Vulnerabilities
-                  </span>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                  <ProjectCard
+                    v-for="project in relatedProjects"
+                    :key="project.uuid"
+                    :project="project"
+                    @select="viewProject"
+                    @view="viewProject"
+                    @security-details="viewSecurityDetails"
+                    @analyze="analyzeProject"
+                  />
                 </div>
               </div>
             </div>
@@ -206,12 +294,18 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { AlertCircle, RefreshCw, Folder, FolderOpen } from 'lucide-vue-next'
 import axios from 'axios'
+import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import VulnerabilityBar from './VulnerabilityBar.vue'
 import TreeNode from './TreeNode.vue'
+import NameCell from './grid-cells/NameCell.vue'
+import StatusCell from './grid-cells/StatusCell.vue'
+import TagsCell from './grid-cells/TagsCell.vue'
+import DateCell from './grid-cells/DateCell.vue'
+import ProjectCard from './ProjectCard.vue'
 import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js'
 
 export default {
@@ -221,6 +315,8 @@ export default {
     RefreshCw,
     Folder,
     FolderOpen,
+    Vue3Datagrid,
+    ProjectCard,
     RiskScoreBadge,
     VulnerabilityBar,
     TreeNode
@@ -238,8 +334,64 @@ export default {
     const taxonomiesData = ref([])
     const allTaxonomiesData = ref([])
     const associativeMode = ref(true) // Default to associative mode like graph
+    const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
 
     const graphBuilder = new SimpleTaxonomyGraphBuilder()
+
+    // Grid columns for projects grid view
+    const gridColumns = computed(() => [
+      {
+        prop: 'name',
+        name: 'Project Name',
+        width: 200,
+        sortable: true,
+        cellTemplate: VGridVueTemplate(NameCell)
+      },
+      {
+        prop: 'version',
+        name: 'Version',
+        width: 100,
+        sortable: true
+      },
+      {
+        prop: 'active',
+        name: 'Status',
+        width: 80,
+        sortable: true,
+        cellTemplate: VGridVueTemplate(StatusCell)
+      },
+      {
+        prop: 'lastActivity',
+        name: 'Last Activity',
+        width: 120,
+        sortable: true,
+        cellTemplate: VGridVueTemplate(DateCell)
+      },
+      {
+        prop: 'tags',
+        name: 'Tags',
+        width: 250,
+        sortable: false,
+        cellTemplate: VGridVueTemplate(TagsCell)
+      }
+    ])
+
+    // Dark mode detection for grid
+    const isDarkMode = ref(document.documentElement.classList.contains('dark'))
+    const observer = new MutationObserver(() => {
+      isDarkMode.value = document.documentElement.classList.contains('dark')
+    })
+
+    onMounted(() => {
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      })
+    })
+
+    onUnmounted(() => {
+      observer.disconnect()
+    })
 
     // Computed properties for filtered data
     const filteredTreeData = computed(() => {
@@ -703,6 +855,22 @@ export default {
       return new Date(dateString).toLocaleDateString()
     }
 
+    // Project action handlers
+    const viewProject = (project) => {
+      console.log('View project:', project.name)
+      // TODO: Navigate to project details page
+    }
+
+    const viewSecurityDetails = (project) => {
+      console.log('View security details:', project.name)
+      // TODO: Navigate to security details page
+    }
+
+    const analyzeProject = (project) => {
+      console.log('Analyze project:', project.name)
+      // TODO: Navigate to project analysis page
+    }
+
     onMounted(() => {
       refreshData()
     })
@@ -719,10 +887,16 @@ export default {
       filteredSecurityData,
       associativeMode,
       relatedProjects,
+      projectsViewMode,
+      gridColumns,
+      isDarkMode,
       refreshData,
       toggleTreeNode,
       selectTreeNode,
       clearSelection,
+      viewProject,
+      viewSecurityDetails,
+      analyzeProject,
       totalVulnerabilities,
       criticalVulns,
       highVulns,
