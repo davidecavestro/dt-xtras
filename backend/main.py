@@ -419,6 +419,66 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
 async def get_taxonomies():
     return load_taxonomies()
 
+@app.get("/api/taxonomies/{taxonomy_id}/tags")
+async def get_taxonomy_tags(taxonomy_id: str):
+    """Get all tags that match a specific taxonomy pattern"""
+    try:
+        # Load taxonomies to find the pattern
+        taxonomies = load_taxonomies()
+        taxonomy = next((t for t in taxonomies if t.id == taxonomy_id), None)
+
+        if not taxonomy:
+            raise HTTPException(status_code=404, detail="Taxonomy not found")
+
+        # Get all tags
+        tags_response = await get_all_tags()
+        all_tags = tags_response.get('tags', [])
+
+        # Filter tags that match the taxonomy pattern
+        matching_tags = []
+        pattern = taxonomy.regex_pattern
+
+        try:
+            # Use regex library for better JS compatibility
+            js_pattern = regex.compile(pattern)
+
+            for tag_name in all_tags:
+                if js_pattern.match(tag_name):
+                    matching_tags.append(tag_name)
+
+        except Exception as e:
+            print(f"Error with regex pattern '{pattern}': {e}")
+            # If pattern is invalid, return empty list
+            matching_tags = []
+
+        return matching_tags
+
+    except Exception as e:
+        print(f"Error getting taxonomy tags: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching taxonomy tags: {e}")
+
+async def get_all_tags(dt_token: str = Depends(get_dt_token_from_request)):
+    """Get all tags from the system"""
+    try:
+        # Get projects to extract tags - we need to pass a valid token
+        projects = await get_dt_projects(dt_token, page=1, limit=1000)  # Get a lot of projects
+
+        # Extract all unique tags
+        all_tags = set()
+        for project in projects:
+            if hasattr(project, 'tags') and project.tags:
+                for tag in project.tags:
+                    if isinstance(tag, str):
+                        all_tags.add(tag)
+                    elif isinstance(tag, dict) and 'name' in tag:
+                        all_tags.add(tag['name'])
+
+        return {'tags': sorted(list(all_tags))}
+
+    except Exception as e:
+        print(f"Error getting all tags: {e}")
+        return {'tags': []}
+
 @app.post("/api/taxonomies", response_model=Taxonomy)
 async def create_taxonomy(taxonomy: Taxonomy, permissions: List[str] = Depends(require_edit_permissions)):
     taxonomies = load_taxonomies()
