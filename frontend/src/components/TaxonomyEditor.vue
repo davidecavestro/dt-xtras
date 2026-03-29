@@ -1,6 +1,6 @@
 <template>
   <div class="px-4 py-6 sm:px-0 lg:px-8">
-    <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div class="flex justify-between items-center mb-6">
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Taxonomy Builder</h2>
@@ -18,26 +18,19 @@
       </div>
 
       <!-- Main Content - Always Visible -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-gray-800 shadow rounded-lg p-1">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Taxonomy Graph Visualization -->
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Taxonomy Relations Graph</h3>
-            <button
-              @click="resetGraphView"
-              class="px-3 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700"
-            >
-              Reset View
-            </button>
           </div>
-
           <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 resize overflow-hidden" style="height: 400px; position: relative; overflow: hidden;">
             <div ref="cytoscapeContainer" class="w-full h-full"></div>
           </div>
         </div>
 
         <!-- Taxonomies List -->
-        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div class="px-4 py-5 sm:px-6">
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Existing Taxonomies</h3>
             <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
@@ -824,34 +817,6 @@ const draggedIndex = ref(null)
       const hash = node.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
       const hue = hash % 360
       return `hsl(${hue}, 70%, 50%)`
-    }
-
-    const getNodeIcon = (node) => {
-      // Use user-defined icon or suggest based on ID regex_pattern
-      if (node.icon) return node.icon
-
-      // Suggest icons based on common patterns (optional, can be overridden)
-      const suggestions = {
-        'env': '🌍',
-        'customer': '👥',
-        'cust': '👥',
-        'deploy': '🚀',
-        'product': '📦',
-        'version': '🔖',
-        'app': '📱',
-        'service': '⚙️',
-        'team': '�',
-        'project': '�'
-      }
-
-      // Check if ID contains any known patterns
-      for (const [regex_pattern, icon] of Object.entries(suggestions)) {
-        if (node.id.toLowerCase().includes(regex_pattern)) {
-          return icon
-        }
-      }
-
-      return '📁' // Default icon
     }
 
     onMounted(() => {

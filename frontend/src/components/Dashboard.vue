@@ -258,6 +258,7 @@
                   :stretch="true"
                   class="w-full border-gray-200 dark:border-gray-700"
                   style="height: 100%;"
+                  :readonly="true"
                 >
                 </vue3-datagrid>
               </div>

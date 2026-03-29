@@ -16,4 +16,7 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
+export BACKEND_API_URL=http://0.0.0.0:8000
+export DT_API_URL=http://dtrack-apiserver:8080
+export DT_FRONTEND_URL=http://localhost:3000
 python main.py

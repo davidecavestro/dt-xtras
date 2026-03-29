@@ -149,7 +149,7 @@ class DTProject(BaseModel):
 class SecurityNode(BaseModel):
     id: str
     name: str
-    type: str  # customer, env, product, project
+    type: str  # i.e. customer, env, product, project
     parent_id: Optional[str] = None
     children: List['SecurityNode'] = []
     vulnerabilities: int = 0

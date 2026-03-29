@@ -1,7 +1,7 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
-    <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6">
-      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Tag Management</h2>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Tag Manager</h2>
       <p class="text-gray-600 dark:text-gray-400 mb-6">
         Manage tags and link them to Dependency-Track projects
       </p>
@@ -44,23 +44,6 @@
         </div>
       </div>
 
-      <!-- Suggested Tags -->
-      <div v-if="suggestedTags.length > 0" class="mt-4">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Suggested Tags
-        </label>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="suggestion in suggestedTags"
-            :key="suggestion"
-            @click="selectSuggestedTag(suggestion)"
-            class="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300"
-          >
-            {{ suggestion }}
-          </button>
-        </div>
-      </div>
-
       <!-- Action Buttons -->
       <div class="mt-4 flex gap-2">
         <button
@@ -80,15 +63,50 @@
     </div>
 
     <!-- Existing Tags Management -->
-    <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Existing Tags</h2>
-        <button
-          @click="refreshTags"
-          class="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-        >
-          Refresh
-        </button>
+        <div class="flex items-center gap-2">
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            {{ tags.length }} tags
+          </div>
+          <!-- View Mode Controls -->
+          <div class="flex items-center space-x-2">
+            <button
+              @click="tagsViewMode = 'list'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                tagsViewMode === 'list'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <ListIcon class="w-4 h-4" />
+            </button>
+            <button
+              @click="tagsViewMode = 'grid'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                tagsViewMode === 'grid'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <GridIcon class="w-4 h-4" />
+            </button>
+            <button
+              @click="tagsViewMode = 'deck'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                tagsViewMode === 'deck'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <SquareIcon class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Tags List -->
@@ -96,7 +114,8 @@
         No tags created yet. Create your first tag above.
       </div>
 
-      <div v-else class="space-y-3">
+      <!-- List View -->
+      <div v-else-if="tagsViewMode === 'list'" class="space-y-3">
         <div
           v-for="tag in tags"
           :key="tag.name"
@@ -117,12 +136,6 @@
               View Projects
             </button>
             <button
-              @click="editTag(tag)"
-              class="px-3 py-1 text-sm bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors"
-            >
-              Edit
-            </button>
-            <button
               @click="deleteTag(tag)"
               class="px-3 py-1 text-sm bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
             >
@@ -131,10 +144,60 @@
           </div>
         </div>
       </div>
+
+      <!-- Grid View -->
+      <div v-else-if="tagsViewMode === 'grid'" class="overflow-y-auto" style="height: 400px;">
+        <vue3-datagrid
+          :columns="gridColumns"
+          :source="tags"
+          :row-height="60"
+          :virtual="true"
+          :page-size="20"
+          :theme="isDarkMode ? 'darkCompact' : 'compact'"
+          :filter="true"
+          :resize="true"
+          :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
+          :stretch="true"
+          :readonly="true"
+        />
+      </div>
+
+      <!-- Deck View (Current Default) -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          v-for="tag in tags"
+          :key="tag.name"
+          class="bg-white dark:bg-gray-700 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow"
+        >
+          <div class="flex flex-col h-full">
+            <div class="flex-1">
+              <div class="font-medium text-gray-900 dark:text-white mb-2">{{ tag.name }}</div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Used by {{ tag.projectsCount || 0 }} projects
+              </div>
+            </div>
+
+            <div class="flex gap-2 mt-auto">
+              <button
+                @click="viewTagProjects(tag)"
+                class="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                View Projects
+              </button>
+              <button
+                @click="deleteTag(tag)"
+                class="flex-1 px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Project Linking -->
-    <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Link Tags to Projects</h2>
         <div class="text-sm text-gray-600 dark:text-gray-400">
@@ -240,7 +303,7 @@
 
     <!-- Projects Modal -->
     <div v-if="showProjectsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-800">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
         <div class="p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -308,9 +371,18 @@ import { buildDTProjectUrl } from '../config.js'
 import auth from '../services/auth.js'
 import { useRouter } from 'vue-router'
 import { useTagStore } from '../stores/tags.js'
+import { List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
+import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 
 export default {
   name: 'TagManager',
+  components: {
+    Vue3Datagrid,
+    VGridVueTemplate,
+    ListIcon,
+    GridIcon,
+    SquareIcon
+  },
   setup() {
     const router = useRouter()
     const tagStore = useTagStore()
@@ -327,58 +399,72 @@ export default {
     const selectedTag = ref(null)
     const tagProjects = ref([])
     const loading = ref(false)
+    const tagsViewMode = ref('grid') // 'list', 'grid', or 'deck'
 
-    // Computed
-    const suggestedTags = computed(() => {
-      if (!taxonomies.value.length || !newTag.value) return []
+    // Dark mode detection
+    const isDarkMode = computed(() => {
+      if (typeof window !== 'undefined') {
+        return document.documentElement.classList.contains('dark')
+      }
+      return false
+    })
 
-      const suggestions = []
-      const input = newTag.value.toLowerCase()
-      const currentTag = newTag.value.trim()
+    // Grid columns for tags grid view
+    const gridColumns = computed(() => [
+      {
+        prop: 'taxonomy',
+        name: 'Taxonomy',
+        sortable: true
+      },
+      {
+        prop: 'name',
+        name: 'Tag',
+        sortable: true
+      },
+      {
+        prop: 'projectsCount',
+        name: 'Projects Count',
+        sortable: true
+      },
+      /* ,
+      {
+        prop: 'actions',
+        name: 'Actions',
+        sortable: false,
+        cellTemplate: VGridVueTemplate(TagActionsCell)
+      } */
+    ])
 
-      // Generate suggestions based on current input and taxonomies
-      taxonomies.value.forEach(taxonomy => {
-        // Check if current input already matches this taxonomy regex_pattern
-        try {
-          // Use native RegExp for JS regex compatibility
-          const regex = new RegExp(taxonomy.regex_pattern)
-          const match = regex.test(currentTag)
+    // Tag actions cell template
+    const TagActionsCell = {
+      template: (props) => {
+        const taxonomy = props.model.taxonomy ?
+          (taxonomies.value.find(t => t.id === props.model.taxonomy) ||
+          { name: props.model.taxonomy }) :
+          { name: 'No taxonomy' };
 
-          if (match) {
-            // If it matches, show variations based on matched groups
-            const groups = regex.exec(currentTag)?.groups || {}
-            if (taxonomy.id === 'customer' && groups.customer) {
-              // Show similar customer names
-              suggestions.push(`cust:${groups.customer}`, `cust:beta`, `cust:demo`)
-            } else if (taxonomy.id === 'env' && groups.env) {
-              // Show other environments
-              suggestions.push(`env:prod`, `env:staging`, `env:dev`)
-            } else if (taxonomy.id === 'product_version' && groups.product) {
-              // Show version variations
-              suggestions.push(`${groups.product}:1.0.0`, `${groups.product}:2.0.0`, `${groups.product}:latest`)
-            }
-          } else {
-            // If no match, show standard examples for this taxonomy
-            if (taxonomy.id === 'customer') {
-              suggestions.push(`cust:acme`, `cust:beta`, `cust:demo`)
-            } else if (taxonomy.id === 'env') {
-              suggestions.push(`env:prod`, `env:staging`, `env:dev`)
-            } else if (taxonomy.id === 'product_version') {
-              suggestions.push(`myapp:1.0.0`, `webapp:2.1.0`, `api:3.0.0`)
-            } else if (taxonomy.id === 'deploy') {
-              suggestions.push(`deploy:prod:cust:acme:myapp:1.0.0`)
+        return {
+          template: `
+            <div class="flex gap-2">
+              <button @click="viewProjects" class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">View</button>
+              <button @click="removeTag" class="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+            </div>
+          `,
+          methods: {
+            viewProjects: () => {
+              // Emit event to parent or call directly
+              console.log('View projects for tag:', props.model.name)
+            },
+            edit: () => {
+              console.log('Edit tag:', props.model.name)
+            },
+            removeTag: () => {
+              console.log('Delete tag:', props.model.name)
             }
           }
-        } catch (error) {
-          console.error('Invalid regex regex_patternattern:', taxonomy.regex_pattern, error)
         }
-      })
-
-      return suggestions.filter(tag =>
-        tag.toLowerCase().includes(input) &&
-        !tags.value.some(existing => existing.name === tag)
-      ).slice(0, 8)
-    })
+      }
+    }
 
     // Methods
     const loadTaxonomies = async () => {
@@ -493,10 +579,6 @@ export default {
       }
     }
 
-    const editTag = (tag) => {
-      // TODO: Implement tag editing
-      console.log('Edit tag:', tag)
-    }
 
     const deleteTag = async (tag) => {
       if (!confirm(`Are you sure you want to delete tag "${tag.name}"?`)) return
@@ -631,16 +713,17 @@ export default {
       selectedProjects,
       selectedTags,
       tagValidation,
-      suggestedTags,
       showProjectsModal,
       selectedTag,
       tagProjects,
       loading,
+      tagsViewMode,
+      isDarkMode,
+      gridColumns,
       validateTag,
       selectSuggestedTag,
       createTag,
       clearForm,
-      editTag,
       deleteTag,
       viewTagProjects,
       closeProjectsModal,
