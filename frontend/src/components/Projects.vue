@@ -58,16 +58,19 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Project Status
+            Inactive Projects
           </label>
-          <select
-            v-model="filters.activeOnly"
-            @change="fetchProjects"
-            class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option :value="false">All Projects</option>
-            <option :value="true">Active Only</option>
-          </select>
+          <div class="flex items-center">
+            <input
+              type="checkbox"
+              v-model="filters.showInactive"
+              @change="fetchProjects"
+              class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800"
+            />
+            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+              Show
+            </span>
+          </div>
         </div>
       </div>
 
@@ -208,7 +211,7 @@ export default {
   setup() {
     const filters = ref({
       search: '',
-      activeOnly: false
+      showInactive: false
     })
 
     const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
@@ -287,10 +290,10 @@ export default {
         if (filters.value.search) {
           queryParams.search = filters.value.search
         }
-        if (filters.value.activeOnly) {
-          queryParams.activeOnly = true
+        if (filters.value.showInactive) {
+          queryParams.excludeInactive = false  // Show inactive when checked
         } else {
-          queryParams.activeOnly = false  // Explicitly set to false when not active only
+          queryParams.excludeInactive = true   // Hide inactive when unchecked (default)
         }
 
         return apiService.getProjects(params, queryParams)

@@ -334,7 +334,7 @@ async def logout():
     return {"message": "Successfully logged out"}
 
 # DT API Client
-async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search: Optional[str] = None) -> List[Dict]:
+async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search: Optional[str] = None, excludeInactive: Optional[str] = "false") -> List[Dict]:
     """Get projects from DT API with proper authentication and pagination"""
     headers = {}
     if dt_token:
@@ -352,8 +352,11 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
         "pageSize": str(limit)     # DT uses string type
     }
 
-    # IMPORTANT: Don't exclude inactive projects to see all projects
-    params["excludeInactive"] = "false"
+    # Use the excludeInactive parameter if provided, otherwise default to "false"
+    if excludeInactive is not None:
+        params["excludeInactive"] = excludeInactive
+    else:
+        params["excludeInactive"] = excludeInactive
 
     if search:
         params["name"] = search  # DT uses 'name' parameter, not 'searchText'
@@ -373,20 +376,6 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
         # DT API returns plain dicts, not objects
         projects_data = response.json()
         print(f"Successfully parsed {len(projects_data)} projects")
-
-        # Get total count from header
-        total_count = response.headers.get("X-Total-Count")
-        if total_count:
-            print(f"Total projects from header: {total_count}")
-
-        # Log project details for debugging
-        if projects_data:
-            print(f"Sample project: {projects_data[0]}")
-            # Check for active field
-            if 'active' in projects_data[0]:
-                print(f"Active field present: {projects_data[0]['active']}")
-        else:
-            print("No projects found")
 
     # Enrich projects with additional fields
     enriched_projects = []
@@ -523,7 +512,7 @@ async def get_projects(
     page: int = 1,
     limit: int = 50,
     search: Optional[str] = None,
-    activeOnly: Optional[bool] = None
+    showInactive: Optional[bool] = None
 ):
     """Get projects from DT API with pagination"""
     try:
@@ -539,13 +528,13 @@ async def get_projects(
         if search:
             params["name"] = search
 
-        # Add activeOnly parameter if provided
-        if activeOnly is not None:
-            params["excludeInactive"] = "true" if activeOnly else "false"
+        # Add showInactive parameter logic
+        if showInactive is not None:
+            params["excludeInactive"] = "false" if showInactive else "true"
 
         print(f"API params: {params}")  # Debug log
 
-        projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search)
+        projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search, excludeInactive=params.get("excludeInactive", "true"))
         print(f"Successfully retrieved {len(projects)} projects")
         return projects
     except Exception as e:
