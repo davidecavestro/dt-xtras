@@ -198,6 +198,7 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import axios from 'axios'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
+import { buildDTProjectUrl } from '../config.js'
 import NameCell from './grid-cells/NameCell.vue'
 import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
@@ -466,11 +467,6 @@ export default {
       }
     }
 
-    const getDependencyTrackUrl = (projectUuid) => {
-      const dtBaseUrl = window.location.origin.replace(':5173', ':8080')
-      return `${dtBaseUrl}/#/project/${projectUuid}`
-    }
-
     const formatDate = (dateString) => {
       if (!dateString) return 'Never'
       try {
@@ -506,7 +502,7 @@ export default {
       bulkActivate,
       bulkDeactivate,
       bulkDelete,
-      getDependencyTrackUrl,
+      buildDTProjectUrl,
       formatDate,
       refreshProjects,
       applyFilters,

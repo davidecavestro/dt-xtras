@@ -24,7 +24,7 @@ app = FastAPI(title="dt-xtras", version="1.0.0")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8080"],
+    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:8080").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,6 +32,7 @@ app.add_middleware(
 
 # Configuration
 DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
+DT_FRONTEND_URL = os.getenv("DT_FRONTEND_URL", "http://dtrack-frontend:8080")
 DT_API_KEY = os.getenv("DT_API_KEY", "")
 TAXONOMIES_FILE = "../api/taxonomies.yaml"
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
@@ -414,6 +415,20 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
     # The field_validator in DTProject will handle tag conversion automatically
     return enriched_projects
 
+@app.get("/api/config")
+async def get_config():
+    """Get frontend configuration including URLs"""
+    return {
+        "DT_API_URL": DT_API_URL,
+        "DT_FRONTEND_URL": DT_FRONTEND_URL,
+        "BACKEND_API_URL": os.getenv("BACKEND_API_URL", "http://localhost:8000")
+    }
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
+
 # Taxonomy CRUD Operations
 @app.get("/api/taxonomies", response_model=List[Taxonomy])
 async def get_taxonomies():
@@ -457,26 +472,46 @@ async def get_taxonomy_tags(taxonomy_id: str):
         print(f"Error getting taxonomy tags: {e}")
         raise HTTPException(status_code=500, detail=f"Error fetching taxonomy tags: {e}")
 
-async def get_all_tags(dt_token: str = Depends(get_dt_token_from_request)):
+async def get_all_tags():
     """Get all tags from the system"""
     try:
+        # Get DT token from environment or use default
+        dt_token = DT_API_KEY if DT_API_KEY else None
+        if not dt_token:
+            print("DEBUG: No DT API key available, using None")
+
+        print(f"DEBUG: Using DT token: {dt_token[:20] if dt_token else 'None'}...")
+
         # Get projects to extract tags - we need to pass a valid token
         projects = await get_dt_projects(dt_token, page=1, limit=1000)  # Get a lot of projects
+        print(f"DEBUG: Retrieved {len(projects)} projects")
 
         # Extract all unique tags
         all_tags = set()
-        for project in projects:
+        for i, project in enumerate(projects):
+            print(f"DEBUG: Project {i}: {project.name}, tags: {getattr(project, 'tags', 'NO TAGS')}")
             if hasattr(project, 'tags') and project.tags:
+                print(f"DEBUG: Found {len(project.tags)} tags for project {project.name}")
                 for tag in project.tags:
+                    print(f"DEBUG: Processing tag: {tag} (type: {type(tag)})")
                     if isinstance(tag, str):
                         all_tags.add(tag)
                     elif isinstance(tag, dict) and 'name' in tag:
                         all_tags.add(tag['name'])
+                    elif isinstance(tag, dict):
+                        print(f"DEBUG: Tag dict keys: {list(tag.keys())}")
+                    else:
+                        print(f"DEBUG: Unknown tag type: {type(tag)}")
+
+        print(f"DEBUG: Total unique tags found: {len(all_tags)}")
+        print(f"DEBUG: Tags: {sorted(list(all_tags))}")
 
         return {'tags': sorted(list(all_tags))}
 
     except Exception as e:
         print(f"Error getting all tags: {e}")
+        import traceback
+        traceback.print_exc()
         return {'tags': []}
 
 @app.post("/api/taxonomies", response_model=Taxonomy)

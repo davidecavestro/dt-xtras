@@ -187,7 +187,7 @@
                   <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
                 </div>
                 <a
-                  :href="getDependencyTrackUrl(project.uuid)"
+                  :href="buildDTProjectUrl(project.uuid)"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
@@ -237,6 +237,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js';
 import axios from 'axios';
 import cytoscape from 'cytoscape';
+import { buildDTProjectUrl } from '../config.js';
 import dagre from 'cytoscape-dagre';
 
 // Register dagre extension
@@ -682,14 +683,6 @@ export default {
       await getProjectsForTags(reachableTags, 1); // Start with page 1
     };
 
-    // Helper function to get Dependency-Track URL for a project
-    const getDependencyTrackUrl = (projectUuid) => {
-      // Assuming DT runs on the same host but different port/path
-      // This might need to be adjusted based on your DT configuration
-      const dtBaseUrl = window.location.origin.replace(':5173', ':8080'); // Adjust port if needed
-      return `${dtBaseUrl}/#/project/${projectUuid}`;
-    };
-
     // Helper function to get total vulnerability count
     const getTotalVulnerabilities = (metrics) => {
       if (!metrics) return 0;
@@ -790,7 +783,7 @@ export default {
       getProjectsForTags,
       loadRelatedProjectsPage,
       updateRelatedProjects,
-      getDependencyTrackUrl,
+      buildDTProjectUrl,
       getTotalVulnerabilities,
       zoomIn,
       zoomOut,
