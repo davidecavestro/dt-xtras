@@ -13,10 +13,10 @@
         <button
           v-if="hasChildren"
           @click.stop="handleToggle"
-          class="mr-1 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+          class="mr-1 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-600 dark:text-gray-400"
         >
           <ChevronRight
-            class="w-3 h-3 transition-transform"
+            class="w-3 h-3 transition-transform text-gray-600 dark:text-gray-400"
             :class="{ 'rotate-90': isExpanded }"
           />
         </button>
@@ -120,10 +120,10 @@ export default {
     })
 
     const getVulnColor = (vulnCount) => {
-      if (vulnCount >= 10) return 'bg-red-500'
-      if (vulnCount >= 5) return 'bg-orange-500'
-      if (vulnCount >= 1) return 'bg-yellow-500'
-      return 'bg-green-500'
+      if (vulnCount >= 10) return 'bg-red-500 dark:bg-red-600'
+      if (vulnCount >= 5) return 'bg-orange-500 dark:bg-orange-600'
+      if (vulnCount >= 1) return 'bg-yellow-500 dark:bg-yellow-600'
+      return 'bg-green-500 dark:bg-green-600'
     }
 
     const handleSelect = () => {

@@ -793,9 +793,18 @@ export default {
         // Build tree structure from graph
         treeData.value = buildTreeFromGraph(graph)
 
-        // Auto-expand first few nodes
+        // Auto-expand the whole tree
+        const expandAll = (nodes) => {
+          nodes.forEach(node => {
+            expandedNodes.value.add(node.id)
+            if (node.children && node.children.length > 0) {
+              expandAll(node.children)
+            }
+          })
+        }
+
         if (treeData.value.length > 0) {
-          treeData.value.slice(0, 3).forEach(node => expandedNodes.value.add(node.id))
+          expandAll(treeData.value)
         }
       } catch (err) {
         error.value = err.response?.data?.detail || err.message || 'Failed to load data'
