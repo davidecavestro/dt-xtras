@@ -522,11 +522,29 @@ async def get_projects(
     dt_token: str = Depends(get_dt_token_from_request),
     page: int = 1,
     limit: int = 50,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    activeOnly: Optional[bool] = None
 ):
     """Get projects from DT API with pagination"""
     try:
         print(f"Getting projects with DT token: {dt_token[:50] if dt_token else 'None'}...")
+
+        # Build DT API parameters
+        params = {
+            "pageNumber": str(page),
+            "pageSize": str(limit)
+        }
+
+        # Add search parameter if provided
+        if search:
+            params["name"] = search
+
+        # Add activeOnly parameter if provided
+        if activeOnly is not None:
+            params["excludeInactive"] = "true" if activeOnly else "false"
+
+        print(f"API params: {params}")  # Debug log
+
         projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search)
         print(f"Successfully retrieved {len(projects)} projects")
         return projects
