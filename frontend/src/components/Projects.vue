@@ -3,15 +3,15 @@
     <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Projects</h2>
-        
+
         <!-- View Mode Controls -->
         <div class="flex items-center space-x-2">
           <button
             @click="projectsViewMode = 'list'"
             :class="[
               'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'list' 
-                ? 'bg-blue-600 text-white' 
+              projectsViewMode === 'list'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
             ]"
           >
@@ -21,8 +21,8 @@
             @click="projectsViewMode = 'grid'"
             :class="[
               'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'grid' 
-                ? 'bg-blue-600 text-white' 
+              projectsViewMode === 'grid'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
             ]"
           >
@@ -32,8 +32,8 @@
             @click="projectsViewMode = 'deck'"
             :class="[
               'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'deck' 
-                ? 'bg-blue-600 text-white' 
+              projectsViewMode === 'deck'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
             ]"
           >
@@ -155,7 +155,7 @@
       </div>
 
       <!-- Deck View -->
-      <div v-else-if="projectsViewMode === 'deck'" class="max-h-96 overflow-y-auto">
+      <div v-else-if="projectsViewMode === 'deck'" class="overflow-y-auto">
         <div class="px-4 py-5 sm:px-6">
           <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
             Projects ({{ pagination.totalItems.value }} total)
@@ -164,8 +164,8 @@
             Software projects being tracked
           </p>
         </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
           <ProjectCard
             v-for="project in data"
             :key="project.uuid"
@@ -224,35 +224,35 @@ export default {
 
     // Grid columns for projects grid view
     const gridColumns = computed(() => [
-      { 
-        prop: 'name', 
+      {
+        prop: 'name',
         name: 'Project Name',
         width: 200,
         sortable: true,
         cellTemplate: VGridVueTemplate(NameCell)
       },
-      { 
-        prop: 'version', 
+      {
+        prop: 'version',
         name: 'Version',
         width: 100,
         sortable: true
       },
-      { 
-        prop: 'active', 
+      {
+        prop: 'active',
         name: 'Status',
         width: 80,
         sortable: true,
         cellTemplate: VGridVueTemplate(StatusCell)
       },
-      { 
-        prop: 'lastActivity', 
+      {
+        prop: 'lastActivity',
         name: 'Last Activity',
         width: 120,
         sortable: true,
         cellTemplate: VGridVueTemplate(DateCell)
       },
-      { 
-        prop: 'tags', 
+      {
+        prop: 'tags',
         name: 'Tags',
         width: 250,
         sortable: false,
@@ -291,13 +291,15 @@ export default {
           pageNumber: page,
           pageSize: limit
         }
-        
+
         const queryParams = {}
         if (filters.value.search) {
           queryParams.search = filters.value.search
         }
         if (filters.value.activeOnly) {
           queryParams.activeOnly = true
+        } else {
+          queryParams.activeOnly = false  // Explicitly set to false when not active only
         }
 
         return apiService.getProjects(params, queryParams)

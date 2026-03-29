@@ -1,12 +1,19 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex">
+    <!-- Mobile Sidebar Backdrop -->
+    <div
+      v-if="sidebarOpen && !isLargeScreen"
+      @click="closeSidebarOnMobile"
+      class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+    ></div>
+
     <!-- Sidebar -->
     <div v-if="$route.path !== '/login'" :class="[
       'fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform transition-all duration-300 ease-in-out overflow-hidden',
       'lg:relative lg:z-auto lg:transform-none',
       { 'translate-x-0': sidebarOpen, '-translate-x-full': !sidebarOpen },
       { 'lg:w-64': sidebarOpen, 'lg:w-16': !sidebarOpen },
-      { 'z-50': !sidebarOpen, 'z-40': sidebarOpen }
+      { 'z-50': sidebarOpen, 'z-20': !sidebarOpen }
     ]">
       <!-- Sidebar Header -->
       <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
@@ -214,13 +221,6 @@
       </div>
     </div>
 
-    <!-- Overlay for mobile -->
-    <div
-      v-if="sidebarOpen && $route.path !== '/login'"
-      @click="toggleSidebar"
-      class="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 lg:hidden"
-    ></div>
-
     <!-- Main Content -->
     <div :class="['flex-1 transition-all duration-300 ease-in-out z-10', $route.path !== '/login' && screenWidth >= 1024 && sidebarOpen ? 'lg:ml-64' : $route.path !== '/login' && screenWidth >= 1024 && !sidebarOpen ? 'lg:ml-16' : '']">
       <!-- Mobile Header -->
@@ -252,7 +252,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import authService from './services/auth'
 import LogoWithText from './components/LogoWithText.vue'
@@ -269,6 +269,9 @@ export default {
     const currentUser = ref('')
     const sidebarOpen = ref(true) // Start with sidebar open
     const screenWidth = ref(window.innerWidth)
+
+    // Computed properties
+    const isLargeScreen = computed(() => screenWidth.value >= 1024)
 
     // Update screen width on window resize
     const updateScreenWidth = () => {
@@ -368,6 +371,7 @@ export default {
       currentUser,
       sidebarOpen,
       screenWidth,
+      isLargeScreen,
       handleLogout,
       toggleDarkMode,
       toggleSidebar,
