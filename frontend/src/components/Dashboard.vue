@@ -137,7 +137,7 @@
       </div>
 
       <!-- Related Projects (2/3) -->
-      <div class="lg:w-2/3 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
+      <div class="flex-1 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
         <div class="p-4 flex-shrink-0">
           <!-- Related Projects -->
           <div>
@@ -264,16 +264,7 @@
 
               <!-- Deck View -->
               <div v-else-if="projectsViewMode === 'deck'" class="h-full overflow-y-auto">
-                <div class="px-4 py-5 sm:px-6">
-                  <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                    Projects ({{ relatedProjects.length }} total)
-                  </h3>
-                  <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                    Software projects being tracked
-                  </p>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                <div class="grid gap-4 p-4" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
                   <ProjectCard
                     v-for="project in relatedProjects"
                     :key="project.uuid"
