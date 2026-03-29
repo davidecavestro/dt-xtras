@@ -898,7 +898,7 @@ const draggedIndex = ref(null)
       selectedTaxonomy.value = taxonomy
       try {
         const response = await axios.get(`/api/taxonomies/${taxonomy.id}/tags`)
-        taxonomyTags.value = response.data || []
+        taxonomyTags.value = response.data?.tags || []  // Extract tags array from response
 
         // Load usage data for tags
         const usagePromises = taxonomyTags.value.map(async (tag) => {
@@ -1005,7 +1005,7 @@ const draggedIndex = ref(null)
           try {
             // Get existing tags that match this taxonomy
             const response = await axios.get(`/api/taxonomies/${selectedTaxonomy.value.id}/tags`)
-            const existingTags = response.data || []
+            const existingTags = response.data?.tags || []  // Extract tags array from response
 
             // Extract unique values for this capture group
             const uniqueValues = [...new Set(existingTags.map(tag => {

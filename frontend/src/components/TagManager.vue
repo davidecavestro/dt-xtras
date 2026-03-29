@@ -166,7 +166,7 @@
                 <div>
                   <div class="font-medium text-gray-900 dark:text-white">
                   <a
-                    :href="`http://localhost:3000/projects/${project.uuid}`"
+                    :href="buildDTProjectUrl(project.uuid)"
                     target="_blank"
                     class="text-blue-600 hover:text-blue-800 hover:underline"
                     title="View in Dependency Track"
@@ -178,7 +178,7 @@
                     {{ project.name }} v{{ project.version }}
                     <span class="ml-2">
                       <a
-                        :href="`http://localhost:3000/projects/${project.uuid}`"
+                        :href="buildDTProjectUrl(project.uuid)"
                         target="_blank"
                         class="text-blue-600 hover:text-blue-800 hover:underline"
                         title="View in Dependency Track"
@@ -186,7 +186,7 @@
                         UUID: {{ project.uuid.slice(0, 8) }}...
                       </a>
                     </span>
-                    <span v-if="project.tags.length > 0" class="ml-2">
+                    <span v-if="project.tags && project.tags.length > 0" class="ml-2">
                       Tags: {{ project.tags.join(', ') }}
                     </span>
                   </div>
@@ -275,7 +275,7 @@
             >
               <div class="font-medium text-gray-900 dark:text-white">
                 <a
-                  :href="`http://localhost:3000/projects/${project.uuid}`"
+                  :href="buildDTProjectUrl(project.uuid)"
                   target="_blank"
                   class="text-blue-600 hover:text-blue-800 hover:underline"
                   title="View in Dependency Track"
@@ -287,7 +287,7 @@
                 {{ project.name }} v{{ project.version }}
                 <span class="ml-2">
                   <a
-                    :href="`http://localhost:3000/projects/${project.uuid}`"
+                    :href="buildDTProjectUrl(project.uuid)"
                     target="_blank"
                     class="text-blue-600 hover:text-blue-800 hover:underline"
                     title="View in Dependency Track"
@@ -295,7 +295,7 @@
                     UUID: {{ project.uuid }}
                   </a>
                 </span>
-                <span v-if="project.tags.length > 0" class="ml-2">
+                <span v-if="project.tags && project.tags.length > 0" class="ml-2">
                   All tags: {{ project.tags.join(', ') }}
                 </span>
               </div>
@@ -309,8 +309,8 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { AlertCircle, RefreshCw, Plus, X, Folder } from 'lucide-vue-next'
 import axios from 'axios'
+import { buildDTProjectUrl } from '../config.js'
 import auth from '../services/auth.js'
 import { useRouter } from 'vue-router'
 import { useTagStore } from '../stores/tags.js'

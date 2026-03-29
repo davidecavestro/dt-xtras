@@ -10,7 +10,7 @@
 [![GitHub Contributors](https://img.shields.io/github/contributors/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/graphs/contributors)
 [![Last Commit](https://img.shields.io/github/last-commit/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/commits/main)
 
-*A set of features complementing Dependency-Track from outside.*
+*A set of features that complement Dependency-Track from the outside.*
 
 </div>
 
@@ -76,6 +76,7 @@ it is **not endorsed by, affiliated with, or officially supported by Dependency-
 - **No Official Support**: Support is provided through community channels (GitHub Issues, Discussions) only
 
 ### Relationship to Dependency-Track
+- **Almost no storage**: All data is stored in Dependency-Track's database except for taxonomy definitions (a single YAML file)
 - **Extension Only**: This project implements additional functionality outside of the core Dependency-Track application
 - **API Integration**: Uses Dependency-Track's public APIs for data retrieval and processing
 - **Compatibility**: Designed to work with Dependency-Track's existing data models and API endpoints

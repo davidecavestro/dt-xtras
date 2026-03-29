@@ -18,5 +18,11 @@ export default defineConfig({
         secure: false
       }
     }
+  },
+  define: {
+    // Make environment variables available to the app
+    __DT_API_URL__: JSON.stringify(process.env.DT_API_URL || 'http://dtrack-apiserver:8080'),
+    __DT_FRONTEND_URL__: JSON.stringify(process.env.DT_FRONTEND_URL || 'http://dtrack-frontend:8080'),
+    __BACKEND_API_URL__: JSON.stringify(process.env.BACKEND_API_URL || 'http://localhost:8000')
   }
 })
