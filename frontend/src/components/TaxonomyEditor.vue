@@ -79,6 +79,18 @@
                 </div>
                 <div class="flex gap-2 justify-end mx-3 mb-3">
                   <button
+                    @click="showTaxonomyTags(taxonomy)"
+                    class="px-3 py-1 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 inline-flex items-center gap-1"
+                  >
+                    <Folder class="w-4 h-4" /> Show Tags
+                  </button>
+                  <button
+                    @click="createTaxonomyTag(taxonomy)"
+                    class="px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 inline-flex items-center gap-1"
+                  >
+                    <Plus class="w-4 h-4" /> Create Tag
+                  </button>
+                  <button
                     @click="editTaxonomy(taxonomy)"
                     class="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 inline-flex items-center gap-1"
                   >
@@ -287,12 +299,141 @@
         </div>
       </div>
     </div>
+
+    <!-- Tags Modal -->
+    <div v-if="showTagsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              Tags for {{ selectedTaxonomy?.name }} ({{ taxonomyTags.length }})
+            </h3>
+            <button
+              @click="closeTagsModal"
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div v-if="taxonomyTags.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+            No tags found for this taxonomy pattern.
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="tag in taxonomyTags"
+              :key="tag"
+              class="p-3 border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center"
+            >
+              <span class="font-mono text-gray-900 dark:text-white">{{ tag }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">
+                Used by {{ getTagUsageCount(tag) }} projects
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Tag Modal -->
+    <div v-if="showCreateTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              Create Tag for {{ selectedTaxonomy?.name }}
+            </h3>
+            <button
+              @click="closeCreateTagModal"
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Pattern Display -->
+          <div class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+            <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pattern:</div>
+            <code class="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-gray-800 dark:text-gray-200">
+              {{ selectedTaxonomy?.regex_pattern }}
+            </code>
+          </div>
+
+          <!-- Dynamic Tag Builder -->
+          <div class="space-y-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Build Tag
+            </label>
+
+            <div class="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <template v-for="(part, index) in tagBuilderParts" :key="index">
+                <!-- Static text part -->
+                <span v-if="part.type === 'static'" class="text-gray-700 dark:text-gray-300 font-medium">
+                  {{ part.value }}
+                </span>
+
+                <!-- Dropdown for capture group with existing tags -->
+                <select
+                  v-else-if="part.type === 'dropdown'"
+                  v-model="part.value"
+                  class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="">Select {{ part.name }}...</option>
+                  <option v-for="option in part.options" :key="option" :value="option">
+                    {{ option }}
+                  </option>
+                </select>
+
+                <!-- Text field for capture group without existing tags -->
+                <input
+                  v-else-if="part.type === 'text'"
+                  v-model="part.value"
+                  type="text"
+                  :placeholder="`Enter ${part.name}...`"
+                  class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                />
+              </template>
+            </div>
+
+            <!-- Generated Tag Preview -->
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Generated Tag
+              </label>
+              <div class="p-3 bg-gray-100 dark:bg-gray-800 rounded-md">
+                <span class="font-mono text-gray-900 dark:text-white">
+                  {{ generatedTag || 'Complete all fields to see tag...' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mt-6 flex gap-2">
+            <button
+              @click="createNewTag"
+              :disabled="!canCreateTag"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              Create Tag
+            </button>
+            <button
+              @click="closeCreateTagModal"
+              class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { Plus, Trash2, Edit2 } from 'lucide-vue-next'
+import { Plus, Trash2, Edit2, Folder } from 'lucide-vue-next'
 import axios from 'axios'
 import cytoscape from 'cytoscape'
 
@@ -301,6 +442,14 @@ const taxonomies = ref([])
 const editingTaxonomy = ref(null)
 const testTags = ref('')
 const regexTestResult = ref(null)
+
+// Modal state
+const showTagsModal = ref(false)
+const showCreateTagModal = ref(false)
+const selectedTaxonomy = ref(null)
+const taxonomyTags = ref([])
+const tagBuilderParts = ref([])
+const tagUsageData = ref({})
 
 // Dark mode detection
 const isDarkMode = computed(() => {
@@ -727,4 +876,177 @@ const draggedIndex = ref(null)
         renderCytoscapeGraph();
       })
     }, { deep: true })
+
+    // Computed properties for tag creation
+    const generatedTag = computed(() => {
+      if (!tagBuilderParts.value.length) return ''
+
+      return tagBuilderParts.value.map(part => {
+        if (part.type === 'static') return part.value
+        return part.value || ''
+      }).join('')
+    })
+
+    const canCreateTag = computed(() => {
+      return tagBuilderParts.value.every(part =>
+        part.type === 'static' || (part.value && part.value.trim())
+      )
+    })
+
+    // Methods for tag management
+    const showTaxonomyTags = async (taxonomy) => {
+      selectedTaxonomy.value = taxonomy
+      try {
+        const response = await axios.get(`/api/taxonomies/${taxonomy.id}/tags`)
+        taxonomyTags.value = response.data || []
+
+        // Load usage data for tags
+        const usagePromises = taxonomyTags.value.map(async (tag) => {
+          try {
+            const usageResponse = await axios.get(`/api/tags/${tag}/projects`)
+            return { [tag]: usageResponse.data.length }
+          } catch (error) {
+            return { [tag]: 0 }
+          }
+        })
+
+        const usageResults = await Promise.all(usagePromises)
+        tagUsageData.value = Object.assign({}, ...usageResults)
+
+        showTagsModal.value = true
+      } catch (error) {
+        console.error('Error loading taxonomy tags:', error)
+        taxonomyTags.value = []
+        showTagsModal.value = true
+      }
+    }
+
+    const closeTagsModal = () => {
+      showTagsModal.value = false
+      selectedTaxonomy.value = null
+      taxonomyTags.value = []
+      tagUsageData.value = {}
+    }
+
+    const createTaxonomyTag = async (taxonomy) => {
+      selectedTaxonomy.value = taxonomy
+
+      try {
+        // Parse the regex pattern to extract static parts and capture groups
+        const parts = parseTaxonomyPattern(taxonomy.regex_pattern)
+
+        // Load existing tag values for dropdowns
+        await loadTagValuesForDropdowns(parts)
+
+        tagBuilderParts.value = parts
+        showCreateTagModal.value = true
+      } catch (error) {
+        console.error('Error parsing taxonomy pattern:', error)
+        tagBuilderParts.value = []
+        showCreateTagModal.value = true
+      }
+    }
+
+    const closeCreateTagModal = () => {
+      showCreateTagModal.value = false
+      selectedTaxonomy.value = null
+      tagBuilderParts.value = []
+    }
+
+    const parseTaxonomyPattern = (pattern) => {
+      const parts = []
+      let lastIndex = 0
+
+      // Find all capture groups: (?<name>pattern)
+      const captureGroupRegex = /\(\?<([^>]+)>([^)]+)\)/g
+      let match
+
+      while ((match = captureGroupRegex.exec(pattern)) !== null) {
+        // Add static text before this capture group
+        if (match.index > lastIndex) {
+          const staticText = pattern.substring(lastIndex, match.index)
+          if (staticText) {
+            parts.push({
+              type: 'static',
+              value: staticText
+            })
+          }
+        }
+
+        // Add capture group part
+        parts.push({
+          type: 'dropdown', // Default to dropdown, will be updated later
+          name: match[1],
+          value: '',
+          options: [],
+          pattern: match[2]
+        })
+
+        lastIndex = captureGroupRegex.lastIndex
+      }
+
+      // Add any remaining static text
+      if (lastIndex < pattern.length) {
+        const staticText = pattern.substring(lastIndex)
+        if (staticText) {
+          parts.push({
+            type: 'static',
+            value: staticText
+          })
+        }
+      }
+
+      return parts
+    }
+
+    const loadTagValuesForDropdowns = async (parts) => {
+      for (const part of parts) {
+        if (part.type === 'dropdown' && part.name) {
+          try {
+            // Get existing tags that match this taxonomy
+            const response = await axios.get(`/api/taxonomies/${selectedTaxonomy.value.id}/tags`)
+            const existingTags = response.data || []
+
+            // Extract unique values for this capture group
+            const uniqueValues = [...new Set(existingTags.map(tag => {
+              const match = tag.match(new RegExp(selectedTaxonomy.value.regex_pattern))
+              return match?.groups?.[part.name] || ''
+            }).filter(Boolean))]
+
+            part.options = uniqueValues.sort()
+
+            // If no existing tags, change to text field
+            if (part.options.length === 0) {
+              part.type = 'text'
+            }
+          } catch (error) {
+            console.error('Error loading tag values:', error)
+            part.type = 'text'
+          }
+        }
+      }
+    }
+
+    const createNewTag = async () => {
+      if (!canCreateTag.value || !generatedTag.value) return
+
+      try {
+        const response = await axios.post('/api/tags', {
+          name: generatedTag.value
+        })
+
+        if (response.data) {
+          // Show success message
+          alert(`Tag "${generatedTag.value}" created successfully!`)
+          closeCreateTagModal()
+        }
+      } catch (error) {
+        console.error('Error creating tag:', error)
+        alert(`Error creating tag: ${error.response?.data?.detail || error.message}`)
+      }
+    }
+
+    const getTagUsageCount = (tag) => {
+      return tagUsageData.value[tag] || 0
+    }
 </script>
