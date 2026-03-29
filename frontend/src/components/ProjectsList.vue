@@ -73,90 +73,20 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-          <div
+          <ProjectCard
             v-for="project in data"
             :key="project.uuid"
-            class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer"
-            @click="viewProject(project)"
-          >
-            <div class="flex items-center justify-between mb-2">
-              <h4 class="text-lg font-medium text-gray-900 dark:text-white truncate">
-                {{ project.name }}
-              </h4>
-              <span
-                :class="[
-                  'px-2 py-1 text-xs rounded-full',
-                  project.active
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                ]"
-              >
-                {{ project.active ? 'Active' : 'Inactive' }}
-              </span>
-            </div>
-
-            <p v-if="project.description" class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-              {{ project.description }}
-            </p>
-
-            <div class="space-y-2">
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-500 dark:text-gray-400">Components:</span>
-                <span class="font-medium text-gray-900 dark:text-white">
-                  {{ project.metrics?.vulnerableComponents || 0 }}
-                </span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-500 dark:text-gray-400">Vulnerabilities:</span>
-                <span class="font-medium text-gray-900 dark:text-white">
-                  {{ project.metrics?.vulnerabilities || 0 }}
-                </span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-500 dark:text-gray-400">Risk Score:</span>
-                <div v-if="project.metrics">
-                  <RiskScoreBadge :score="project.metrics.inheritedRiskScore || 0" />
-                </div>
-                <div v-else class="text-sm text-gray-500 dark:text-gray-400">
-                  Not available
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <div class="flex justify-between items-center">
-                <span class="text-xs text-gray-500 dark:text-gray-400">
-                  Updated: Unknown
-                </span>
-                <div class="flex space-x-2">
-                  <button
-                    @click.stop="viewProject(project)"
-                    class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 text-sm"
-                  >
-                    View
-                  </button>
-                  <button
-                    v-if="!project.metrics"
-                    @click.stop="viewSecurityDetails(project)"
-                    class="text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 text-sm"
-                  >
-                    Security Details
-                  </button>
-                  <button
-                    @click.stop="analyzeProject(project)"
-                    class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 text-sm"
-                  >
-                    Analyze
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+            :project="project"
+            @select="viewProject"
+            @view="viewProject"
+            @security-details="viewSecurityDetails"
+            @analyze="analyzeProject"
+          />
         </div>
 
         <!-- Empty State -->
         <div v-if="data.length === 0 && !pagination.loading.value" class="text-center py-8 text-gray-500 dark:text-gray-400">
-          <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
+          <Folder class="mx-auto h-12 w-12 text-gray-400" />
           <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {{ filters.search || filters.activeOnly ? 'Try adjusting your filters.' : 'No projects have been created yet.' }}
@@ -186,6 +116,7 @@ import apiService from '../services/api'
 import Pagination from './Pagination.vue'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import { useTagStore } from '../stores/tags.js'
+import ProjectCard from './ProjectCard.vue'
 
 export default {
   name: 'ProjectsList',
@@ -194,6 +125,7 @@ export default {
     RefreshCw,
     Folder,
     Pagination,
+    ProjectCard,
     RiskScoreBadge
   },
   setup() {
