@@ -1,16 +1,10 @@
 <template>
-  <div class="max-w-7xl mx-auto p-6 space-y-6">
-    <!-- Header -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tag Management</h1>
-      <p class="text-gray-600 dark:text-gray-400 mt-2">
+  <div class="px-4 py-6 sm:px-0">
+    <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Tag Management</h2>
+      <p class="text-gray-600 dark:text-gray-400 mb-6">
         Manage tags and link them to Dependency-Track projects
       </p>
-    </div>
-
-    <!-- Tag Creation Form -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Create New Tag</h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Tag Input -->
@@ -86,7 +80,7 @@
     </div>
 
     <!-- Existing Tags Management -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Existing Tags</h2>
         <button
@@ -140,7 +134,7 @@
     </div>
 
     <!-- Project Linking -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Link Tags to Projects</h2>
         <div class="text-sm text-gray-600 dark:text-gray-400">
@@ -246,7 +240,7 @@
 
     <!-- Projects Modal -->
     <div v-if="showProjectsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+      <div class="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-800">
         <div class="p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -653,7 +647,8 @@ export default {
       linkTagsToProjects,
       unlinkTagsFromProjects,
       refreshTags,
-      formatDate
+      formatDate,
+      buildDTProjectUrl
     }
   }
 }
