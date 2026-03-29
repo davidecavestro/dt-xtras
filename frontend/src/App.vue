@@ -21,11 +21,13 @@
           'flex items-center flex-1 min-w-0',
           { 'pl-2': !sidebarOpen }
         ]">
-          <LogoWithText
-            :size="sidebarOpen ? 'medium' : 'small'"
-            :variant="isDark ? 'dark' : 'default'"
-            :showText="sidebarOpen"
-          />
+          <div @click="toggleSidebar" class="cursor-pointer">
+            <LogoWithText
+              :size="sidebarOpen ? 'medium' : 'small'"
+              :variant="isDark ? 'dark' : 'default'"
+              :showText="sidebarOpen"
+            />
+          </div>
         </div>
         <button
           @click="toggleSidebar"
@@ -225,7 +227,7 @@
     <div :class="['flex-1 transition-all duration-300 ease-in-out z-10', $route.path !== '/login' && screenWidth >= 1024 && sidebarOpen ? 'lg:ml-64' : $route.path !== '/login' && screenWidth >= 1024 && !sidebarOpen ? 'lg:ml-16' : '']">
       <!-- Mobile Header -->
       <header v-if="$route.path !== '/login'" class="lg:hidden bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div class="flex items-center justify-between h-16 px-4">
+        <div class="flex items-center">
           <button
             @click="toggleSidebar"
             class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -234,10 +236,12 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
           </button>
-          <LogoWithText
-            size="small"
-            :variant="isDark ? 'dark' : 'default'"
-          />
+          <div @click="toggleSidebar" class="cursor-pointer">
+            <LogoWithText
+              size="small"
+              :variant="isDark ? 'dark' : 'default'"
+            />
+          </div>
         </div>
       </header>
 
