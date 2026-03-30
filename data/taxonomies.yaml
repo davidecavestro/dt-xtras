@@ -1,0 +1,35 @@
+taxonomies:
+- associative: false
+  color: '#dbf042'
+  id: customer
+  name: Customer
+  priority: 1
+  regex_pattern: ^cust:(?<id>\w+)$
+  relations: []
+- associative: false
+  color: '#f042ea'
+  id: env
+  name: Environment
+  priority: 2
+  regex_pattern: ^env:(?<env_type>\w+)$
+  relations: []
+- associative: true
+  color: '#45f042'
+  id: deploy
+  name: Deployment
+  priority: 3
+  regex_pattern: ^deploy:(?<env>\w+):(?<customer>\w+):(?<product_version>[\w-]+:[\d\.]+)$
+  relations:
+  - group: env
+    targets: env
+  - group: customer
+    targets: customer
+  - group: product_version
+    targets: product_version
+- associative: false
+  color: '#42b6f0'
+  id: product_version
+  name: Product Version
+  priority: 4
+  regex_pattern: ^(?!(?:env|cust|deploy):)(?<product_name>[\w-]+):(?<version>[\d\w\.-]+)$
+  relations: []

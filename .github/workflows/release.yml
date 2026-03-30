@@ -38,7 +38,7 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
+          tags: ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }},ghcr.io/${{ github.repository }}/backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
@@ -49,7 +49,7 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
+          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }},ghcr.io/${{ github.repository }}/frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
@@ -59,21 +59,14 @@ jobs:
         with:
           image: ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
           format: cyclonedx-json
-          artifact-name: backend-sbom-cdx.json
+          artifact-name: backend.cdx.json
 
       - name: "Generate frontend SBOM"
         uses: anchore/sbom-action@v0
         with:
           image: ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
           format: cyclonedx-json
-          artifact-name: frontend-sbom-cdx.json
-
-      - name: Get previous tag
-        id: previousTag
-        run: |
-          name=$(git --no-pager tag --sort=creatordate --merged ${{ github.ref_name }} | tail -2 | head -1)
-          echo "previousTag: $name"
-          echo "previousTag=$name" >> $GITHUB_ENV
+          artifact-name: frontend.cdx.json
 
       - name: Update CHANGELOG
         id: changelog
@@ -98,3 +91,8 @@ jobs:
             - Backend: ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
             - Frontend: ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish SBOM
+        uses: anchore/sbom-action/publish-sbom@v0
+        with:
+          sbom-artifact-match: ".*\\.cdx\\.json$"

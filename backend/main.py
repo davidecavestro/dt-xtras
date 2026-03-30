@@ -34,7 +34,7 @@ app.add_middleware(
 DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
 DT_FRONTEND_URL = os.getenv("DT_FRONTEND_URL", "http://dtrack-frontend:8080")
 DT_API_KEY = os.getenv("DT_API_KEY", "")
-TAXONOMIES_FILE = "../api/taxonomies.yaml"
+TAXONOMIES_FILE =  os.getenv("TAXONOMIES_FILE", "../data/taxonomies.yaml")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
