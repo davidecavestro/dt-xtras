@@ -7,7 +7,7 @@ services:
 #      dockerfile: Dockerfile
     image: ghcr.io/davidecavestro/dt-xtras/backend:latest
     ports:
-      - "8001:8000"
+      - "8000:8000"
     environment:
       - DT_API_URL=${DT_API_URL}
       - DT_FRONTEND_URL=${DT_FRONTEND_URL}
