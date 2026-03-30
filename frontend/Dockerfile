@@ -26,6 +26,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY --chown=101:101 nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copy environment substitution script
+COPY --chown=101:101 substitute-env.sh /docker-entrypoint.d/99-substitute-env.sh
+RUN chmod +x /docker-entrypoint.d/99-substitute-env.sh
+
 # Switch to non-root user
 USER 101
 
