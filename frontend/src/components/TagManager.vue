@@ -31,14 +31,16 @@
         </div>
 
         <!-- Taxonomy Patterns -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Taxonomy Patterns
-          </label>
-          <div class="mt-1 space-y-2">
-            <div v-for="taxonomy in taxonomies" :key="taxonomy.id" class="text-xs">
-              <span class="font-medium text-gray-700 dark:text-gray-300">{{ taxonomy.name }}:</span>
-              <span class="text-gray-600 dark:text-gray-400 ml-1">{{ taxonomy.regex_pattern }}</span>
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Taxonomy Patterns</h3>
+          <div class="space-y-2">
+            <div v-for="taxonomy in taxonomies" :key="taxonomy.id" class="flex items-start">
+              <span class="font-medium text-gray-700 dark:text-gray-300 text-sm mr-2 min-w-0">
+                {{ taxonomy.name }}:
+              </span>
+              <code class="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-gray-800 dark:text-gray-200 break-all">
+                {{ taxonomy.regex_pattern }}
+              </code>
             </div>
           </div>
         </div>
