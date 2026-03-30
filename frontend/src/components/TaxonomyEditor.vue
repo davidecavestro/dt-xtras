@@ -320,12 +320,12 @@
           <div v-else class="space-y-2">
             <div
               v-for="tag in taxonomyTags"
-              :key="tag"
+              :key="tag.name"
               class="p-3 border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center"
             >
-              <span class="font-mono text-gray-900 dark:text-white">{{ tag }}</span>
+              <span class="font-mono text-gray-900 dark:text-white">{{ tag.name }}</span>
               <span class="text-xs text-gray-500 dark:text-gray-400">
-                Used by {{ getTagUsageCount(tag) }} projects
+                Directly tagging {{ tag.projectCount }} projects
               </span>
             </div>
           </div>
@@ -867,15 +867,16 @@ const draggedIndex = ref(null)
       selectedTaxonomy.value = taxonomy
       try {
         const response = await axios.get(`/api/taxonomies/${taxonomy.id}/tags`)
-        taxonomyTags.value = response.data?.tags || []  // Extract tags array from response
+        taxonomyTags.value = response.data || []  // Extract tags array from response
 
         // Load usage data for tags
         const usagePromises = taxonomyTags.value.map(async (tag) => {
+          const tagName = tag.name
           try {
-            const usageResponse = await axios.get(`/api/tags/${tag}/projects`)
-            return { [tag]: usageResponse.data.length }
+            const usageResponse = await axios.get(`/api/tags/${tagName}/projects`)
+            return { [tagName]: usageResponse.data.length }
           } catch (error) {
-            return { [tag]: 0 }
+            return { [tagName]: 0 }
           }
         })
 
@@ -926,14 +927,18 @@ const draggedIndex = ref(null)
       const parts = []
       let lastIndex = 0
 
+      // Remove regex anchors (^ and $) from pattern for display
+      const cleanPattern = pattern.replace(/^\^|\$$/g, '')
+      console.log(`🎯 Original pattern: ${pattern}, Clean pattern: ${cleanPattern}`)
+
       // Find all capture groups: (?<name>pattern)
       const captureGroupRegex = /\(\?<([^>]+)>([^)]+)\)/g
       let match
 
-      while ((match = captureGroupRegex.exec(pattern)) !== null) {
+      while ((match = captureGroupRegex.exec(cleanPattern)) !== null) {
         // Add static text before this capture group
         if (match.index > lastIndex) {
-          const staticText = pattern.substring(lastIndex, match.index)
+          const staticText = cleanPattern.substring(lastIndex, match.index)
           if (staticText) {
             parts.push({
               type: 'static',
@@ -942,9 +947,12 @@ const draggedIndex = ref(null)
           }
         }
 
+        // Check if this capture group has a corresponding relation
+        const hasRelation = selectedTaxonomy.value?.relations?.some(rel => rel.group === match[1])
+
         // Add capture group part
         parts.push({
-          type: 'dropdown', // Default to dropdown, will be updated later
+          type: hasRelation ? 'dropdown' : 'text', // Use dropdown only if relation exists
           name: match[1],
           value: '',
           options: [],
@@ -955,8 +963,8 @@ const draggedIndex = ref(null)
       }
 
       // Add any remaining static text
-      if (lastIndex < pattern.length) {
-        const staticText = pattern.substring(lastIndex)
+      if (lastIndex < cleanPattern.length) {
+        const staticText = cleanPattern.substring(lastIndex)
         if (staticText) {
           parts.push({
             type: 'static',
@@ -965,32 +973,60 @@ const draggedIndex = ref(null)
         }
       }
 
+      console.log(`✨ Parsed parts:`, parts)
       return parts
     }
 
     const loadTagValuesForDropdowns = async (parts) => {
       for (const part of parts) {
         if (part.type === 'dropdown' && part.name) {
-          try {
-            // Get existing tags that match this taxonomy
-            const response = await axios.get(`/api/taxonomies/${selectedTaxonomy.value.id}/tags`)
-            const existingTags = response.data?.tags || []  // Extract tags array from response
+          console.log(`🔍 Loading dropdown options for part: ${part.name}, taxonomy: ${selectedTaxonomy.value.id}`)
 
-            // Extract unique values for this capture group
-            const uniqueValues = [...new Set(existingTags.map(tag => {
-              const match = tag.match(new RegExp(selectedTaxonomy.value.regex_pattern))
-              return match?.groups?.[part.name] || ''
-            }).filter(Boolean))]
+          // For associative taxonomies get tags from related taxonomies
+          if (selectedTaxonomy.value.relations && selectedTaxonomy.value.relations.length > 0) {
+            // Find related taxonomy for this part
+            const relation = selectedTaxonomy.value.relations.find(rel => rel.group === part.name)
+            if (relation && relation.targets) {
+              const targetTaxonomyId = relation.targets
+              console.log(`🎯 Getting tags from related taxonomy: ${targetTaxonomyId}`)
 
-            part.options = uniqueValues.sort()
+              // Get tags from the related taxonomy
+              const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tags`)
+              const relatedTags = response.data || []
 
-            // If no existing tags, change to text field
-            if (part.options.length === 0) {
-              part.type = 'text'
+              console.log(`📋 Related tags from ${targetTaxonomyId}:`, relatedTags)
+
+              // Extract values from related tags using their own regex pattern
+              const targetTaxonomy = taxonomies.value.find(t => t.id === targetTaxonomyId)
+              if (targetTaxonomy && targetTaxonomy.regex_pattern) {
+                const uniqueValues = [...new Set(relatedTags.map(tag => {
+                  try {
+                    const regex = new RegExp(targetTaxonomy.regex_pattern)
+                    const tag_name = tag.name || tag // Handle both tag object and string
+                    const match = tag_name.match(regex)
+                    console.log(`🏷️ Related tag: ${tag_name}, Match:`, match)
+                    if (match){
+                      if (match.length > 2){ // multiple capture groups, try to rejoin them by convention to discard the prefix
+                        return match[1] + ':' + match[2]
+                      } else if (match.length === 2){ // single capture group, use the captured value
+                        return match[1]
+                      }
+                    }
+                    return tag_name
+                  } catch (e){
+                    console.error(`❌ Regex error for related tag ${tag.name}:`, e)
+                    return tag.name || tag // Fallback to tag name
+                  }
+                }).filter(Boolean))]
+
+                console.log(`✨ Extracted values for ${part.name}:`, uniqueValues)
+                part.options = uniqueValues.sort()
+              } else {
+                // If no regex pattern, use tag names as-is
+                const tagNames = relatedTags.map(tag => tag.name || tag).filter(Boolean)
+                part.options = tagNames.sort()
+              }
             }
-          } catch (error) {
-            console.error('Error loading tag values:', error)
-            part.type = 'text'
           }
         }
       }
@@ -1001,7 +1037,8 @@ const draggedIndex = ref(null)
 
       try {
         const response = await axios.post('/api/tags', {
-          name: generatedTag.value
+          name: generatedTag.value,
+          taxonomy_id: selectedTaxonomy.value.id
         })
 
         if (response.data) {

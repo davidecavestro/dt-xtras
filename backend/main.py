@@ -110,6 +110,14 @@ def has_any_permission(permissions: List[str], required_permissions: List[str]) 
     return any(perm in permissions for perm in required_permissions)
 
 # Models
+
+class Tag(BaseModel):
+    name: str
+    projectCount: int
+    collectionProjectCount: int
+    policyCount: int
+    notificationRuleCount: int
+
 class TaxonomyRelation(BaseModel):
     group: str
     targets: str
@@ -434,8 +442,8 @@ async def health_check():
 async def get_taxonomies():
     return load_taxonomies()
 
-@app.get("/api/taxonomies/{taxonomy_id}/tags")
-async def get_taxonomy_tags(taxonomy_id: str):
+@app.get("/api/taxonomies/{taxonomy_id}/tags", response_model=List[Tag])
+async def get_taxonomy_tags(taxonomy_id: str, dt_token: str = Depends(get_dt_token_from_request)):
     """Get all tags that match a specific taxonomy pattern"""
     try:
         # Load taxonomies to find the pattern
@@ -446,25 +454,20 @@ async def get_taxonomy_tags(taxonomy_id: str):
             raise HTTPException(status_code=404, detail="Taxonomy not found")
 
         # Get all tags
-        tags_response = await get_all_tags()
-        all_tags = tags_response.get('tags', [])
+        tags_response = await get_all_tags(dt_token)
 
         # Filter tags that match the taxonomy pattern
         matching_tags = []
         pattern = taxonomy.regex_pattern
 
-        try:
-            # Use regex library for better JS compatibility
-            js_pattern = regex.compile(pattern)
+        # Use regex library for better JS compatibility
+        js_pattern = regex.compile(pattern)
 
-            for tag_name in all_tags:
-                if js_pattern.match(tag_name):
-                    matching_tags.append(tag_name)
+        for tag in tags_response:
+            tag_name = tag.get('name', '')
+            if js_pattern.match(tag_name):
+                matching_tags.append(tag)
 
-        except Exception as e:
-            print(f"Error with regex pattern '{pattern}': {e}")
-            # If pattern is invalid, return empty list
-            matching_tags = []
 
         return matching_tags
 
@@ -472,41 +475,39 @@ async def get_taxonomy_tags(taxonomy_id: str):
         print(f"Error getting taxonomy tags: {e}")
         raise HTTPException(status_code=500, detail=f"Error fetching taxonomy tags: {e}")
 
-async def get_all_tags():
+async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
     """Get all tags from the system"""
     try:
-        # Get DT token from environment or use default
-        dt_token = DT_API_KEY if DT_API_KEY else None
-        if not dt_token:
-            print("DEBUG: No DT API key available, using None")
+        headers = {}
+        if dt_token:
+            headers["Authorization"] = f"Bearer {dt_token}"
+            print(f"Using DT token for authentication")
+        elif DT_API_KEY:
+            headers["X-Api-Key"] = DT_API_KEY
+            print(f"Using API key for authentication")
+        else:
+            print(f"No authentication available")
 
-        print(f"DEBUG: Using DT token: {dt_token[:20] if dt_token else 'None'}...")
+        # Build query parameters for DT API pagination
+        params = {
+            "pageNumber": str(page),  # DT uses 1-based paging and string type
+            "pageSize": str(limit)     # DT uses string type
+        }
 
-        # Get projects to extract tags - we need to pass a valid token
-        projects = await get_dt_projects(dt_token, page=1, limit=1000)  # Get a lot of projects
-        print(f"DEBUG: Retrieved {len(projects)} projects")
+        # Get all tags from /v1/tag - we need to pass a valid token and honours paging
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers, params=params, timeout=30.0)
+            print(f"DT API response status: {response.status_code}")
+            print(f"DT API response headers: {dict(response.headers)}")
+            print(f"DT API response: {response.text[:200]}...")
 
-        # Extract all unique tags
-        all_tags = set()
-        for i, project in enumerate(projects):
-            print(f"DEBUG: Project {i}: {project.name}, tags: {getattr(project, 'tags', 'NO TAGS')}")
-            if hasattr(project, 'tags') and project.tags:
-                print(f"DEBUG: Found {len(project.tags)} tags for project {project.name}")
-                for tag in project.tags:
-                    print(f"DEBUG: Processing tag: {tag} (type: {type(tag)})")
-                    if isinstance(tag, str):
-                        all_tags.add(tag)
-                    elif isinstance(tag, dict) and 'name' in tag:
-                        all_tags.add(tag['name'])
-                    elif isinstance(tag, dict):
-                        print(f"DEBUG: Tag dict keys: {list(tag.keys())}")
-                    else:
-                        print(f"DEBUG: Unknown tag type: {type(tag)}")
+            response.raise_for_status()
 
-        print(f"DEBUG: Total unique tags found: {len(all_tags)}")
-        print(f"DEBUG: Tags: {sorted(list(all_tags))}")
+            # DT API returns plain dicts, not objects
+            tags = response.json()
+            print(f"Successfully parsed {len(tags)} tags")
 
-        return {'tags': sorted(list(all_tags))}
+        return tags
 
     except Exception as e:
         print(f"Error getting all tags: {e}")

@@ -23,6 +23,19 @@ enabling both direct categorization and inferred labeling through graph-based re
 
 Bulk actions provide a way to activate/deactivate/delete multiple projects at once.
 
+### Rationale
+
+The project was created to address the need for more flexible project organization and classification in Dependency-Track.
+While Dependency-Track provides basic project tagging and properties, this extension allows for:
+
+- **Hierarchical Classification**: Create complex taxonomies with multiple levels of categorization
+- **Inferred Labeling**: Automatically classify projects based on tag patterns and relationships
+- **Bulk Operations**: Manage multiple projects efficiently through bulk actions
+- **Custom Views**: Create product, customer, or environment-centric views of your portfolio
+
+Should any feature implemented here be considered for inclusion in the main Dependency-Track project,
+it will probably be deprecated in favor of a more integrated approach.
+
 ### Use Cases
 
 1. **Product-Centric View**: Create product version taxonomy to see `myapp:1.0.0` deployments
@@ -64,11 +77,11 @@ This project complements Dependency-Track, hence follows the same licensing term
 
 ## Disclaimer
 
-This started as a personal project and strives to be a community project:
+This is a personal project that strives to be a community project:
 it is **not endorsed by, affiliated with, or officially supported by Dependency-Track or any of its associated projects, companies, or organizations.**
 
 ### Project Status
-- **Alpha**: This project is in early development
+- **Alpha**: This project is in early development (raw implementation, missing paging, missing tests, missing documentation)
 - **Community Driven**: Developed and maintained by the open-source community
 - **Independent Addition**: Complements Dependency-Track functionality but is not part of the official Dependency-Track codebase
 - **Use at Your Own Risk**: Users should thoroughly test and evaluate this extension before using in production environments
