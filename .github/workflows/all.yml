@@ -140,19 +140,6 @@ jobs:
         sarif_file: 'trivy-results-frontend.sarif'
       continue-on-error: true
 
-  deploy-staging:
-    needs: [build-backend, build-frontend]
-    if: github.ref == 'refs/heads/develop' && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
-    runs-on: ubuntu-latest
-    environment: staging
-
-    steps:
-    - name: Deploy to staging
-      run: |
-        echo "Deploying to staging environment..."
-        # Add your deployment commands here
-        # For example: kubectl apply -f k8s/staging/
-
   release:
     needs: [build-backend, build-frontend]
     if: github.ref_type == 'tag' && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
