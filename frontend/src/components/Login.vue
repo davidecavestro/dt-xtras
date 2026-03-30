@@ -3,9 +3,8 @@
     <div class="max-w-md w-full space-y-8">
       <div>
         <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-          <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-          </svg>
+          <LogoCompact :size="48" variant="light" class="dark:hidden" />
+          <LogoCompact :size="48" variant="dark" class="hidden dark:block" />
         </div>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
           Sign in to dt-xtras
@@ -15,7 +14,7 @@
         </p>
       </div>
 
-      <form class="mt-8 space-y-6" @submit.prevent="handleLogin" autocomplete="off">
+      <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
         <div class="rounded-md shadow-sm -space-y-px">
           <div>
             <label for="username" class="sr-only">Username</label>
@@ -25,6 +24,7 @@
               name="username"
               type="text"
               required
+              autocomplete="username"
               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
               placeholder="Username"
               :disabled="loading"
@@ -38,6 +38,7 @@
               name="password"
               type="password"
               required
+              autocomplete="current-password"
               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
               placeholder="Password"
               :disabled="loading"
@@ -79,12 +80,14 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { AlertCircle } from 'lucide-vue-next'
+import LogoCompact from './LogoCompact.vue'
 import authService from '../services/auth'
 
 export default {
   name: 'Login',
   components: {
-    AlertCircle
+    AlertCircle,
+    LogoCompact
   },
   setup() {
     const router = useRouter()

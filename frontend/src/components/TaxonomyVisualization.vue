@@ -106,17 +106,21 @@
 
     <!-- Main Graph Content -->
     <div v-if="!loading && !error">
-      <!-- Cytoscape Graph -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
-        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Visualization</h2>
-        <div ref="cytoscapeContainer" class="w-full h-96 lg:h-[600px] border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 resize overflow-hidden"></div>
-      </div>
+      <!-- Graph and Related Projects Side by Side -->
+      <div class="flex flex-col lg:flex-row gap-6">
+        <!-- Left: Graph Section -->
+        <div class="flex-1">
+          <!-- Cytoscape Graph -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Visualization</h2>
+            <div ref="cytoscapeContainer" class="w-full h-96 lg:h-[600px] border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 resize overflow-hidden"></div>
+          </div>
 
-      <!-- Graph Controls -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6 mt-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Controls</h2>
+          <!-- Graph Controls -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Controls</h2>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <!-- Layout Algorithm -->
           <div>
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Layout Algorithm:</label>
@@ -150,33 +154,36 @@
           </div>
         </div>
       </div>
-
-      <!-- Related Projects Section -->
-      <div v-if="associativeMode" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Related Projects</h2>
-
-        <!-- Selected Node Info -->
-        <div v-if="selectedNode" class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
-          <div class="text-sm font-medium text-gray-700 dark:text-gray-300">Selected Node:</div>
-          <div class="text-sm text-gray-900 dark:text-white">{{ selectedNode.label || selectedNode.id }}</div>
         </div>
+        <!-- End Left: Graph Section -->
 
-        <!-- Projects List -->
-        <div v-if="relatedProjects.length > 0" class="space-y-2">
-          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {{ relatedProjects.length }} projects found
-            <span v-if="relatedProjectsTotal > relatedProjects.length" class="text-xs text-gray-500">
-              (showing {{ relatedProjects.length }} of {{ relatedProjectsTotal }})
-            </span>
-          </div>
+        <!-- Right: Related Projects Section -->
+        <div v-if="associativeMode" class="lg:w-96">
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Related Projects</h2>
 
-          <!-- Pagination Controls -->
-          <div v-if="relatedProjectsTotal > pageSize" class="flex justify-between items-center mb-4">
-            <button
-              @click="loadRelatedProjectsPage(1)"
-              :disabled="relatedProjectsPage === 1"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <!-- Selected Node Info -->
+            <div v-if="selectedNode" class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">Selected Node:</div>
+              <div class="text-sm text-gray-900 dark:text-white">{{ selectedNode.label || selectedNode.id }}</div>
+            </div>
+
+            <!-- Projects List -->
+            <div v-if="relatedProjects.length > 0" class="space-y-2">
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ relatedProjects.length }} projects found
+                <span v-if="relatedProjectsTotal > relatedProjects.length" class="text-xs text-gray-500">
+                  (showing {{ relatedProjects.length }} of {{ relatedProjectsTotal }})
+                </span>
+              </div>
+
+              <!-- Pagination Controls -->
+              <div v-if="relatedProjectsTotal > pageSize" class="flex justify-between items-center mb-4">
+                <button
+                  @click="loadRelatedProjectsPage(1)"
+                  :disabled="relatedProjectsPage === 1"
+                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
               First
             </button>
 
@@ -266,7 +273,11 @@
         <div v-else class="text-sm text-gray-500 dark:text-gray-400">
           {{ selectedNode ? 'No projects found for this selection' : 'Select a node to see related projects' }}
         </div>
+          </div>
+        </div>
+        <!-- End Right: Related Projects Section -->
       </div>
+      <!-- End Graph and Related Projects Container -->
     </div>
   </div>
 </template>
@@ -325,9 +336,9 @@ export default {
     // Computed properties
     const modeDescription = computed(() => {
       if (associativeMode.value) {
-        return 'Associative mode creates direct connections between related taxonomies, hiding intermediate connector nodes. Each connection represents a semantic relationship between taxonomy elements.';
+        return 'Associative mode creates direct connections between related taxonomies, hiding intermediate connector nodes. Each connection represents a semantic relationship between taxonomy elements. This mode shows projects related to your selection in the Related Projects panel.';
       } else {
-        return 'Normal mode creates hierarchical relationships where child nodes connect to parent nodes through defined taxonomy relations.';
+        return 'Normal mode creates hierarchical relationships where child nodes connect to parent nodes through defined taxonomy relations. This mode does not show related projects - use Associative mode to see project relationships.';
       }
     });
 
