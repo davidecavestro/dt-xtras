@@ -604,11 +604,12 @@ async def get_projects(
     page: int = 1,
     limit: int = 50,
     search: Optional[str] = None,
-    showInactive: Optional[bool] = None
+    active_only: Optional[bool] = False
 ):
     """Get projects from DT API with pagination"""
     try:
         print(f"Getting projects with DT token: {dt_token[:50] if dt_token else 'None'}...")
+        print(f"Parameters received: page={page}, limit={limit}, search={search}, active_only={active_only}")
 
         # Build DT API parameters
         params = {
@@ -620,9 +621,13 @@ async def get_projects(
         if search:
             params["name"] = search
 
-        # Add showInactive parameter logic
-        if showInactive is not None:
-            params["excludeInactive"] = "false" if showInactive else "true"
+        # Add active_only parameter logic
+        if active_only is not None:
+            params["excludeInactive"] = "true" if active_only else "false"
+            print(f"Setting excludeInactive to: {params['excludeInactive']} (active_only={active_only})")
+        else:
+            params["excludeInactive"] = "false"  # Default to include all projects when not specified
+            print(f"Using default excludeInactive: {params['excludeInactive']} (active_only is None)")
 
         print(f"API params: {params}")  # Debug log
 
@@ -636,23 +641,31 @@ async def get_projects(
         raise HTTPException(status_code=500, detail=f"Error fetching projects: {e}")
 
 @app.get("/api/projects/count")
-async def get_projects_count(dt_token: str = Depends(get_dt_token_from_request), search: Optional[str] = None):
+async def get_projects_count(
+    dt_token: str = Depends(get_dt_token_from_request),
+    search: Optional[str] = None,
+    active_only: Optional[bool] = None
+):
     """Get total count of projects for pagination"""
     try:
+        print(f"Getting projects count with: search={search}, active_only={active_only}")
+
         headers = {}
         if dt_token:
             headers["Authorization"] = f"Bearer {dt_token}"
         elif DT_API_KEY:
-            headers["X-Api-Key"] = DT_API_KEY
+            headers["X-API-Key"] = DT_API_KEY
 
-        # Get first page with minimal data to get total count from header
+        # Build DT API parameters
         params = {
             "pageNumber": "1",
             "pageSize": "1",
-            "excludeInactive": "false"  # Include inactive projects
+            "excludeInactive": "true" if active_only else "false"  # Include all projects when not specified
         }
         if search:
             params["name"] = search
+
+        print(f"Count API params: {params}")
 
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)

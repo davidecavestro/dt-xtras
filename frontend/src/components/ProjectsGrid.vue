@@ -131,7 +131,7 @@
         @row-click="onRowClick"
         @row-select="onRowSelect"
         :show-selection="true"
-        class="w-full border border border-gray-200 dark:border-gray-700"
+        class="w-full border border-gray-200 dark:border-gray-700"
         style="height: 500px;"
         :readonly="true"
       >
@@ -304,7 +304,7 @@ export default {
           requestParams.name = filters.value.name
         }
         if (filters.value.active !== '') {
-          requestParams.active = filters.value.active === 'true'
+          requestParams.active_only = filters.value.active === 'true'
         }
 
         console.log('Loading projects with params:', requestParams)
@@ -335,6 +335,9 @@ export default {
           const countParams = {}
           if (filters.value.name) {
             countParams.name = filters.value.name
+          }
+          if (filters.value.active !== '') {
+            countParams.active_only = filters.value.active === 'true'
           }
           const countResponse = await axios.get('/api/projects/count', {
             params: countParams
