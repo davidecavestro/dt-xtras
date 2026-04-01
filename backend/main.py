@@ -22,8 +22,8 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(title="dt-xtras", version="1.0.0")
 
 # CORS middleware - configurable via environment variables
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:8080,http://localhost:3000,http://localhost:3001").split(",")
-cors_allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true"
+cors_origins = os.getenv("CORS_ORIGINS", "").split(",")
+cors_allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
 cors_allow_methods = os.getenv("CORS_ALLOW_METHODS", "*").split(",")
 cors_allow_headers = os.getenv("CORS_ALLOW_HEADERS", "*").split(",")
 
@@ -427,19 +427,6 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
 
     # The field_validator in DTProject will handle tag conversion automatically
     return enriched_projects
-
-@app.get("/api/config")
-async def get_config():
-    """Get frontend configuration including URLs and CORS settings"""
-    return {
-        "DT_API_URL": DT_API_URL,
-        "DT_FRONTEND_URL": DT_FRONTEND_URL,
-        "BACKEND_API_URL": os.getenv("BACKEND_API_URL", "http://localhost:8000"),
-        "CORS_ORIGINS": cors_origins,
-        "CORS_ALLOW_CREDENTIALS": cors_allow_credentials,
-        "CORS_ALLOW_METHODS": cors_allow_methods,
-        "CORS_ALLOW_HEADERS": cors_allow_headers
-    }
 
 @app.get("/api/health")
 async def health_check():

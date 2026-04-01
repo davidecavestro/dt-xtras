@@ -5,6 +5,15 @@ let config = window.APP_CONFIG || {
   DT_FRONTEND_URL: 'http://dtrack-frontend:8080'
 }
 
+// In development mode, use development defaults regardless of script tag config
+if (import.meta.env.DEV) {
+  config = {
+    BACKEND_API_URL: 'http://localhost:8000',
+    DT_API_URL: 'http://dtrack-apiserver:8080',
+    DT_FRONTEND_URL: 'http://localhost:3000'
+  }
+}
+
 // Export config getter
 export const getConfig = () => config
 

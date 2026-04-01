@@ -19,4 +19,6 @@ echo ""
 export BACKEND_API_URL=http://0.0.0.0:8000
 export DT_API_URL=http://dtrack-apiserver:8080
 export DT_FRONTEND_URL=http://localhost:3000
+export CORS_ORIGINS=http://localhost:5173,http://localhost:8080,http://localhost:3000,http://localhost:3001
+
 python main.py

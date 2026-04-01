@@ -49,7 +49,7 @@
               @dragend="handleDragEnd"
               class="cursor-move hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              <div class="flex flex-col gap-2">
+              <div class="flex flex-col gap-2 py-2">
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex items-center space-x-3 flex-1 min-w-0">
                     <div class="text-gray-400 dark:text-gray-500 flex-shrink-0">
@@ -60,7 +60,7 @@
                     <div class="flex-1 min-w-0">
                       <div class="font-medium text-gray-900 dark:text-white truncate">{{ taxonomy.name }}</div>
                       <div class="mt-1">
-                        <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-gray-800 dark:text-gray-200 truncate max-w-xs inline-block" :title="taxonomy.regex_pattern">{{ taxonomy.regex_pattern }}</code>
+                        <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all max-w-xs inline-block hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" :title="taxonomy.regex_pattern">{{ taxonomy.regex_pattern }}</code>
                       </div>
                     </div>
                   </div>
@@ -352,9 +352,7 @@
           <!-- Pattern Display -->
           <div class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
             <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pattern:</div>
-            <code class="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-gray-800 dark:text-gray-200">
-              {{ selectedTaxonomy?.regex_pattern }}
-            </code>
+            <code class="text-sm bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded text-gray-800 dark:text-gray-200 font-mono break-all hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">{{ selectedTaxonomy?.regex_pattern }}</code>
           </div>
 
           <!-- Dynamic Tag Builder -->
@@ -682,9 +680,9 @@ const draggedIndex = ref(null)
               'border-color': '#1E40AF',
               'border-width': '4px',
               'border-style': 'solid',
-              'box-shadow': '0 0 20px rgba(59, 130, 246, 0.5)',
-              'text-shadow': '0 0 8px rgba(59, 130, 246, 0.8)',
-              'font-weight': 'bold'
+              'background-opacity': 0.8,
+              'font-weight': 'bold',
+              'color': '#1E40AF'
             }
           },
           {

@@ -1,8 +1,8 @@
 <template>
-  <div class="px-4 py-6 sm:px-0">
+  <div class="px-3 py-4 sm:px-0">
     <!-- Security Dashboard -->
-    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md lg:col-span-3">
-      <div class="flex justify-between items-center mb-6 p-6">
+    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+      <div class="flex justify-between items-center mb-4 p-4">
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Security Dashboard</h2>
           <p v-if="selectedTreeNode" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -22,7 +22,7 @@
         </button>
       </div>
 
-      <div v-if="loading" class="text-center py-8">
+      <div v-if="loading" class="text-center py-6">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <p class="mt-2 text-gray-600 dark:text-gray-400">Loading security data...</p>
       </div>
@@ -37,7 +37,7 @@
         </div>
       </div>
 
-      <div v-else-if="(!treeData || treeData.length === 0) || (!filteredSecurityData || filteredSecurityData.length === 0)" class="text-center py-8">
+      <div v-else-if="(!treeData || treeData.length === 0) || (!filteredSecurityData || filteredSecurityData.length === 0)" class="text-center py-6">
         <div v-if="loading" class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <div v-else class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
@@ -48,52 +48,50 @@
         </p>
       </div>
 
-      <div v-else class="px-4 py-5 sm:px-6">
+      <div v-else class="px-4 py-3 sm:px-6">
         <!-- Security Overview -->
-        <div class="flex justify-between items-center mb-6">
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 p-4">
-            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-              <div class="text-center">
-                <div class="text-3xl font-bold text-blue-600 dark:text-blue-300">{{ totalVulnerabilities }}</div>
-                <div class="text-sm text-blue-600 dark:text-blue-400">Total Vulnerabilities</div>
-              </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ totalVulnerabilities }}</div>
+              <div class="text-sm text-blue-600 dark:text-blue-400">Total Vulnerabilities</div>
             </div>
+          </div>
 
-            <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
-              <div class="text-center">
-                <div class="text-3xl font-bold text-orange-600 dark:text-orange-300">{{ criticalVulns }}</div>
-                <div class="text-sm text-orange-600 dark:text-orange-400">Critical</div>
-              </div>
+          <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-orange-600 dark:text-orange-300">{{ criticalVulns }}</div>
+              <div class="text-sm text-orange-600 dark:text-orange-400">Critical</div>
             </div>
+          </div>
 
-            <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-              <div class="text-center">
-                <div class="text-3xl font-bold text-red-600 dark:text-red-300">{{ highVulns }}</div>
-                <div class="text-sm text-red-600 dark:text-red-400">High</div>
-              </div>
+          <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-red-600 dark:text-red-300">{{ highVulns }}</div>
+              <div class="text-sm text-red-600 dark:text-red-400">High</div>
             </div>
+          </div>
 
-            <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
-              <div class="text-center">
-                <div class="text-3xl font-bold text-yellow-600 dark:text-yellow-300">{{ mediumVulns }}</div>
-                <div class="text-sm text-yellow-600 dark:text-yellow-400">Medium</div>
-              </div>
+          <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-300">{{ mediumVulns }}</div>
+              <div class="text-sm text-yellow-600 dark:text-yellow-400">Medium</div>
             </div>
+          </div>
 
-            <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-              <div class="text-center">
-                <div class="text-3xl font-bold text-green-600 dark:text-green-300">{{ lowVulns }}</div>
-                <div class="text-sm text-green-600 dark:text-green-400">Low</div>
-              </div>
+          <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-green-600 dark:text-green-300">{{ lowVulns }}</div>
+              <div class="text-sm text-green-600 dark:text-green-400">Low</div>
             </div>
           </div>
         </div>
       </div>
     </div>
     <!-- Tree (1/3) + Related Projects (2/3) -->
-    <div class="flex flex-col lg:flex-row gap-6 mt-6" style="min-height: 300px;">
+    <div class="flex flex-col lg:flex-row gap-4 mt-6" style="min-height: 300px;">
       <!-- Tree Panel (1/3) -->
-      <div class="lg:w-1/3 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
+      <div class="lg:w-2/5 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Navigation Tree</h3>

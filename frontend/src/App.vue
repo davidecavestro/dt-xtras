@@ -224,7 +224,7 @@
     </div>
 
     <!-- Main Content -->
-    <div :class="['flex-1 transition-all duration-300 ease-in-out z-10', $route.path !== '/login' && screenWidth >= 1024 && sidebarOpen ? 'lg:ml-64' : $route.path !== '/login' && screenWidth >= 1024 && !sidebarOpen ? 'lg:ml-16' : '']">
+    <div :class="['flex-1 transition-all duration-300 ease-in-out z-10']">
       <!-- Mobile Header -->
       <header v-if="$route.path !== '/login'" class="lg:hidden bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center">
