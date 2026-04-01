@@ -13,6 +13,14 @@
 
 <body>
   <div id="app"></div>
+  <script>
+    // Inject configuration from environment variables
+    window.APP_CONFIG = {
+      BACKEND_API_URL: "${BACKEND_API_URL}",
+      DT_API_URL: "${DT_API_URL}",
+      DT_FRONTEND_URL: "${DT_FRONTEND_URL}"
+    };
+  </script>
   <script type="module" src="/src/main.js"></script>
 </body>
 

@@ -21,7 +21,7 @@ RUN npm run build
 FROM nginxinc/nginx-unprivileged:alpine3.23
 
 # Copy built application
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --chown=101:101 --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY --chown=101:101 nginx.conf /etc/nginx/conf.d/default.conf
@@ -30,6 +30,10 @@ COPY --chown=101:101 nginx.conf /etc/nginx/conf.d/default.conf
 COPY --chown=101:101 substitute-env.sh /docker-entrypoint.d/99-substitute-env.sh
 RUN chmod +x /docker-entrypoint.d/99-substitute-env.sh
 
+USER 0
+# Make dir writable for envsub of app config
+RUN chown 101:101 /usr/share/nginx/html
+
 # Switch to non-root user
 USER 101
 
@@ -37,5 +41,5 @@ USER 101
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
