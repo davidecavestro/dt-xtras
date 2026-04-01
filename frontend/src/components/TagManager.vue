@@ -202,110 +202,6 @@
       </div>
     </div>
 
-    <!-- Project Linking -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Link Tags to Projects</h2>
-        <div class="text-sm text-gray-600 dark:text-gray-400">
-          Click project names to view in Dependency Track UI
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Project Selection -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Select Projects
-          </label>
-          <div class="mt-1 border border-gray-300 dark:border-gray-600 rounded-md max-h-48 overflow-y-auto">
-            <div v-for="project in projects" :key="project.uuid" class="p-2 hover:bg-gray-50 dark:hover:bg-gray-700">
-              <label class="flex items-center">
-                <input
-                  type="checkbox"
-                  :value="project.uuid"
-                  v-model="selectedProjects"
-                  class="mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                />
-                <div>
-                  <div class="font-medium text-gray-900 dark:text-white">
-                  <a
-                    :href="buildDTProjectUrl(project.uuid)"
-                    target="_blank"
-                    class="text-blue-600 hover:text-blue-800 hover:underline"
-                    title="View in Dependency Track"
-                  >
-                    {{ project.displayName }}
-                  </a>
-                </div>
-                  <div class="text-xs text-gray-600 dark:text-gray-400">
-                    {{ project.name }} v{{ project.version }}
-                    <span class="ml-2">
-                      <a
-                        :href="buildDTProjectUrl(project.uuid)"
-                        target="_blank"
-                        class="text-blue-600 hover:text-blue-800 hover:underline"
-                        title="View in Dependency Track"
-                      >
-                        UUID: {{ project.uuid.slice(0, 8) }}...
-                      </a>
-                    </span>
-                    <div v-if="project.tags && project.tags.length > 0" class="mt-1">
-                      Tags: {{ project.tags.join(', ') }}
-                    </div>
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tag Selection -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Select Tags to Apply
-          </label>
-          <div class="mt-1 border border-gray-300 dark:border-gray-600 rounded-md max-h-48 overflow-y-auto">
-            <div v-for="tag in tags" :key="tag.name" class="p-2 hover:bg-gray-50 dark:hover:bg-gray-700">
-              <label class="flex items-center">
-                <input
-                  type="checkbox"
-                  :value="tag.name"
-                  v-model="selectedTags"
-                  class="mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                />
-                <div>
-                  <div class="font-medium text-gray-900 dark:text-white">
-                    {{ tag.name }}
-                    <span v-if="tag.custom" class="ml-2 text-xs text-gray-500 dark:text-gray-400">(custom)</span>
-                  </div>
-                  <div class="text-sm text-gray-600 dark:text-gray-400">
-                    {{ tag.projectsCount || 0 }} projects
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Link Actions -->
-      <div class="mt-4 flex gap-2">
-        <button
-          @click="linkTagsToProjects"
-          :disabled="selectedProjects.length === 0 || selectedTags.length === 0"
-          class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
-          Link Tags to Projects ({{ selectedProjects.length }} projects, {{ selectedTags.length }} tags)
-        </button>
-        <button
-          @click="unlinkTagsFromProjects"
-          :disabled="selectedProjects.length === 0 || selectedTags.length === 0"
-          class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
-          Unlink Tags from Projects
-        </button>
-      </div>
-    </div>
 
     <!-- Projects Modal -->
     <div v-if="showProjectsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -400,14 +296,12 @@ export default {
     const tags = ref([])
     const projects = ref([])
     const newTag = ref('')
-    const selectedProjects = ref([])
-    const selectedTags = ref([])
     const tagValidation = ref({ valid: false, message: '' })
     const showProjectsModal = ref(false)
     const selectedTag = ref(null)
     const tagProjects = ref([])
     const loading = ref(false)
-    const tagsViewMode = ref('grid') // 'list', 'grid', or 'deck'
+    const tagsViewMode = ref('deck') // 'list', 'grid', or 'deck'
 
     // Dark mode detection
     const isDarkMode = computed(() => {
@@ -629,73 +523,6 @@ export default {
       tagValidation.value = { valid: false, message: '' }
     }
 
-    const linkTagsToProjects = async () => {
-      if (selectedProjects.value.length === 0 || selectedTags.value.length === 0) return
-
-      try {
-        const tagNames = selectedTags.value.map(tagName =>
-          tags.value.find(t => t.name === tagName)?.name
-        ).filter(Boolean)
-
-        for (const tagName of tagNames) {
-          // Call our backend endpoint - auth service handles authentication automatically
-          const response = await axios.post(`/api/v1/tag/${tagName}/project`, selectedProjects.value)
-
-          if (response.status === 204) {
-            // Success - update local project tags
-            selectedProjects.value.forEach(projectUuid => {
-              const project = projects.value.find(p => p.uuid === projectUuid)
-              if (project && !project.tags.includes(tagName)) {
-                project.tags.push(tagName)
-              }
-            })
-          }
-        }
-
-        await loadProjects()
-        await loadTags()
-        selectedProjects.value = []
-        selectedTags.value = []
-      } catch (error) {
-        console.error('Error linking tags:', error)
-        alert('Failed to link tags to projects. Please try again.')
-      }
-    }
-
-    const unlinkTagsFromProjects = async () => {
-      if (selectedProjects.value.length === 0 || selectedTags.value.length === 0) return
-
-      try {
-        const tagNames = selectedTags.value.map(tagName =>
-          tags.value.find(t => t.name === tagName)?.name
-        ).filter(Boolean)
-
-        for (const tagName of tagNames) {
-          // Call our backend endpoint - auth service handles authentication automatically
-          const response = await axios.delete(`/api/v1/tag/${tagName}/project`, {
-            data: selectedProjects.value
-          })
-
-          if (response.status === 204) {
-            // Success - update local project tags
-            selectedProjects.value.forEach(projectUuid => {
-              const project = projects.value.find(p => p.uuid === projectUuid)
-              if (project) {
-                project.tags = project.tags.filter(tag => tag !== tagName)
-              }
-            })
-          }
-        }
-
-        await loadProjects()
-        await loadTags()
-        selectedProjects.value = []
-        selectedTags.value = []
-      } catch (error) {
-        console.error('Error unlinking tags:', error)
-        alert('Failed to unlink tags from projects. Please try again.')
-      }
-    }
 
     const refreshTags = () => {
       loadTags()
@@ -718,8 +545,6 @@ export default {
       tags,
       projects,
       newTag,
-      selectedProjects,
-      selectedTags,
       tagValidation,
       showProjectsModal,
       selectedTag,
@@ -735,8 +560,6 @@ export default {
       deleteTag,
       viewTagProjects,
       closeProjectsModal,
-      linkTagsToProjects,
-      unlinkTagsFromProjects,
       refreshTags,
       formatDate,
       buildDTProjectUrl

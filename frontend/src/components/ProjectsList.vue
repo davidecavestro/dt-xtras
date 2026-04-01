@@ -146,7 +146,7 @@ export default {
           queryParams.search = filters.value.search
         }
         if (filters.value.activeOnly) {
-          queryParams.activeOnly = true
+          queryParams.active_only = true
         }
 
         return apiService.getProjects(params, queryParams)

@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard.vue'
 import TaxonomyEditor from './components/TaxonomyEditor.vue'
 import TaxonomyVisualization from './components/TaxonomyVisualization.vue'
 import TagManager from './components/TagManager.vue'
+import TagBulkActions from './components/TagBulkActions.vue'
 import ProjectsList from './components/ProjectsList.vue'
 import ProjectsGrid from './components/ProjectsGrid.vue'
 import Projects from './components/Projects.vue'
@@ -40,6 +41,12 @@ const routes = [
   {
     path: '/tags',
     component: TagManager,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/tag-bulk-actions',
+    name: 'TagBulkActions',
+    component: TagBulkActions,
     meta: { requiresAuth: true }
   },
   {
