@@ -259,7 +259,7 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import authService from './services/auth'
-import { loadConfig } from './config.js'
+import { getConfig } from './config.js'
 import LogoWithText from './components/LogoWithText.vue'
 
 export default {
@@ -351,19 +351,15 @@ export default {
     }
 
     onMounted(() => {
-      // Load configuration from backend
-      loadConfig().then(() => {
-        console.log('Configuration loaded successfully')
-      }).catch(error => {
-        console.warn('Failed to load configuration:', error)
-      })
+      // Configuration is now loaded synchronously from script tag
+      console.log('Configuration loaded:', getConfig())
 
       // Check for saved theme preference or default to light mode
       const savedTheme = localStorage.getItem('theme')
       isDark.value = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
       updateTheme()
 
-      // Check authentication status
+      // Check authentication status after config is loaded
       checkAuth()
 
       // Close sidebar on window resize

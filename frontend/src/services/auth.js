@@ -1,6 +1,5 @@
 import axios from 'axios'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { getConfig } from '../config.js'
 
 class AuthService {
   constructor() {
@@ -43,7 +42,7 @@ class AuthService {
       formData.append('username', username)
       formData.append('password', password)
 
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, formData, {
+      const response = await axios.post(`${getConfig().BACKEND_API_URL}/auth/login`, formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
@@ -77,7 +76,7 @@ class AuthService {
   async logout() {
     try {
       // Call logout endpoint for consistency (though JWT is stateless)
-      await axios.post(`${API_BASE_URL}/auth/logout`)
+      await axios.post(`${getConfig().BACKEND_API_URL}/auth/logout`)
     } catch (error) {
       console.error('Logout failed:', error)
     } finally {

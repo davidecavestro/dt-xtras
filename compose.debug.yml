@@ -1,23 +1,25 @@
 services:
   backend:
-#    build:
-#      context: ./backend
-#      dockerfile: Dockerfile
-    image: ghcr.io/davidecavestro/dt-xtras/backend:main
-    ports:
-      - "8001:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.debug
+#    ports:
+#      - "8001:8001"
+#      - "5678:5678"  # Debug port
+#    extra_hosts:
+#      - "host.docker.internal:host-gateway"
+    network_mode: host
     environment:
       - DT_API_URL=${DT_API_URL}
       - DT_FRONTEND_URL=${DT_FRONTEND_URL}
-      - TAXONOMIES_FILE=${TAXONOMIES_FILE:-/app/data/taxonomies.yaml}
+      - BACKEND_API_URL=${BACKEND_API_URL}
+      - TAXONOMIES_FILE=${TAXONOMIES_FILE}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - CORS_ALLOW_METHODS=${CORS_ALLOW_METHODS}
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data/taxonomies.yaml
     env_file:
-      - .env
+      - .env.debug
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -26,19 +28,18 @@ services:
       start_period: 40s
 
   frontend:
-#    build:
-#      context: ./frontend
-#      dockerfile: Dockerfile
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     image: ghcr.io/davidecavestro/dt-xtras/frontend:main
-    ports:
-      - "3001:3000"
-    depends_on:
-      backend:
-        condition: service_healthy
+#    ports:
+#      - "3001:3000"
+#    depends_on:
+#      backend:
+#        condition: service_healthy
+    network_mode: host
     environment:
       - VITE_API_URL=http://localhost:8001
       - BACKEND_API_URL=${BACKEND_API_URL}
-      - DT_API_URL=${DT_API_URL}
-      - DT_FRONTEND_URL=${DT_FRONTEND_URL}
     env_file:
-      - .env
+      - .env.debug

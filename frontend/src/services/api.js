@@ -1,10 +1,11 @@
 import axios from 'axios'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { getConfig } from '../config.js'
 
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL
+    this.baseURL = getConfig().BACKEND_API_URL
+    // Configure axios defaults
+    axios.defaults.baseURL = this.baseURL
   }
 
   /**
@@ -149,7 +150,7 @@ class ApiService {
     }
 
     try {
-      const response = await axios.get(`${this.baseURL}/api/v1${endpoint}`, {
+      const response = await axios.get(`/api/v1${endpoint}`, {
         params: queryParams
       })
       return response.data
@@ -167,7 +168,7 @@ class ApiService {
    */
   async post(endpoint, data = {}) {
     try {
-      const response = await axios.post(`${this.baseURL}/api/v1${endpoint}`, data)
+      const response = await axios.post(`/api/v1${endpoint}`, data)
       return response.data
     } catch (error) {
       console.error(`Error posting data to ${endpoint}:`, error)
@@ -183,7 +184,7 @@ class ApiService {
    */
   async put(endpoint, data = {}) {
     try {
-      const response = await axios.put(`${this.baseURL}/api/v1${endpoint}`, data)
+      const response = await axios.put(`/api/v1${endpoint}`, data)
       return response.data
     } catch (error) {
       console.error(`Error updating data at ${endpoint}:`, error)
@@ -198,7 +199,7 @@ class ApiService {
    */
   async delete(endpoint) {
     try {
-      const response = await axios.delete(`${this.baseURL}/api/v1${endpoint}`)
+      const response = await axios.delete(`/api/v1${endpoint}`)
       return response.data
     } catch (error) {
       console.error(`Error deleting data at ${endpoint}:`, error)

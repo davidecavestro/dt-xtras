@@ -52,6 +52,26 @@
       }
     },
     {
+      "name": "Attach to Backend in Docker",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "172.17.0.1",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/backend",
+          "remoteRoot": "/app"
+        }
+      ],
+      "presentation": {
+        "hidden": false,
+        "group": "DT extras",
+        "order": 3
+      }
+    },
+    {
       "name": "Attach to Running Backend",
       "type": "debugpy",
       "request": "attach",
