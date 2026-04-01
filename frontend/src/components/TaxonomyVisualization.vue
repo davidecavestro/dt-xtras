@@ -296,6 +296,11 @@ cytoscape.use(dagre);
 
 export default {
   name: 'TaxonomyVisualization',
+  components: {
+    List,
+    Grid3X3,
+    Square
+  },
   setup() {
     // Reactive variables
     const graphData = ref(null);
