@@ -228,11 +228,11 @@
                       {{ project.name }}
                     </h3>
                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                      {{ project.version || 'latest' }}
+                      {{ project.version }}
                     </span>
                   </div>
-                  <div class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    {{ project.tags.join(', ') }}
+                  <div class="mt-1 text-sm italic text-gray-600 dark:text-gray-400">
+                    🏷 {{ project.tags.join(', ') }}
                   </div>
                   <div class="mt-2 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
                     <span class="flex items-center">

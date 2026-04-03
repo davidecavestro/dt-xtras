@@ -5,42 +5,6 @@
       <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Tags Graph</h1>
 
-        <!-- View Mode Controls -->
-        <div class="flex items-center space-x-2">
-          <button
-            @click="viewMode = 'list'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              viewMode === 'list'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            <List class="w-4 h-4" />
-          </button>
-          <button
-            @click="viewMode = 'grid'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              viewMode === 'grid'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            <Grid3X3 class="w-4 h-4" />
-          </button>
-          <button
-            @click="viewMode = 'deck'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              viewMode === 'deck'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            <Square class="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
       <!-- Controls -->
