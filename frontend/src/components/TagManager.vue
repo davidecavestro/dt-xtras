@@ -222,6 +222,15 @@
               </svg>
             </button>
             <button
+              @click="startCloneTag(tag)"
+              class="p-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 inline-flex items-center justify-center transition-colors"
+              title="Clone Tag"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+            </button>
+            <button
               @click="deleteTag(tag)"
               class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
               title="Delete"
@@ -263,31 +272,38 @@
               :key="project.uuid"
               class="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
             >
-              <div class="font-medium text-gray-900 dark:text-white">
-                <a
-                  :href="buildDTProjectUrl(project.uuid)"
-                  target="_blank"
-                  class="text-blue-600 hover:text-blue-800 hover:underline"
-                  title="View in Dependency Track"
-                >
-                  {{ project.displayName }}
-                </a>
-              </div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">
-                {{ project.name }} v{{ project.version }}
-                <span class="ml-2">
-                  <a
-                    :href="buildDTProjectUrl(project.uuid)"
-                    target="_blank"
-                    class="text-blue-600 hover:text-blue-800 hover:underline"
-                    title="View in Dependency Track"
-                  >
-                    UUID: {{ project.uuid }}
-                  </a>
-                </span>
-                <span v-if="project.tags && project.tags.length > 0" class="ml-2">
-                  All tags: {{ project.tags.join(', ') }}
-                </span>
+              <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium text-gray-900 dark:text-white mb-1">
+                    <a
+                      :href="buildDTProjectUrl(project.uuid)"
+                      target="_blank"
+                      class="text-blue-600 hover:text-blue-800 hover:underline"
+                      title="View in Dependency Track"
+                    >
+                      {{ project.name }}
+                    </a>
+                  </div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400 flex items-center flex-wrap gap-2">
+                    <span>Version: {{ project.version }}</span>
+                    <a
+                      :href="buildDTProjectUrl(project.uuid)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
+                      title="View in Dependency-Track"
+                    >
+                      <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
+                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                      </svg>
+                      DT
+                    </a>
+                    <span v-if="project.tags && project.tags.length > 0">
+                      Tags: {{ project.tags.join(', ') }}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -386,14 +402,14 @@
       </div>
     </div>
 
-    <!-- Create Tag Modal -->
-    <div v-if="showCreateTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <!-- Clone Tag Modal -->
+    <div v-if="showCloneTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
         <div class="p-6">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create Tag</h3>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Clone Tag: {{ cloningTag?.name }}</h3>
             <button
-              @click="showCreateTagModal = false"
+              @click="closeCloneTagModal"
               class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,37 +422,104 @@
             <!-- Tag Input -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Tag
+                New Tag Name
                 <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
                   (e.g., env:prod, cust:acme, myapp:1.0.0)
                 </span>
               </label>
               <input
-                v-model="newTag"
+                v-model="cloneTagName"
                 type="text"
                 class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                placeholder="Enter tag..."
-                @input="validateTag"
+                placeholder="Enter new tag name..."
+                @input="validateCloneTag"
               />
-              <div v-if="tagValidation.message" :class="[
+              <div v-if="cloneTagValidation.message" :class="[
                 'mt-1 text-xs',
-                tagValidation.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                cloneTagValidation.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
               ]">
-                {{ tagValidation.message }}
+                {{ cloneTagValidation.message }}
               </div>
             </div>
 
-            <!-- Taxonomy Patterns -->
-            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Taxonomy Patterns</h3>
-              <div class="space-y-2">
-                <div v-for="taxonomy in taxonomies" :key="taxonomy.id" class="flex items-start">
-                  <span class="font-medium text-gray-700 dark:text-gray-300 text-sm mr-2 min-w-0">
-                    {{ taxonomy.name }}:
+            <!-- Project Linking Option -->
+            <div v-if="cloningTag.projectsCount" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Project Linking</h3>
+              <div class="space-y-3">
+                <div class="flex items-center">
+                  <input
+                    id="linkProjects"
+                    v-model="linkProjects"
+                    type="checkbox"
+                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
+                  />
+                  <label for="linkProjects" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    Link projects from original tag
+                  </label>
+                </div>
+                <div v-if="cloningTag" class="text-xs text-gray-500 dark:text-gray-400">
+                  Original tag is linked to {{ cloningTag.projectsCount || 0 }} projects
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Taxonomy Patterns (if original tag belongs to taxonomy) -->
+          <div v-if="cloningTag && cloningTag.taxonomy" class="mt-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Taxonomy Pattern</h3>
+            <div class="flex items-start mb-4">
+              <span class="font-medium text-gray-700 dark:text-gray-300 text-sm mr-2 min-w-0">
+                {{ taxonomies.find(t => t.id === cloningTag.taxonomy)?.name || cloningTag.taxonomy }}:
+              </span>
+              <code class="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-gray-800 dark:text-gray-200 break-all">
+                {{ taxonomies.find(t => t.id === cloningTag.taxonomy)?.regex_pattern || 'Pattern not found' }}
+              </code>
+            </div>
+
+            <!-- Dynamic Tag Builder for Clone -->
+            <div class="space-y-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Build Clone Tag
+              </label>
+
+              <div class="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-600 rounded-lg">
+                <template v-for="(part, index) in tagBuilderParts" :key="index">
+                  <!-- Static text part -->
+                  <span v-if="part.type === 'static'" class="text-gray-700 dark:text-gray-300 font-medium">
+                    {{ part.value }}
                   </span>
-                  <code class="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-gray-800 dark:text-gray-200 break-all">
-                    {{ taxonomy.regex_pattern }}
-                  </code>
+
+                  <!-- Dropdown for capture group with existing tags -->
+                  <select
+                    v-else-if="part.type === 'dropdown'"
+                    v-model="part.value"
+                    class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  >
+                    <option value="">Select {{ part.name }}...</option>
+                    <option v-for="option in part.options" :key="option" :value="option">
+                      {{ option }}
+                    </option>
+                  </select>
+
+                  <!-- Text field for capture group without existing tags -->
+                  <input
+                    v-else-if="part.type === 'text'"
+                    v-model="part.value"
+                    type="text"
+                    :placeholder="'Enter ' + part.name + '...'"
+                    class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </template>
+              </div>
+
+              <!-- Generated Tag Preview -->
+              <div class="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preview:</div>
+                <code class="text-sm bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded text-gray-800 dark:text-gray-200 font-mono break-all">
+                  {{ generatedTag || 'Start building your tag...' }}
+                </code>
+                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Debug: tagBuilderParts = {{ JSON.stringify(tagBuilderParts) }}
                 </div>
               </div>
             </div>
@@ -445,17 +528,28 @@
           <!-- Action Buttons -->
           <div class="mt-6 flex justify-end gap-2">
             <button
-              @click="showCreateTagModal = false"
+              @click="closeCloneTagModal"
               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
               Cancel
             </button>
+            <!-- Show simple clone button if no taxonomy -->
             <button
-              @click="createTag"
-              :disabled="!tagValidation.valid || !newTag.trim()"
-              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              v-if="!cloningTag?.taxonomy"
+              @click="cloneTag"
+              :disabled="!cloneTagValidation.valid || !cloneTagName.trim()"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
-              Create Tag
+              Clone Tag
+            </button>
+            <!-- Show tag builder clone button if taxonomy exists -->
+            <button
+              v-else
+              @click="cloneTagFromBuilder"
+              :disabled="!canCreateTag"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              Clone Tag
             </button>
           </div>
         </div>
@@ -514,6 +608,13 @@ export default {
     const tagBuilderParts = ref([])
     const editingTag = ref(null)
     const editInput = ref(null) // Ref for edit input focus
+
+    // Clone Tag Modal state
+    const showCloneTagModal = ref(false)
+    const cloningTag = ref(null)
+    const cloneTagName = ref('')
+    const cloneTagValidation = ref({ valid: false, message: '' })
+    const linkProjects = ref(false)
 
     // Dark mode detection
     const isDarkMode = computed(() => {
@@ -612,8 +713,8 @@ export default {
           id: project.uuid, // Use uuid as id
           uuid: project.uuid,
           name: project.name,
-          version: project.version || 'latest',
-          displayName: project.version ? `${project.name}:${project.version}` : `${project.name}:latest`,
+          version: project.version,
+          displayName: project.version ? `${project.name}:${project.version}` : `${project.name}`,
           tags: project.tags || []
         }))
       } catch (error) {
@@ -748,6 +849,244 @@ export default {
       return new Date(dateString).toLocaleString()
     }
 
+    // Clone Tag functionality
+    const startCloneTag = async (tag) => {
+      console.log('🔧 Clone Tag clicked for tag:', tag)
+      cloningTag.value = tag
+      cloneTagName.value = ''
+      cloneTagValidation.value = { valid: false, message: '' }
+      linkProjects.value = false
+
+      // Initialize tag builder if tag has taxonomy
+      if (tag.taxonomy) {
+        try {
+          console.log('🔧 Available taxonomies:', taxonomies.value.map(t => ({ name: t.name, id: t.id })))
+          console.log('🔧 Available taxonomy names:', taxonomies.value.map(t => `'${t.name}'`).join(', '))
+          console.log('🔧 Looking for taxonomy:', `'${tag.taxonomy}'`)
+          console.log('🔧 Tag taxonomy type:', typeof tag.taxonomy)
+          console.log('🔧 Tag taxonomy length:', tag.taxonomy.length)
+
+          // Find the taxonomy object by ID (since tag.taxonomy contains the ID, not the name)
+          const taxonomy = taxonomies.value.find(t => t.id === tag.taxonomy)
+          if (!taxonomy) {
+            console.error('Taxonomy not found by ID:', tag.taxonomy)
+            // Try finding by name as fallback
+            const taxonomyByName = taxonomies.value.find(t => t.name === tag.taxonomy)
+            if (taxonomyByName) {
+              console.log('🔧 Found taxonomy by name instead:', taxonomyByName)
+              // Use the found taxonomy and proceed with the same logic
+              selectedTaxonomy.value = taxonomyByName // Set selectedTaxonomy for parseTaxonomyPattern
+              const parts = parseTaxonomyPattern(taxonomyByName.regex_pattern)
+              await loadTagValuesForDropdowns(parts)
+              const regex = new RegExp(taxonomyByName.regex_pattern)
+              const match = tag.name.match(regex)
+
+              if (match) {
+                tagBuilderParts.value = parts.map((part) => {
+                  if (part.type === 'static') {
+                    return part
+                  } else if (part.type === 'dropdown' || part.type === 'text') {
+                    const currentValue = match.groups?.[part.name] || ''
+                    return {
+                      ...part,
+                      value: currentValue
+                    }
+                  }
+                  return part
+                })
+              } else {
+                tagBuilderParts.value = parts
+              }
+              console.log('🔧 Clone tag builder initialized (fallback):', tagBuilderParts.value)
+            } else {
+              tagBuilderParts.value = []
+            }
+          } else {
+            console.log('🔧 Found taxonomy by ID:', taxonomy)
+            // Set selectedTaxonomy for parseTaxonomyPattern to use
+            selectedTaxonomy.value = taxonomy
+            // Parse taxonomy pattern to extract parts
+            const parts = parseTaxonomyPattern(taxonomy.regex_pattern)
+
+            // Load dropdown options for parts
+            await loadTagValuesForDropdowns(parts)
+
+            // Parse the original tag to pre-populate values
+            const regex = new RegExp(taxonomy.regex_pattern)
+            console.log('🔧 Regex pattern:', taxonomy.regex_pattern)
+            console.log('🔧 Testing against tag:', tag.name)
+            const match = tag.name.match(regex)
+            console.log('🔧 Regex match result:', match)
+
+            if (match) {
+              console.log('🔧 Match groups:', match.groups)
+              console.log('🔧 Parts before mapping:', parts)
+              // Pre-populate tag builder parts with original tag values
+              tagBuilderParts.value = parts.map((part) => {
+                if (part.type === 'static') {
+                  return part
+                } else if (part.type === 'dropdown' || part.type === 'text') {
+                  // Use named capture group value from match.groups
+                  const currentValue = match.groups?.[part.name] || ''
+                  console.log(`🔧 Setting ${part.name} to: "${currentValue}"`)
+                  return {
+                    ...part,
+                    value: currentValue
+                  }
+                }
+                return part
+              })
+              console.log('🔧 Tag builder parts after mapping:', tagBuilderParts.value)
+            } else {
+              // If no match, just load empty parts with dropdown options
+              tagBuilderParts.value = parts
+            }
+
+            console.log('🔧 Clone tag builder initialized:', tagBuilderParts.value)
+          }
+
+          console.log('🔧 Clone tag builder initialized:', tagBuilderParts.value)
+        } catch (error) {
+          console.error('Error initializing clone tag builder:', error)
+          tagBuilderParts.value = []
+        }
+      } else {
+        // Clear tag builder if no taxonomy
+        tagBuilderParts.value = []
+      }
+
+      showCloneTagModal.value = true
+      console.log('🔧 Clone modal should be open now')
+    }
+
+    const validateCloneTag = () => {
+      const tagName = cloneTagName.value.trim()
+
+      if (!tagName) {
+        cloneTagValidation.value = { valid: false, message: 'Tag name is required' }
+        return
+      }
+
+      // Check if tag already exists
+      if (tags.value.some(t => t.name === tagName)) {
+        cloneTagValidation.value = { valid: false, message: 'Tag already exists' }
+        return
+      }
+
+      cloneTagValidation.value = { valid: true, message: 'Tag name is valid' }
+    }
+
+    const closeCloneTagModal = () => {
+      showCloneTagModal.value = false
+      cloningTag.value = null
+      cloneTagName.value = ''
+      cloneTagValidation.value = { valid: false, message: '' }
+      linkProjects.value = false
+    }
+
+    const cloneTagFromBuilder = async () => {
+      if (!canCreateTag.value || !generatedTag.value) {
+        return
+      }
+
+      try {
+        const newTagName = generatedTag.value
+
+        // Create new tag
+        const response = await tagStore.createTag({
+          name: newTagName
+        })
+
+        if (response) {
+          // Add new tag to our list
+          tags.value.push(response)
+
+          // If linking projects is enabled, get projects from original tag and link them
+          if (linkProjects.value && cloningTag.value && cloningTag.value.projectsCount > 0) {
+            try {
+              const projectsResponse = await axios.get(`/api/tags/${encodeTagName(cloningTag.value.name)}/projects`)
+              const projects = projectsResponse.data
+
+              if (projects && projects.length > 0) {
+                // Link each project to new tag using the correct DT API endpoint
+                const projectUuids = projects.map(p => p.uuid)
+                await axios.post(`/api/v1/tag/${encodeTagName(newTagName)}/project`, projectUuids)
+
+                showSuccess(`Tag "${newTagName}" created and linked to ${projects.length} projects`)
+              } else {
+                showSuccess(`Tag "${newTagName}" created successfully`)
+              }
+            } catch (error) {
+              console.error('Error linking projects:', error)
+              showSuccess(`Tag "${newTagName}" created but failed to link some projects`)
+            }
+          } else {
+            showSuccess(`Tag "${newTagName}" created successfully`)
+          }
+
+          // Close modal and refresh tags
+          closeCloneTagModal()
+          await loadTags()
+        }
+      } catch (error) {
+        console.error('Error cloning tag:', error)
+        showError('Failed to clone tag', 'Please try again.')
+      }
+    }
+
+    const cloneTag = async () => {
+      if (!cloneTagValidation.value.valid || !cloneTagName.value.trim()) {
+        return
+      }
+
+      try {
+        const newTagName = cloneTagName.value.trim()
+
+        // Create the new tag
+        const response = await tagStore.createTag({
+          name: newTagName
+        })
+
+        if (response) {
+          // Add new tag to our list
+          tags.value.push(response)
+
+          // If linking projects is enabled, get projects from original tag and link them
+          if (linkProjects.value && cloningTag.value && cloningTag.value.projectsCount > 0) {
+            try {
+              const projectsResponse = await axios.get(`/api/tags/${encodeTagName(cloningTag.value.name)}/projects`)
+              const projects = projectsResponse.data
+
+              if (projects && projects.length > 0) {
+                // Link each project to new tag using the correct DT API endpoint
+                const projectUuids = projects.map(p => p.uuid)
+                await axios.post(`/api/v1/tag/${encodeTagName(newTagName)}/project`, projectUuids)
+
+                showSuccess(`Tag "${newTagName}" created and linked to ${projects.length} projects`)
+              } else {
+                showSuccess(`Tag "${newTagName}" created successfully`)
+              }
+            } catch (error) {
+              console.error('Error linking projects:', error)
+              showSuccess(`Tag "${newTagName}" created but failed to link some projects`)
+            }
+          } else {
+            showSuccess(`Tag "${newTagName}" created successfully`)
+          }
+
+          // Close modal and refresh tags
+          closeCloneTagModal()
+          await loadTags()
+        }
+      } catch (error) {
+        console.error('Error cloning tag:', error)
+        cloneTagValidation.value = {
+          valid: false,
+          message: `❌ Error: ${tagStore.error || error.message}`
+        }
+      }
+    }
+
     // Edit tag functionality
     const editingTagName = ref('')
 
@@ -838,12 +1177,16 @@ export default {
     }
 
     const startAidedEditTag = async (tag) => {
+      console.log('🔧 Aided Edit clicked for tag:', tag)
+      console.log('🔧 Current tagBuilderParts before Aided Edit:', tagBuilderParts.value)
       try {
         // Find taxonomy that matches this tag pattern
         const matchingTaxonomy = taxonomies.value.find(taxonomy => {
           const regex = new RegExp(taxonomy.regex_pattern)
           return regex.test(tag.name)
         })
+
+        console.log('🔧 Matching taxonomy:', matchingTaxonomy)
 
         if (!matchingTaxonomy) {
           showError('No matching taxonomy found for this tag')
@@ -853,13 +1196,19 @@ export default {
         selectedTaxonomy.value = matchingTaxonomy
         editingTag.value = tag
 
+        console.log('🔧 Set selectedTaxonomy and editingTag')
+
         // Parse the tag using the taxonomy pattern to pre-populate fields
         const regex = new RegExp(matchingTaxonomy.regex_pattern)
         const match = tag.name.match(regex)
 
+        console.log('🔧 Regex match result:', match)
+
         if (match) {
           // Parse taxonomy pattern to extract parts
           const parts = parseTaxonomyPattern(matchingTaxonomy.regex_pattern)
+
+          console.log('🔧 Parsed parts:', parts)
 
           // Load dropdown options for parts
           await loadTagValuesForDropdowns(parts)
@@ -878,6 +1227,8 @@ export default {
             }
             return part
           })
+
+          console.log('🔧 Final tagBuilderParts:', tagBuilderParts.value)
         } else {
           // If no match, just load empty parts with dropdown options
           const parts = parseTaxonomyPattern(matchingTaxonomy.regex_pattern)
@@ -886,6 +1237,7 @@ export default {
         }
 
         showCreateTagModal.value = true
+        console.log('🔧 Modal should be open now')
       } catch (error) {
         console.error('Error starting aided edit:', error)
         showError('Failed to open edit modal')
@@ -897,7 +1249,7 @@ export default {
       let lastIndex = 0
 
       // Remove regex anchors (^ and $) from pattern for display
-      const cleanPattern = pattern.replace(/^\^|\$$/g, '')
+      let cleanPattern = pattern.replace(/^\^|\$$/g, '')
 
       // Find all capture groups: (?<name>pattern)
       const captureGroupRegex = /\(\?<([^>]+)>([^)]+)\)/g
@@ -1049,8 +1401,14 @@ export default {
       loading,
       tagsViewMode,
       showCreateTagModal,
-      editingTag,  // ← Added this
-      editingTagName,  // ← Added this
+      editingTag,
+      editingTagName,
+      // Clone Tag state
+      showCloneTagModal,
+      cloningTag,
+      cloneTagName,
+      cloneTagValidation,
+      linkProjects,
       isDarkMode,
       gridColumns,
       validateTag,
@@ -1061,6 +1419,11 @@ export default {
       viewTagProjects,
       startEditTag,
       startAidedEditTag,
+      startCloneTag,
+      validateCloneTag,
+      cloneTag,
+      cloneTagFromBuilder,
+      closeCloneTagModal,
       tagBelongsToTaxonomy,
       cancelEditTag,
       saveEditTag,
@@ -1075,6 +1438,8 @@ export default {
       canCreateTag,
       closeCreateTagModal,
       createOrUpdateTag,
+      parseTaxonomyPattern,
+      loadTagValuesForDropdowns,
       buildDTProjectUrl
     }
   }
