@@ -6,60 +6,13 @@
         Manage tags and link them to Dependency-Track projects
       </p>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Tag Input -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Tag
-            <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
-              (e.g., env:prod, cust:acme, myapp:1.0.0)
-            </span>
-          </label>
-          <input
-            v-model="newTag"
-            type="text"
-            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            placeholder="Enter tag..."
-            @input="validateTag"
-          />
-          <div v-if="tagValidation.message" :class="[
-            'mt-1 text-xs',
-            tagValidation.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-          ]">
-            {{ tagValidation.message }}
-          </div>
-        </div>
-
-        <!-- Taxonomy Patterns -->
-        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Taxonomy Patterns</h3>
-          <div class="space-y-2">
-            <div v-for="taxonomy in taxonomies" :key="taxonomy.id" class="flex items-start">
-              <span class="font-medium text-gray-700 dark:text-gray-300 text-sm mr-2 min-w-0">
-                {{ taxonomy.name }}:
-              </span>
-              <code class="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-gray-800 dark:text-gray-200 break-all">
-                {{ taxonomy.regex_pattern }}
-              </code>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="mt-4 flex gap-2">
+      <!-- Create Tag Button -->
+      <div class="mb-6">
         <button
-          @click="createTag"
-          :disabled="!tagValidation.valid || !newTag.trim()"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          @click="showCreateTagModal = true"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
           Create Tag
-        </button>
-        <button
-          @click="clearForm"
-          class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-        >
-          Clear
         </button>
       </div>
     </div>
@@ -432,6 +385,82 @@
         </div>
       </div>
     </div>
+
+    <!-- Create Tag Modal -->
+    <div v-if="showCreateTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create Tag</h3>
+            <button
+              @click="showCreateTagModal = false"
+              class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Tag Input -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Tag
+                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                  (e.g., env:prod, cust:acme, myapp:1.0.0)
+                </span>
+              </label>
+              <input
+                v-model="newTag"
+                type="text"
+                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                placeholder="Enter tag..."
+                @input="validateTag"
+              />
+              <div v-if="tagValidation.message" :class="[
+                'mt-1 text-xs',
+                tagValidation.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+              ]">
+                {{ tagValidation.message }}
+              </div>
+            </div>
+
+            <!-- Taxonomy Patterns -->
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Taxonomy Patterns</h3>
+              <div class="space-y-2">
+                <div v-for="taxonomy in taxonomies" :key="taxonomy.id" class="flex items-start">
+                  <span class="font-medium text-gray-700 dark:text-gray-300 text-sm mr-2 min-w-0">
+                    {{ taxonomy.name }}:
+                  </span>
+                  <code class="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-gray-800 dark:text-gray-200 break-all">
+                    {{ taxonomy.regex_pattern }}
+                  </code>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mt-6 flex justify-end gap-2">
+            <button
+              @click="showCreateTagModal = false"
+              class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="createTag"
+              :disabled="!tagValidation.valid || !newTag.trim()"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              Create Tag
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -444,6 +473,11 @@ import { useTagStore } from '../stores/tags.js'
 import { useToast } from '../composables/useToast.js'
 import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, Folder, Trash2, Edit2 } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
+
+// URL encoding utility
+const encodeTagName = (tagName) => {
+  return encodeURIComponent(tagName)
+}
 
 export default {
   name: 'TagManager',
@@ -649,6 +683,8 @@ export default {
           tags.value.push(response)
           newTag.value = ''
           tagValidation.value = { valid: false, message: '' }
+          // Close the modal after successful creation
+          showCreateTagModal.value = false
         }
       } catch (error) {
         console.error('Error creating tag:', error)
@@ -664,7 +700,7 @@ export default {
       if (!confirm(`Are you sure you want to delete tag "${tag.name}"?`)) return
 
       try {
-        await axios.delete(`/api/tags/${tag.name}`)
+        await axios.delete(`/api/tags/${encodeTagName(tag.name)}`)
 
         // Remove the tag from our list
         const index = tags.value.findIndex(t => t.name === tag.name)
@@ -683,7 +719,7 @@ export default {
       showProjectsModal.value = true
 
       try {
-        const response = await axios.get(`/api/tags/${tag.name}/projects`)
+        const response = await axios.get(`/api/tags/${encodeTagName(tag.name)}/projects`)
         tagProjects.value = response.data
       } catch (error) {
         console.error('Error loading tag projects:', error)
@@ -716,15 +752,30 @@ export default {
     const editingTagName = ref('')
 
     const startEditTag = (tag) => {
+      console.log('🔧 Starting edit for tag:', tag)
+
       editingTag.value = tag
       editingTagName.value = tag.name
-      // focus the editor after DOM update
+
+      // focus the editor after DOM update using Vue refs
       nextTick(() => {
-        const input = document.querySelector(`input[data-tag-name="${tag.name}"]`)
-        if (input) {
-          input.focus()
-          /* input.select() */
+        // Try multiple approaches to find and focus the input
+        const attempts = [
+          () => document.querySelector(`input[data-tag-name="${tag.name}"]`),
+          () => document.querySelector(`input[data-tag-name="${tag.name}"]`),
+          () => document.querySelector('input[data-tag-name="' + tag.name + '"]')
+        ]
+
+        for (const attempt of attempts) {
+          const input = attempt()
+          if (input) {
+            input.focus()
+            // input.select()
+            return
+          }
         }
+
+        console.log('🔧 Input not found, trying alternative approach')
       })
     }
 
@@ -739,7 +790,7 @@ export default {
       }
 
       try {
-        await axios.put(`/api/tags/${editingTag.value.name}`, {
+        await axios.put(`/api/tags/${encodeTagName(editingTag.value.name)}`, {
           name: editingTagName.value.trim()
         })
 
@@ -749,7 +800,9 @@ export default {
           tags.value[tagIndex].name = editingTagName.value.trim()
         }
 
-        cancelEditTag()
+        // Reset editing state
+        editingTag.value = null
+        editingTagName.value = ''
         showSuccess('Tag updated successfully')
       } catch (error) {
         console.error('Error updating tag:', error)
@@ -951,22 +1004,32 @@ export default {
 
       try {
         if (editingTag.value) {
-          // Update existing tag
-          await axios.put(`/api/tags/${editingTag.value.name}`, {
+          // Update existing tag (Aided Edit mode)
+          if (!selectedTaxonomy.value) {
+            showError('No taxonomy selected for editing')
+            return
+          }
+
+          await axios.put(`/api/tags/${encodeTagName(editingTag.value.name)}`, {
             name: generatedTag.value,
             taxonomy_id: selectedTaxonomy.value.id
           })
           showSuccess(`Tag "${generatedTag.value}" updated successfully!`)
         } else {
-          // Create new tag
-          await axios.post('/api/tags', {
-            name: generatedTag.value,
-            taxonomy_id: selectedTaxonomy.value.id
+          // Create new tag (regular Create mode)
+          const response = await tagStore.createTag({
+            name: generatedTag.value
           })
-          showSuccess(`Tag "${generatedTag.value}" created successfully!`)
+
+          if (response) {
+            // Add new tag to our list
+            tags.value.push(response)
+            newTag.value = ''
+            tagValidation.value = { valid: false, message: '' }
+          }
         }
 
-        await loadTags()
+        // Close modal after successful operation
         closeCreateTagModal()
       } catch (error) {
         console.error('Error creating/updating tag:', error)
@@ -975,18 +1038,19 @@ export default {
     }
 
     return {
+      // State
       taxonomies,
       tags,
-      projects,
       newTag,
-      editingTag,
-      editingTagName,
       tagValidation,
       showProjectsModal,
       selectedTag,
       tagProjects,
       loading,
       tagsViewMode,
+      showCreateTagModal,
+      editingTag,  // ← Added this
+      editingTagName,  // ← Added this
       isDarkMode,
       gridColumns,
       validateTag,
