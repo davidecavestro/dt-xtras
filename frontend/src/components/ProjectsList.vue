@@ -63,7 +63,7 @@
 
       <!-- Projects Grid -->
       <div v-else class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-4">
           <ProjectCard
             v-for="project in data"
             :key="project.uuid"

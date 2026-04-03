@@ -1,6 +1,6 @@
 from fastapi import Request, status, Form, FastAPI, HTTPException, Depends, responses, Response
 from pydantic import BaseModel, field_validator
-from urllib.parse import urlencode
+from urllib.parse import quote as urlencode
 from fastapi.security import HTTPBasic, HTTPBearer, HTTPAuthorizationCredentials
 import httpx
 import yaml
@@ -619,40 +619,43 @@ async def get_tag_by_name(tag_name: str, dt_token: str) -> dict:
 
 async def get_projects_with_tag(dt_token: str, tag_name: str) -> List[dict]:
     """Get all projects that have a specific tag"""
-    try:
-        headers = {}
-        if dt_token:
-            headers["Authorization"] = f"Bearer {dt_token}"
-        elif DT_API_KEY:
-            headers["X-API-Key"] = DT_API_KEY
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-API-Key"] = DT_API_KEY
 
+    # Use DT API endpoint to get projects by tag with pagination
+    all_projects = []
+    page = 1
+    page_size = 50
+
+    while True:
         params = {
-            "pageNumber": "1",
-            "pageSize": "1000"  # Get lots of projects to find all with this tag
+            "pageNumber": str(page),
+            "pageSize": str(page_size)
         }
 
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)
+            # use /v1/tag/{name}/project with proper URL encoding
+            encoded_tag_name = urlencode(tag_name)
+            response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project", headers=headers, params=params, timeout=30.0)
             response.raise_for_status()
-            projects = response.json()
+            projects_data = response.json()
 
-            # Filter projects that have the specified tag
-            projects_with_tag = []
-            for project in projects:
-                tags = project.get('tags', [])
-                if isinstance(tags, list) and tags[0] and isinstance(tags[0], dict):
-                    tag_names = [tag.get('name', '') for tag in tags]
-                else:
-                    tag_names = tags if isinstance(tags, list) else []
+            # Add current page projects to results
+            if projects_data:
+                all_projects.extend(projects_data)
 
-                if tag_name in tag_names:
-                    projects_with_tag.append(project)
+                # If we got fewer projects than page_size, we're done
+                if len(projects_data) < page_size:
+                    break
 
-            return projects_with_tag
+                page += 1
+            else:
+                break
 
-    except Exception as e:
-        print(f"Error getting projects with tag: {e}")
-        return []
+    return all_projects
 
 async def add_tag_to_project(dt_token: str, project_uuid: str, tag_name: str):
     """Add a tag to a project"""
@@ -731,93 +734,84 @@ async def delete_tag_from_dt(dt_token: str, tag_name: str):
         headers["X-API-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
-        try:
-            # Step 1: Get and remove from notification rules
-            print(f"Getting notification rules for tag: {tag_name}")
-            notification_rules_response = await client.get(f"{DT_API_URL}/api/v1/tag/{tag_name}/notificationRule", headers=headers)
-            if notification_rules_response.status_code == 200:
-                notification_rules = notification_rules_response.json()
-                if notification_rules:
-                    rule_uuids = [rule['uuid'] for rule in notification_rules]
-                    print(f"Removing tag from {len(rule_uuids)} notification rules")
-                    await client.request(
-                        method="DELETE",
-                        url=f"{DT_API_URL}/api/v1/tag/{tag_name}/notificationRule",
-                        headers={**headers, "Content-Type": "application/json"},
-                        content=json.dumps(rule_uuids)
-                    )
-                    print(f"Successfully removed tag from notification rules")
+        # Step 1: Get and remove from notification rules
+        print(f"Getting notification rules for tag: {tag_name}")
+        encoded_tag_name = urlencode(tag_name)
+        notification_rules_response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/notificationRule", headers=headers)
+        if notification_rules_response.status_code == 200:
+            notification_rules = notification_rules_response.json()
+            if notification_rules:
+                rule_uuids = [rule['uuid'] for rule in notification_rules]
+                print(f"Removing tag from {len(rule_uuids)} notification rules")
+                await client.request(
+                    method="DELETE",
+                    url=f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/notificationRule",
+                    headers={**headers, "Content-Type": "application/json"},
+                    content=json.dumps(rule_uuids)
+                )
+                print(f"Successfully removed tag from notification rules")
 
-            # Step 2: Get and remove from policies
-            print(f"Getting policies for tag: {tag_name}")
-            policies_response = await client.get(f"{DT_API_URL}/api/v1/tag/{tag_name}/policy", headers=headers)
-            if policies_response.status_code == 200:
-                policies = policies_response.json()
-                if policies:
-                    policy_uuids = [policy['uuid'] for policy in policies]
-                    print(f"Removing tag from {len(policy_uuids)} policies")
-                    await client.request(
-                        method="DELETE",
-                        url=f"{DT_API_URL}/api/v1/tag/{tag_name}/policy",
-                        headers={**headers, "Content-Type": "application/json"},
-                        content=json.dumps(policy_uuids)
-                    )
-                    print(f"Successfully removed tag from policies")
+        # Step 2: Get and remove from policies
+        print(f"Getting policies for tag: {tag_name}")
+        policies_response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/policy", headers=headers)
+        if policies_response.status_code == 200:
+            policies = policies_response.json()
+            if policies:
+                policy_uuids = [policy['uuid'] for policy in policies]
+                print(f"Removing tag from {len(policy_uuids)} policies")
+                await client.request(
+                    method="DELETE",
+                    url=f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/policy",
+                    headers={**headers, "Content-Type": "application/json"},
+                    content=json.dumps(policy_uuids)
+                )
+                print(f"Successfully removed tag from policies")
 
-            # Step 3: Get and remove from projects
-            print(f"Getting projects for tag: {tag_name}")
-            projects_response = await client.get(f"{DT_API_URL}/api/v1/tag/{tag_name}/project", headers=headers)
-            if projects_response.status_code == 200:
-                projects = projects_response.json()
-                if projects:
-                    project_uuids = [project['uuid'] for project in projects]
-                    print(f"Removing tag from {len(project_uuids)} projects")
-                    await client.request(
-                        method="DELETE",
-                        url=f"{DT_API_URL}/api/v1/tag/{tag_name}/project",
-                        headers={**headers, "Content-Type": "application/json"},
-                        content=json.dumps(project_uuids)
-                    )
-                    print(f"Successfully removed tag from projects")
+        # Step 3: Get and remove from projects
+        print(f"Getting projects for tag: {tag_name}")
+        projects_response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project", headers=headers)
+        if projects_response.status_code == 200:
+            projects = projects_response.json()
+            if projects:
+                project_uuids = [project['uuid'] for project in projects]
+                print(f"Removing tag from {len(project_uuids)} projects")
+                await client.request(
+                    method="DELETE",
+                    url=f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project",
+                    headers={**headers, "Content-Type": "application/json"},
+                    content=json.dumps(project_uuids)
+                )
+                print(f"Successfully removed tag from projects")
 
-            # Step 4: Get and remove from collection projects
-            print(f"Getting collection projects for tag: {tag_name}")
-            collection_projects_response = await client.get(f"{DT_API_URL}/api/v1/tag/{tag_name}/collectionProject", headers=headers)
-            if collection_projects_response.status_code == 200:
-                collection_projects = collection_projects_response.json()
-                if collection_projects:
-                    collection_project_uuids = [project['uuid'] for project in collection_projects]
-                    print(f"Removing tag from {len(collection_project_uuids)} collection projects")
-                    # Note: DT API doesn't seem to have a DELETE endpoint for collection projects
-                    # Collection projects use the tag for collection logic, so they might need to be updated differently
-                    print(f"Warning: Cannot automatically remove tag from collection projects - manual update may be required")
+        # Step 4: Get and remove from collection projects
+        print(f"Getting collection projects for tag: {tag_name}")
+        collection_projects_response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/collectionProject", headers=headers)
+        if collection_projects_response.status_code == 200:
+            collection_projects = collection_projects_response.json()
+            if collection_projects:
+                collection_project_uuids = [project['uuid'] for project in collection_projects]
+                print(f"Removing tag from {len(collection_project_uuids)} collection projects")
+                # Note: DT API doesn't seem to have a DELETE endpoint for collection projects
+                # Collection projects use the tag for collection logic, so they might need to be updated differently
+                print(f"Warning: Cannot automatically remove tag from collection projects - manual update may be required")
 
-            # Step 5: Delete the tag
-            print(f"Deleting tag: {tag_name}")
-            response = await client.request(
-                method="DELETE",
-                url=f"{DT_API_URL}/api/v1/tag",
-                headers={**headers, "Content-Type": "application/json"},
-                content=json.dumps([tag_name])
-            )
-            if response.status_code == 204:
-                print(f"Successfully deleted tag: {tag_name}")
-                return True
-            elif response.status_code == 400:
-                error_msg = f"Cannot delete tag '{tag_name}' - it may still be in use by projects or policies"
-                print(error_msg)
-                raise ValueError(error_msg)
-            else:
-                response.raise_for_status()
-                print(f"Successfully deleted tag: {tag_name}")
-                return True
+        # Step 5: Delete the tag
+        print(f"Deleting tag: {tag_name}")
+        response = await client.request(
+            method="DELETE",
+            url=f"{DT_API_URL}/api/v1/tag",
+            headers={**headers, "Content-Type": "application/json"},
+            content=json.dumps([tag_name])
+        )
+        if response.status_code == 204:
+            print(f"Successfully deleted tag: {tag_name}")
+            return True
+        elif response.status_code == 400:
+            error_msg = f"Cannot delete tag '{tag_name}' - it may still be in use by projects or policies"
+            raise ValueError(error_msg)
+        else:
+            response.raise_for_status()
 
-        except httpx.HTTPStatusError as e:
-            print(f"HTTP error during tag deletion: {e}")
-            raise ValueError(f"Failed to delete tag '{tag_name}': {e.response.status_code} {e.response.text}")
-        except Exception as e:
-            print(f"Error deleting tag from DT: {e}")
-            raise ValueError(f"Failed to delete tag '{tag_name}': {str(e)}")
 
 @app.post("/api/taxonomies", response_model=Taxonomy)
 async def create_taxonomy(taxonomy: Taxonomy, permissions: List[str] = Depends(require_edit_permissions)):

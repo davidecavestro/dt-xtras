@@ -34,7 +34,7 @@
           <div class="flex items-center gap-1">
             <span class="text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">Version:</span>
             <span class="font-medium text-gray-900 dark:text-white truncate flex-1">
-              {{ project.version || 'latest' }}
+              {{ project.version }}
             </span>
           </div>
 
@@ -72,28 +72,28 @@
             +{{ project.tags.length - 3 }}
           </span>
         </div>
-
-        <!-- Responsive Security Badges -->
-        <div v-if="project.metrics" class="flex flex-wrap gap-1 mt-2">
-          <span v-if="project.metrics.critical > 0" class="px-1 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-xs flex-shrink-0">
-            {{ project.metrics.critical }} Critical
-          </span>
-          <span v-if="project.metrics.high > 0" class="px-1 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs flex-shrink-0">
-            {{ project.metrics.high }} High
-          </span>
-          <span v-if="project.metrics.medium > 0" class="px-1 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs flex-shrink-0">
-            {{ project.metrics.medium }} Medium
-          </span>
-          <span v-if="project.metrics.low > 0" class="px-1 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs flex-shrink-0">
-            {{ project.metrics.low }} Low
-          </span>
-          <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-1 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs flex-shrink-0">
-            No Vulnerabilities
-          </span>
-        </div>
       </div>
     </div>
 
+
+    <!-- Security Badges - Always at Bottom -->
+    <div v-if="project.metrics" class="flex flex-wrap gap-1 mt-2 pt-2 border-gray-200 dark:border-gray-600">
+      <span v-if="project.metrics.critical > 0" class="px-1 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-xs flex-shrink-0">
+        {{ project.metrics.critical }} Critical
+      </span>
+      <span v-if="project.metrics.high > 0" class="px-1 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs flex-shrink-0">
+        {{ project.metrics.high }} High
+      </span>
+      <span v-if="project.metrics.medium > 0" class="px-1 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs flex-shrink-0">
+        {{ project.metrics.medium }} Medium
+      </span>
+      <span v-if="project.metrics.low > 0" class="px-1 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs flex-shrink-0">
+        {{ project.metrics.low }} Low
+      </span>
+      <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-1 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs flex-shrink-0">
+        No Vulnerabilities
+      </span>
+    </div>
     <!-- Footer stuck to bottom -->
     <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

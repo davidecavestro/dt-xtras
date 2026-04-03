@@ -10,7 +10,8 @@
     <div
       v-if="show"
       :class="[
-        'max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden',
+        'min-w-80 max-w-md w-full shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden',
+        'bg-white dark:bg-gray-800',
         type === 'success' ? 'border-l-4 border-green-400' : 'border-l-4 border-red-400'
       ]"
     >
@@ -48,11 +49,11 @@
               />
             </svg>
           </div>
-          <div class="ml-3 w-0 flex-1 pt-0.5">
+          <div class="ml-3 flex-1 pt-0.5">
             <p
               :class="[
-                'text-sm font-medium',
-                type === 'success' ? 'text-green-900' : 'text-red-900'
+                'text-sm font-medium break-words',
+                type === 'success' ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'
               ]"
             >
               {{ title }}
@@ -60,8 +61,8 @@
             <p
               v-if="message"
               :class="[
-                'mt-1 text-sm',
-                type === 'success' ? 'text-green-700' : 'text-red-700'
+                'mt-1 text-sm break-words',
+                type === 'success' ? 'text-green-700 dark:text-green-200' : 'text-red-700 dark:text-red-200'
               ]"
             >
               {{ message }}
@@ -70,7 +71,7 @@
           <div class="ml-4 flex-shrink-0 flex">
             <button
               @click="close"
-              class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              class="rounded-md inline-flex text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
             >
               <span class="sr-only">Close</span>
               <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

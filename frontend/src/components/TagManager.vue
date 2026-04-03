@@ -127,13 +127,14 @@
             <!-- Show tag name or edit input -->
             <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
               <input
-                v-model="editingTagName"
-                @keyup.enter="saveEditTag"
-                @keyup.escape="cancelEditTag"
-                @blur="saveEditTag"
-                class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
-                placeholder="Tag name"
-              />
+  :data-tag-name="tag.name"
+  v-model="editingTagName"
+  @keyup.enter="saveEditTag"
+  @keyup.escape="cancelEditTag"
+  @blur="saveEditTag"
+  class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
+  placeholder="Tag name"
+/>
               <button
                 @click="saveEditTag"
                 class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
@@ -205,65 +206,75 @@
         <div
           v-for="tag in tags"
           :key="tag.name"
-          class="bg-white dark:bg-gray-700 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow"
+          class="bg-white dark:bg-gray-700 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow flex flex-col"
         >
-          <div class="flex justify-between items-center">
-            <div class="flex-1">
-              <!-- Show tag name or edit input -->
-              <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
-                <input
-                  v-model="editingTagName"
-                  @keyup.enter="saveEditTag"
-                  @keyup.escape="cancelEditTag"
-                  @blur="saveEditTag"
-                  class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
-                  placeholder="Tag name"
-                  ref="editInput"
-                />
-                <button
-                  @click="saveEditTag"
-                  class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                  title="Save"
-                >
-                  ✓
-                </button>
-                <button
-                  @click="cancelEditTag"
-                  class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
-                  title="Cancel"
-                >
-                  ✕
-                </button>
-              </div>
-              <div v-else class="font-medium text-gray-900 dark:text-white mb-2">{{ tag.name }}</div>
+          <div class="flex-1">
+            <!-- Show tag name or edit input -->
+            <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
+              <input
+  :data-tag-name="tag.name"
+  v-model="editingTagName"
+  @keyup.enter="saveEditTag"
+  @keyup.escape="cancelEditTag"
+  @blur="saveEditTag"
+  class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
+  placeholder="Tag name"
+/>
+              <button
+                @click="saveEditTag"
+                class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                title="Save"
+              >
+                ✓
+              </button>
+              <button
+                @click="cancelEditTag"
+                class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+            <div v-else>
+              <div class="font-medium text-gray-900 dark:text-white mb-2">{{ tag.name }}</div>
               <div class="text-sm text-gray-600 dark:text-gray-400">
                 Used by {{ tag.projectsCount || 0 }} projects
               </div>
             </div>
+          </div>
 
-            <div class="flex gap-1 p-1 flex-shrink-0">
-              <button
-                @click="viewTagProjects(tag)"
-                class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-colors"
-                title="View Projects"
-              >
-                <Folder class="w-3 h-3" />
-              </button>
-              <button
-                @click="startEditTag(tag)"
-                class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-colors"
-                title="Edit Tag"
-              >
-                <Edit2 class="w-3 h-3" />
-              </button>
-              <button
-                @click="deleteTag(tag)"
-                class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
-                title="Delete"
-              >
-                <Trash2 class="w-3 h-3" />
-              </button>
-            </div>
+          <div class="flex justify-end gap-1 pt-2 mt-2 border-t border-gray-200 dark:border-gray-600">
+            <button
+              @click="viewTagProjects(tag)"
+              class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-colors"
+              title="View Projects"
+            >
+              <Folder class="w-3 h-3" />
+            </button>
+            <button
+              @click="startEditTag(tag)"
+              class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-colors"
+              title="Edit Tag"
+            >
+              <Edit2 class="w-3 h-3" />
+            </button>
+            <button
+              v-if="tagBelongsToTaxonomy(tag)"
+              @click="startAidedEditTag(tag)"
+              class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-colors"
+              title="Aided Edit"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+              </svg>
+            </button>
+            <button
+              @click="deleteTag(tag)"
+              class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
+              title="Delete"
+            >
+              <Trash2 class="w-3 h-3" />
+            </button>
           </div>
         </div>
       </div>
@@ -330,11 +341,102 @@
         </div>
       </div>
     </div>
+
+    <!-- Create Tag Modal (Aided Edit) -->
+    <div v-if="showCreateTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ editingTag ? 'Edit Tag' : 'Create Tag' }} for {{ selectedTaxonomy?.name }}
+            </h3>
+            <button
+              @click="closeCreateTagModal"
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Pattern Display -->
+          <div class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+            <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pattern:</div>
+            <code class="text-sm bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded text-gray-800 dark:text-gray-200 font-mono break-all hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">{{ selectedTaxonomy?.regex_pattern }}</code>
+          </div>
+
+          <!-- Dynamic Tag Builder -->
+          <div class="space-y-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Build Tag
+            </label>
+
+            <div class="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <template v-for="(part, index) in tagBuilderParts" :key="index">
+                <!-- Static text part -->
+                <span v-if="part.type === 'static'" class="text-gray-700 dark:text-gray-300 font-medium">
+                  {{ part.value }}
+                </span>
+
+                <!-- Dropdown for capture group with existing tags -->
+                <select
+                  v-else-if="part.type === 'dropdown'"
+                  v-model="part.value"
+                  class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="">Select {{ part.name }}...</option>
+                  <option v-for="option in part.options" :key="option" :value="option">
+                    {{ option }}
+                  </option>
+                </select>
+
+                <!-- Text field for capture group without existing tags -->
+                <input
+                  v-else-if="part.type === 'text'"
+                  v-model="part.value"
+                  type="text"
+                  :placeholder="`Enter ${part.name}...`"
+                  class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                />
+              </template>
+            </div>
+
+            <!-- Generated Tag Preview -->
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Generated Tag
+              </label>
+              <div class="p-3 bg-gray-100 dark:bg-gray-800 rounded-md">
+                <span class="font-mono text-gray-900 dark:text-white">
+                  {{ generatedTag || 'Complete all fields to see tag...' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mt-6 flex gap-2">
+            <button
+              @click="createOrUpdateTag"
+              :disabled="!canCreateTag"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {{ editingTag ? 'Update Tag' : 'Create Tag' }}
+            </button>
+            <button
+              @click="closeCreateTagModal"
+              class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import axios from 'axios'
 import { buildDTProjectUrl } from '../config.js'
 import { useRouter } from 'vue-router'
@@ -371,6 +473,13 @@ export default {
     const tagProjects = ref([])
     const loading = ref(false)
     const tagsViewMode = ref('deck') // 'list', 'grid', or 'deck'
+
+    // Create Tag Modal state
+    const showCreateTagModal = ref(false)
+    const selectedTaxonomy = ref(null)
+    const tagBuilderParts = ref([])
+    const editingTag = ref(null)
+    const editInput = ref(null) // Ref for edit input focus
 
     // Dark mode detection
     const isDarkMode = computed(() => {
@@ -604,12 +713,19 @@ export default {
     }
 
     // Edit tag functionality
-    const editingTag = ref(null)
     const editingTagName = ref('')
 
     const startEditTag = (tag) => {
       editingTag.value = tag
       editingTagName.value = tag.name
+      // focus the editor after DOM update
+      nextTick(() => {
+        const input = document.querySelector(`input[data-tag-name="${tag.name}"]`)
+        if (input) {
+          input.focus()
+          /* input.select() */
+        }
+      })
     }
 
     const cancelEditTag = () => {
@@ -648,6 +764,216 @@ export default {
       loadProjects()
     })
 
+    // Computed properties for tag creation
+    const generatedTag = computed(() => {
+      if (!tagBuilderParts.value.length) return ''
+      return tagBuilderParts.value.map(part => {
+        if (part.type === 'static') return part.value
+        return part.value || ''
+      }).join('')
+    })
+
+    const canCreateTag = computed(() => {
+      return tagBuilderParts.value.every(part =>
+        part.type === 'static' || (part.value && part.value.trim())
+      )
+    })
+
+    // Methods for aided editing
+    const tagBelongsToTaxonomy = (tag) => {
+      return tag.taxonomy && tag.taxonomy.trim() !== ''
+    }
+
+    const startAidedEditTag = async (tag) => {
+      try {
+        // Find taxonomy that matches this tag pattern
+        const matchingTaxonomy = taxonomies.value.find(taxonomy => {
+          const regex = new RegExp(taxonomy.regex_pattern)
+          return regex.test(tag.name)
+        })
+
+        if (!matchingTaxonomy) {
+          showError('No matching taxonomy found for this tag')
+          return
+        }
+
+        selectedTaxonomy.value = matchingTaxonomy
+        editingTag.value = tag
+
+        // Parse the tag using the taxonomy pattern to pre-populate fields
+        const regex = new RegExp(matchingTaxonomy.regex_pattern)
+        const match = tag.name.match(regex)
+
+        if (match) {
+          // Parse taxonomy pattern to extract parts
+          const parts = parseTaxonomyPattern(matchingTaxonomy.regex_pattern)
+
+          // Load dropdown options for parts
+          await loadTagValuesForDropdowns(parts)
+
+          // Pre-populate tag builder parts with existing tag values
+          tagBuilderParts.value = parts.map((part) => {
+            if (part.type === 'static') {
+              return part
+            } else if (part.type === 'dropdown' || part.type === 'text') {
+              // Use the named capture group value from match.groups
+              const currentValue = match.groups?.[part.name] || ''
+              return {
+                ...part,
+                value: currentValue
+              }
+            }
+            return part
+          })
+        } else {
+          // If no match, just load empty parts with dropdown options
+          const parts = parseTaxonomyPattern(matchingTaxonomy.regex_pattern)
+          await loadTagValuesForDropdowns(parts)
+          tagBuilderParts.value = parts
+        }
+
+        showCreateTagModal.value = true
+      } catch (error) {
+        console.error('Error starting aided edit:', error)
+        showError('Failed to open edit modal')
+      }
+    }
+
+    const parseTaxonomyPattern = (pattern) => {
+      const parts = []
+      let lastIndex = 0
+
+      // Remove regex anchors (^ and $) from pattern for display
+      const cleanPattern = pattern.replace(/^\^|\$$/g, '')
+
+      // Find all capture groups: (?<name>pattern)
+      const captureGroupRegex = /\(\?<([^>]+)>([^)]+)\)/g
+      let match
+
+      while ((match = captureGroupRegex.exec(cleanPattern)) !== null) {
+        // Add static text before this capture group
+        if (match.index > lastIndex) {
+          const staticText = cleanPattern.substring(lastIndex, match.index)
+          if (staticText) {
+            parts.push({
+              type: 'static',
+              value: staticText
+            })
+          }
+        }
+
+        // Check if this capture group has a corresponding relation
+        const hasRelation = selectedTaxonomy.value?.relations?.some(rel => rel.group === match[1])
+
+        // Add capture group part
+        parts.push({
+          type: hasRelation ? 'dropdown' : 'text', // Use dropdown only if relation exists
+          name: match[1],
+          value: '',
+          options: [],
+          pattern: match[2]
+        })
+
+        lastIndex = captureGroupRegex.lastIndex
+      }
+
+      // Add any remaining static text
+      if (lastIndex < cleanPattern.length) {
+        const staticText = cleanPattern.substring(lastIndex)
+        if (staticText) {
+          parts.push({
+            type: 'static',
+            value: staticText
+          })
+        }
+      }
+
+      return parts
+    }
+
+    const loadTagValuesForDropdowns = async (parts) => {
+      for (const part of parts) {
+        if (part.type === 'dropdown' && part.name) {
+          // For associative taxonomies get tags from related taxonomies
+          if (selectedTaxonomy.value.relations && selectedTaxonomy.value.relations.length > 0) {
+            // Find related taxonomy for this part
+            const relation = selectedTaxonomy.value.relations.find(rel => rel.group === part.name)
+            if (relation && relation.targets) {
+              const targetTaxonomyId = relation.targets
+
+              // Get tags from the related taxonomy
+              const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tags`)
+              const relatedTags = response.data || []
+
+              // Extract values from related tags using their own regex pattern
+              const targetTaxonomy = taxonomies.value.find(t => t.id === targetTaxonomyId)
+              if (targetTaxonomy && targetTaxonomy.regex_pattern) {
+                const uniqueValues = [...new Set(relatedTags.map(tag => {
+                  try {
+                    const regex = new RegExp(targetTaxonomy.regex_pattern)
+                    const tag_name = tag.name || tag // Handle both tag object and string
+                    const match = tag_name.match(regex)
+                    if (match){
+                      if (match.length > 2){ // multiple capture groups, try to rejoin them by convention to discard the prefix
+                        return match[1] + ':' + match[2]
+                      } else if (match.length === 2){ // single capture group, use the captured value
+                        return match[1]
+                      }
+                    }
+                    return tag_name
+                  } catch (e){
+                    console.error(`Regex error for related tag ${tag.name}:`, e)
+                    return tag.name || tag // Fallback to tag name
+                  }
+                }).filter(Boolean))]
+
+                part.options = uniqueValues.sort()
+              } else {
+                // If no regex pattern, use tag names as-is
+                const tagNames = relatedTags.map(tag => tag.name || tag).filter(Boolean)
+                part.options = tagNames.sort()
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const closeCreateTagModal = () => {
+      showCreateTagModal.value = false
+      selectedTaxonomy.value = null
+      tagBuilderParts.value = []
+      editingTag.value = null
+    }
+
+    const createOrUpdateTag = async () => {
+      if (!canCreateTag.value || !generatedTag.value) return
+
+      try {
+        if (editingTag.value) {
+          // Update existing tag
+          await axios.put(`/api/tags/${editingTag.value.name}`, {
+            name: generatedTag.value,
+            taxonomy_id: selectedTaxonomy.value.id
+          })
+          showSuccess(`Tag "${generatedTag.value}" updated successfully!`)
+        } else {
+          // Create new tag
+          await axios.post('/api/tags', {
+            name: generatedTag.value,
+            taxonomy_id: selectedTaxonomy.value.id
+          })
+          showSuccess(`Tag "${generatedTag.value}" created successfully!`)
+        }
+
+        await loadTags()
+        closeCreateTagModal()
+      } catch (error) {
+        console.error('Error creating/updating tag:', error)
+        showError('Failed to save tag')
+      }
+    }
+
     return {
       taxonomies,
       tags,
@@ -670,11 +996,22 @@ export default {
       deleteTag,
       viewTagProjects,
       startEditTag,
+      startAidedEditTag,
+      tagBelongsToTaxonomy,
       cancelEditTag,
       saveEditTag,
       refreshTags,
       formatDate,
-      closeProjectsModal
+      closeProjectsModal,
+      // Create Tag Modal
+      showCreateTagModal,
+      selectedTaxonomy,
+      tagBuilderParts,
+      generatedTag,
+      canCreateTag,
+      closeCreateTagModal,
+      createOrUpdateTag,
+      buildDTProjectUrl
     }
   }
 }

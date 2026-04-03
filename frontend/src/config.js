@@ -22,6 +22,10 @@ export const buildDTProjectUrl = (projectUuid) => {
   return `${config.DT_FRONTEND_URL}/projects/${projectUuid}`
 }
 
+export const buildDTProjectFindingsUrl = (projectUuid) => {
+  return `${config.DT_FRONTEND_URL}/projects/${projectUuid}/findings`
+}
+
 export const buildDTApiUrl = (endpoint) => {
   return `${config.DT_API_URL}${endpoint}`
 }

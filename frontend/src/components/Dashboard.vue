@@ -211,12 +211,25 @@
                   <div class="flex justify-between items-start mb-2">
                     <div class="flex-1">
                       <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">Version: {{ project.version }}</div>
+                      <div v-if="project.tags && project.tags.length > 0" class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">
+                        🏷 {{ project.tags.join(', ') }}
+                      </div>
                     </div>
                     <div class="text-right">
-                      <div class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ project.tags.join(', ') }}
-                      </div>
+                      <a
+                        :href="buildDTProjectUrl(project.uuid)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
+                        title="View in Dependency-Track"
+                      >
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
+                          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                        </svg>
+                        DT
+                      </a>
                     </div>
                   </div>
 
@@ -297,6 +310,7 @@ import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import ProjectCard from './ProjectCard.vue'
 import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js'
+import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 
 export default {
   name: 'Dashboard',
@@ -856,18 +870,18 @@ export default {
 
     // Project action handlers
     const viewProject = (project) => {
-      console.log('View project:', project.name)
-      // TODO: Navigate to project details page
+      // Navigate to project details page
+      window.open(buildDTProjectUrl(project.uuid), '_blank')
     }
 
     const viewSecurityDetails = (project) => {
-      console.log('View security details:', project.name)
-      // TODO: Navigate to security details page
+      // Navigate to security details page
+      window.open(buildDTProjectFindingsUrl(project.uuid), '_blank')
     }
 
     const analyzeProject = (project) => {
-      console.log('Analyze project:', project.name)
-      // TODO: Navigate to project analysis page
+      // Navigate to project analysis page
+      window.open(buildDTProjectFindingsUrl(project.uuid), '_blank')
     }
 
     onMounted(() => {
@@ -907,7 +921,9 @@ export default {
       getSeverityColor,
       getRiskBarColor,
       formatDate,
-      getProjectVulnerabilities
+      getProjectVulnerabilities,
+      buildDTProjectUrl,
+      buildDTProjectFindingsUrl
     }
   }
 }

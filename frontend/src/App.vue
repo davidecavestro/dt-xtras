@@ -10,10 +10,9 @@
     <!-- Sidebar -->
     <div v-if="$route.path !== '/login'" :class="[
       'fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform transition-all duration-300 ease-in-out overflow-hidden',
-      'lg:relative lg:z-auto lg:transform-none',
-      { 'translate-x-0': sidebarOpen, '-translate-x-full': !sidebarOpen },
+      { 'translate-x-0': sidebarOpen, '-translate-x-full': !sidebarOpen && !isLargeScreen },
       { 'lg:w-64': sidebarOpen, 'lg:w-16': !sidebarOpen },
-      { 'z-50': sidebarOpen, 'z-20': !sidebarOpen }
+      { 'z-50': sidebarOpen, 'z-30': !sidebarOpen }
     ]">
       <!-- Sidebar Header -->
       <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
@@ -241,7 +240,7 @@
     </div>
 
     <!-- Main Content -->
-    <div :class="['flex-1 transition-all duration-300 ease-in-out z-10']">
+    <div :class="['flex-1 transition-all duration-300 ease-in-out z-10', sidebarOpen ? 'ml-64 lg:ml-64' : 'ml-16 lg:ml-16']">
       <!-- Mobile Header -->
       <header v-if="$route.path !== '/login'" class="lg:hidden bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center">
