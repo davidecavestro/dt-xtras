@@ -78,14 +78,14 @@ export default class SimpleTaxonomyGraphBuilder {
             const targetTaxonomy = taxonomies.find(t => t.id === relationTarget);
             const targetTag = tags.find(t => t.taxonomy === targetTaxonomy.id && this.getTagValue(t, targetTaxonomy) === captureGroups[key]);
             // Create edge between previous group and current group
-            if (prev) {
+            if (prev && targetTag) {
               this.edges.push({
                 id: `${prev}-${targetTag.name}`,
                 source: prev,
                 target: targetTag.name
               });
             }
-            return targetTag.name;
+            return targetTag?.name;
           }, null); //start with no previous value
         }
       }

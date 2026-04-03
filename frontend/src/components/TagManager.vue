@@ -124,9 +124,36 @@
           class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
         >
           <div class="flex-1">
-            <div class="font-medium text-gray-900 dark:text-white">{{ tag.name }}</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-              Used by {{ tag.projectsCount || 0 }} projects
+            <!-- Show tag name or edit input -->
+            <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
+              <input
+                v-model="editingTagName"
+                @keyup.enter="saveEditTag"
+                @keyup.escape="cancelEditTag"
+                @blur="saveEditTag"
+                class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
+                placeholder="Tag name"
+              />
+              <button
+                @click="saveEditTag"
+                class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                title="Save"
+              >
+                ✓
+              </button>
+              <button
+                @click="cancelEditTag"
+                class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+            <div v-else>
+              <div class="font-medium text-gray-900 dark:text-white">{{ tag.name }}</div>
+              <div class="text-sm text-gray-600 dark:text-gray-400">
+                Used by {{ tag.projectsCount || 0 }} projects
+              </div>
             </div>
           </div>
 
@@ -137,6 +164,13 @@
               title="View Projects"
             >
               <Folder class="w-3 h-3" />
+            </button>
+            <button
+              @click="startEditTag(tag)"
+              class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-colors"
+              title="Edit Tag"
+            >
+              <Edit2 class="w-3 h-3" />
             </button>
             <button
               @click="deleteTag(tag)"
@@ -175,7 +209,33 @@
         >
           <div class="flex justify-between items-center">
             <div class="flex-1">
-              <div class="font-medium text-gray-900 dark:text-white mb-2">{{ tag.name }}</div>
+              <!-- Show tag name or edit input -->
+              <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
+                <input
+                  v-model="editingTagName"
+                  @keyup.enter="saveEditTag"
+                  @keyup.escape="cancelEditTag"
+                  @blur="saveEditTag"
+                  class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
+                  placeholder="Tag name"
+                  ref="editInput"
+                />
+                <button
+                  @click="saveEditTag"
+                  class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                  title="Save"
+                >
+                  ✓
+                </button>
+                <button
+                  @click="cancelEditTag"
+                  class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                  title="Cancel"
+                >
+                  ✕
+                </button>
+              </div>
+              <div v-else class="font-medium text-gray-900 dark:text-white mb-2">{{ tag.name }}</div>
               <div class="text-sm text-gray-600 dark:text-gray-400">
                 Used by {{ tag.projectsCount || 0 }} projects
               </div>
@@ -188,6 +248,13 @@
                 title="View Projects"
               >
                 <Folder class="w-3 h-3" />
+              </button>
+              <button
+                @click="startEditTag(tag)"
+                class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-colors"
+                title="Edit Tag"
+              >
+                <Edit2 class="w-3 h-3" />
               </button>
               <button
                 @click="deleteTag(tag)"
@@ -267,13 +334,13 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
 import { buildDTProjectUrl } from '../config.js'
-import auth from '../services/auth.js'
 import { useRouter } from 'vue-router'
 import { useTagStore } from '../stores/tags.js'
-import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, Folder, Trash2 } from 'lucide-vue-next'
+import { useToast } from '../composables/useToast.js'
+import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, Folder, Trash2, Edit2 } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 
 export default {
@@ -285,11 +352,13 @@ export default {
     GridIcon,
     SquareIcon,
     Folder,
-    Trash2
+    Trash2,
+    Edit2
   },
   setup() {
     const router = useRouter()
     const tagStore = useTagStore()
+    const { showSuccess, showError } = useToast()
 
     // State
     const taxonomies = ref([])
@@ -492,10 +561,11 @@ export default {
         const index = tags.value.findIndex(t => t.name === tag.name)
         if (index > -1) {
           tags.value.splice(index, 1)
+          showSuccess('Tag deleted successfully')
         }
       } catch (error) {
         console.error('Error deleting tag:', error)
-        alert('Failed to delete tag. Please try again.')
+        showError('Failed to delete tag', 'Please try again.')
       }
     }
 
@@ -533,6 +603,44 @@ export default {
       return new Date(dateString).toLocaleString()
     }
 
+    // Edit tag functionality
+    const editingTag = ref(null)
+    const editingTagName = ref('')
+
+    const startEditTag = (tag) => {
+      editingTag.value = tag
+      editingTagName.value = tag.name
+    }
+
+    const cancelEditTag = () => {
+      editingTag.value = null
+      editingTagName.value = ''
+    }
+
+    const saveEditTag = async () => {
+      if (!editingTag.value || !editingTagName.value.trim()) {
+        return
+      }
+
+      try {
+        await axios.put(`/api/tags/${editingTag.value.name}`, {
+          name: editingTagName.value.trim()
+        })
+
+        // Update the tag in the local state
+        const tagIndex = tags.value.findIndex(t => t.name === editingTag.value.name)
+        if (tagIndex !== -1) {
+          tags.value[tagIndex].name = editingTagName.value.trim()
+        }
+
+        cancelEditTag()
+        showSuccess('Tag updated successfully')
+      } catch (error) {
+        console.error('Error updating tag:', error)
+        showError('Failed to update tag', 'Please try again.')
+      }
+    }
+
     // Lifecycle
     onMounted(() => {
       loadTaxonomies()
@@ -545,6 +653,8 @@ export default {
       tags,
       projects,
       newTag,
+      editingTag,
+      editingTagName,
       tagValidation,
       showProjectsModal,
       selectedTag,
@@ -559,10 +669,12 @@ export default {
       clearForm,
       deleteTag,
       viewTagProjects,
-      closeProjectsModal,
+      startEditTag,
+      cancelEditTag,
+      saveEditTag,
       refreshTags,
       formatDate,
-      buildDTProjectUrl
+      closeProjectsModal
     }
   }
 }
