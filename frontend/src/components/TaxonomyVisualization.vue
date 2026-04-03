@@ -370,7 +370,10 @@ export default {
           axios.get('/api/taxonomies')
         ]);
 
-        const tags = tagsResponse.data;
+        console.log('Tags response:', tagsResponse);
+        console.log('Taxonomies response:', taxonomiesResponse);
+
+        const tags = tagsResponse.data.tags || tagsResponse.data;
         const taxonomies = taxonomiesResponse.data;
 
         if (!tags || !taxonomies) {
@@ -382,7 +385,7 @@ export default {
         taxonomiesData.value = associativeMode.value ? taxonomies.filter(taxonomy => taxonomy.relations !== undefined) : taxonomies;
 
         // Build graph with current mode
-        const graph = graphBuilder.buildGraph(tags.data || tags, taxonomiesData.value, selectedTaxonomy.value, associativeMode.value);
+        const graph = graphBuilder.buildGraph(tags, taxonomiesData.value, selectedTaxonomy.value, associativeMode.value);
         graphData.value = graph;
 
       } catch (err) {
@@ -410,7 +413,7 @@ export default {
 
         // Get fresh tags data
         const tagsResponse = await axios.get('/api/tags');
-        const tags = tagsResponse.data;
+        const tags = tagsResponse.data.tags || tagsResponse.data;
 
         if (!tags) {
           throw new Error('Failed to fetch tags');
