@@ -269,6 +269,9 @@
         </div>
       </main>
     </div>
+
+    <!-- Toast Container -->
+    <ToastContainer />
   </div>
 </template>
 
@@ -278,11 +281,13 @@ import { useRouter } from 'vue-router'
 import authService from './services/auth'
 import { getConfig } from './config.js'
 import LogoWithText from './components/LogoWithText.vue'
+import ToastContainer from './components/ToastContainer.vue'
 
 export default {
   name: 'App',
   components: {
-    LogoWithText
+    LogoWithText,
+    ToastContainer
   },
   setup() {
     const router = useRouter()
