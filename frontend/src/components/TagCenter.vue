@@ -1,7 +1,7 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Tag Manager</h2>
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Tag Center</h2>
       <p class="text-gray-600 dark:text-gray-400 mb-6">
         Manage tags and link them to Dependency-Track projects
       </p>
@@ -579,7 +579,7 @@ const encodeTagName = (tagName) => {
 }
 
 export default {
-  name: 'TagManager',
+  name: 'TagCenter',
   components: {
     Vue3Datagrid,
     VGridVueTemplate,
