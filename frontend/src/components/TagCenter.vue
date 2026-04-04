@@ -64,6 +64,101 @@
         </div>
       </div>
 
+      <!-- Search and Filters -->
+      <div v-if="tags.length > 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+        <div class="flex flex-col sm:flex-row gap-4">
+          <!-- Search -->
+          <div class="flex-1">
+            <input
+              v-model="searchQuery"
+              @input="setSearchQuery(searchQuery)"
+              type="text"
+              placeholder="Search tags..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <!-- Taxonomy Filter -->
+          <div class="sm:w-48">
+            <select
+              v-model="selectedTaxonomy"
+              @change="setTaxonomyFilter(selectedTaxonomy)"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">All Taxonomies</option>
+              <option v-for="taxonomy in taxonomies" :key="taxonomy.id" :value="taxonomy.id">
+                {{ taxonomy.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Clear Filters -->
+          <button
+            @click="clearFilters"
+            class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+          >
+            Clear Filters
+          </button>
+        </div>
+
+        <!-- Results Count -->
+        <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+          Showing {{ paginatedTags.length }} of {{ totalTags }} tags
+          <span v-if="totalPages > 1"> (Page {{ currentPage }} of {{ totalPages }})</span>
+        </div>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="flex items-center justify-between mb-6 px-4">
+        <div class="flex items-center space-x-2">
+          <button
+            @click="previousPage"
+            :disabled="!hasPreviousPage"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+
+          <!-- Page Numbers -->
+          <div class="flex items-center space-x-1">
+            <button
+              v-for="page in Math.min(5, totalPages)"
+              :key="page"
+              @click="goToPage(page)"
+              :class="[
+                'px-3 py-1 text-sm border rounded-md',
+                page === currentPage
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ page }}
+            </button>
+            <span v-if="totalPages > 5" class="px-2 text-gray-500">...</span>
+            <button
+              v-if="totalPages > 5"
+              @click="goToPage(totalPages)"
+              :class="[
+                'px-3 py-1 text-sm border rounded-md',
+                totalPages === currentPage
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ totalPages }}
+            </button>
+          </div>
+
+          <button
+            @click="nextPage"
+            :disabled="!hasNextPage"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
       <!-- Tags List -->
       <div v-if="tags.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
         No tags created yet. Create your first tag above.
@@ -72,7 +167,7 @@
       <!-- List View -->
       <div v-else-if="tagsViewMode === 'list'" class="space-y-3">
         <div
-          v-for="tag in tags"
+          v-for="tag in paginatedTags"
           :key="tag.name"
           class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
         >
@@ -134,7 +229,7 @@
               <Edit2 class="w-3 h-3" />
             </button>
             <button
-              @click="deleteTag(tag)"
+              @click="handleDeleteTag(tag)"
               class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
               title="Delete"
             >
@@ -164,7 +259,7 @@
       <!-- Deck View (Current Default) -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div
-          v-for="tag in tags"
+          v-for="tag in paginatedTags"
           :key="tag.name"
           class="bg-white dark:bg-gray-700 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow flex flex-col"
         >
@@ -245,7 +340,7 @@
               </svg>
             </button>
             <button
-              @click="deleteTag(tag)"
+              @click="handleDeleteTag(tag)"
               class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
               title="Delete"
             >
@@ -616,16 +711,33 @@ export default {
     const { taxonomies, loading: taxonomiesLoading } = storeToRefs(taxonomyStore)
     const { getTaxonomyBadgeStyle, getTagTaxonomy, loadTaxonomies } = taxonomyStore
 
-    // State
-    const tags = ref([])
-    const projects = ref([])
-    const newTag = ref('')
-    const tagValidation = ref({ valid: false, message: '' })
-    const showProjectsModal = ref(false)
-    const selectedTag = ref(null)
-    const tagProjects = ref([])
-    const loading = ref(false)
-    const tagsViewMode = ref('deck') // 'list', 'grid', or 'deck'
+    // Use tag store
+    const {
+      tags,
+      isLoading: tagsLoading,
+      error: tagsError,
+      currentPage,
+      pageSize,
+      totalTags,
+      totalPages,
+      searchQuery,
+      filteredTags,
+      paginatedTags,
+      hasPreviousPage,
+      hasNextPage
+    } = storeToRefs(tagStore)
+
+    const {
+      loadTags,
+      createTag,
+      updateTag,
+      deleteTag,
+      setSearchQuery,
+      goToPage,
+      nextPage,
+      previousPage,
+      clearFilters
+    } = tagStore
 
     // Create Tag Modal state
     const showCreateTagModal = ref(false)
@@ -640,6 +752,16 @@ export default {
     const cloneTagName = ref('')
     const cloneTagValidation = ref({ valid: false, message: '' })
     const linkProjects = ref(false)
+
+    // Local state not in store
+    const projects = ref([])
+    const newTag = ref('')
+    const tagValidation = ref({ valid: false, message: '' })
+    const showProjectsModal = ref(false)
+    const selectedTag = ref(null)
+    const tagProjects = ref([])
+    const tagsViewMode = ref('deck') // 'list', 'grid', or 'deck'
+    const editingTagName = ref('')
 
     // Dark mode detection
     const isDarkMode = computed(() => {
@@ -707,19 +829,6 @@ export default {
     }
 
     // Methods
-    const loadTags = async () => {
-      loading.value = true
-      try {
-        const response = await axios.get('/api/tags')
-        tags.value = response.data
-      } catch (error) {
-        console.error('Error loading tags:', error)
-        tags.value = []
-      } finally {
-        loading.value = false
-      }
-    }
-
     const loadProjects = async () => {
       try {
         // Load projects from our backend - auth service handles token automatically
@@ -787,7 +896,7 @@ export default {
       validateTag()
     }
 
-    const createTag = async () => {
+    const handleCreateTag = async () => {
       if (!tagValidation.value.valid || !newTag.value.trim()) return
 
       try {
@@ -813,7 +922,7 @@ export default {
     }
 
 
-    const deleteTag = async (tag) => {
+    const handleDeleteTag = async (tag) => {
       if (!confirm(`Are you sure you want to delete tag "${tag.name}"?`)) return
 
       try {
@@ -1120,8 +1229,6 @@ export default {
     }
 
     // Edit tag functionality
-    const editingTagName = ref('')
-
     const startEditTag = (tag) => {
       console.log('🔧 Starting edit for tag:', tag)
 
@@ -1452,18 +1559,40 @@ export default {
     }
 
     return {
-      // State
+      // Tag store state
       tags,
+      tagsLoading,
+      tagsError,
+      currentPage,
+      pageSize,
+      totalTags,
+      totalPages,
+      searchQuery,
+      filteredTags,
+      paginatedTags,
+      hasPreviousPage,
+      hasNextPage,
+
+      // Tag store methods
+      loadTags,
+      setSearchQuery,
+      goToPage,
+      nextPage,
+      previousPage,
+      clearFilters,
+
+      // Local state
+      projects,
       newTag,
       tagValidation,
       showProjectsModal,
       selectedTag,
       tagProjects,
-      loading,
       tagsViewMode,
       showCreateTagModal,
       editingTag,
       editingTagName,
+
       // Taxonomy store functions
       taxonomies,
       getTagTaxonomy,
@@ -1478,9 +1607,9 @@ export default {
       gridColumns,
       validateTag,
       selectSuggestedTag,
-      createTag,
+      handleCreateTag,
+      handleDeleteTag,
       clearForm,
-      deleteTag,
       viewTagProjects,
       startEditTag,
       startAidedEditTag,
