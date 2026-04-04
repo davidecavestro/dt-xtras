@@ -159,7 +159,7 @@
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7a4 4 0 00-4 4h7M4 6h16"></path>
           </svg>
-          <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Taxonomy Builder</span>
+          <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Taxonomy Center</span>
         </router-link>
       </nav>
 

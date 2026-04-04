@@ -3,7 +3,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div class="flex justify-between items-center mb-6">
         <div>
-          <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Taxonomy Builder</h2>
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Taxonomy Center</h2>
           <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Taxonomies define rules for tag patterns and create hierarchical relationships, forming tree structures that organize and categorize your tags
           </p>

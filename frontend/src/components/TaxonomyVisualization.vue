@@ -562,7 +562,7 @@ export default {
         const node = evt.target;
         const taxonomyData = taxonomiesData.value?.find(t => t.id === node.data('taxonomy'));
         if (taxonomyData) {
-          // Emit event to open TaxonomyEditor with this taxonomy
+          // Emit event to open TaxonomyCenter with this taxonomy
           const editEvent = new CustomEvent('editTaxonomyFromGraph', {
             detail: { taxonomy: taxonomyData }
           });

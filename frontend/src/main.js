@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import Dashboard from './components/Dashboard.vue'
-import TaxonomyEditor from './components/TaxonomyEditor.vue'
+import TaxonomyCenter from './components/TaxonomyCenter.vue'
 import TaxonomyVisualization from './components/TaxonomyVisualization.vue'
 import TagCenter from './components/TagCenter.vue'
 import TagBulkActions from './components/TagBulkActions.vue'
@@ -35,7 +35,7 @@ const routes = [
   },
   {
     path: '/taxonomy-builder',
-    component: TaxonomyEditor,
+    component: TaxonomyCenter,
     meta: { requiresAuth: true }
   },
   {
