@@ -9,7 +9,7 @@ import TagCenter from './components/TagCenter.vue'
 import TagBulkActions from './components/TagBulkActions.vue'
 import ProjectsList from './components/ProjectsList.vue'
 import ProjectsGrid from './components/ProjectsGrid.vue'
-import Projects from './components/Projects.vue'
+import ProjectCenter from './components/ProjectCenter.vue'
 import ProjectBulkActions from './components/ProjectCleanup.vue'
 import VulnerabilitiesList from './components/VulnerabilitiesList.vue'
 import Login from './components/Login.vue'
@@ -51,8 +51,8 @@ const routes = [
   },
   {
     path: '/projects',
-    name: 'Projects',
-    component: Projects,
+    name: 'ProjectCenter',
+    component: ProjectCenter,
     meta: { requiresAuth: true }
   },
   {
