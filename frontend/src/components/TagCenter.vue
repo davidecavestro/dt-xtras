@@ -577,15 +577,17 @@
 </template>
 
 <script>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import axios from 'axios'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useTaxonomyStore } from '../stores/taxonomies'
+import { useToast } from '../composables/useToast'
 import { buildDTProjectUrl } from '../config.js'
 import { useRouter } from 'vue-router'
 import { useTagStore } from '../stores/tags.js'
-import { useToast } from '../composables/useToast.js'
 import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, Folder, Trash2, Edit2 } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import {parseRegExpLiteral} from 'regexpp'
+import axios from 'axios'
 
 // URL encoding utility
 const encodeTagName = (tagName) => {
@@ -607,10 +609,14 @@ export default {
   setup() {
     const router = useRouter()
     const tagStore = useTagStore()
+    const taxonomyStore = useTaxonomyStore()
     const { showSuccess, showError } = useToast()
 
+    // Use taxonomy store
+    const { taxonomies, loading: taxonomiesLoading } = storeToRefs(taxonomyStore)
+    const { getTaxonomyBadgeStyle, getTagTaxonomy, loadTaxonomies } = taxonomyStore
+
     // State
-    const taxonomies = ref([])
     const tags = ref([])
     const projects = ref([])
     const newTag = ref('')
@@ -701,39 +707,6 @@ export default {
     }
 
     // Methods
-    const loadTaxonomies = async () => {
-      try {
-        const response = await axios.get('/api/taxonomies')
-        taxonomies.value = response.data
-      } catch (error) {
-        console.error('Error loading taxonomies:', error)
-      }
-    }
-
-    const getTagTaxonomy = (tag) => {
-      if (!tag.taxonomy) return null
-
-      // Tags use taxonomy IDs, so match by ID
-      const taxonomyId = tag.taxonomy
-      return taxonomies.value.find(taxonomy => taxonomy.id === taxonomyId)
-    }
-
-    const getTaxonomyBadgeStyle = (taxonomy) => {
-      if (!taxonomy || !taxonomy.color) return {}
-
-      // Convert hex color to RGB for better opacity handling
-      const hex = taxonomy.color.replace('#', '')
-      const r = parseInt(hex.substring(0, 2), 16)
-      const g = parseInt(hex.substring(2, 4), 16)
-      const b = parseInt(hex.substring(4, 6), 16)
-
-      return {
-        backgroundColor: `${taxonomy.color}20`, // Add transparency
-        color: taxonomy.color,
-        borderColor: `${taxonomy.color}40`
-      }
-    }
-
     const loadTags = async () => {
       loading.value = true
       try {
@@ -1480,7 +1453,6 @@ export default {
 
     return {
       // State
-      taxonomies,
       tags,
       newTag,
       tagValidation,
@@ -1492,7 +1464,8 @@ export default {
       showCreateTagModal,
       editingTag,
       editingTagName,
-      // Taxonomy functions
+      // Taxonomy store functions
+      taxonomies,
       getTagTaxonomy,
       getTaxonomyBadgeStyle,
       // Clone Tag state
