@@ -7,18 +7,18 @@ export const useProjectStore = defineStore('projects', () => {
   const isLoading = ref(false)
   const error = ref(null)
   const lastUpdate = ref(null)
-  
+
   // Pagination state
   const currentPage = ref(1)
   const pageSize = ref(20)
   const totalProjects = ref(0)
   const totalPages = ref(1)
-  
+
   // Search and filter state
   const searchQuery = ref('')
   const activeOnly = ref(false)
   const selectedTags = ref([])
-  
+
   // Computed properties
   const filteredProjects = computed(() => {
     let filtered = projects.value
@@ -63,17 +63,17 @@ export const useProjectStore = defineStore('projects', () => {
     if (project.active !== undefined) {
       return project.active ? 'Active' : 'Inactive'
     }
-    
+
     // Fallback to time-based status
     const now = new Date()
     const lastSeen = project.lastSeen ? new Date(project.lastSeen) : null
-    
+
     if (!lastSeen) {
       return 'Unknown'
     }
-    
+
     const daysDiff = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24))
-    
+
     if (daysDiff <= 7) {
       return 'Recently Active'
     } else if (daysDiff <= 30) {
@@ -85,7 +85,7 @@ export const useProjectStore = defineStore('projects', () => {
 
   const getActivityStatusClass = (project) => {
     const status = getActivityStatus(project)
-    
+
     switch (status) {
       case 'Active':
         return 'text-green-600 dark:text-green-400'
@@ -105,23 +105,23 @@ export const useProjectStore = defineStore('projects', () => {
   // Methods
   const loadProjects = async () => {
     if (isLoading.value) return
-    
+
     isLoading.value = true
     error.value = null
-    
+
     try {
       // Import here to avoid circular dependency
       const { default: axios } = await import('axios')
-      
+
       const response = await axios.get('/api/projects')
       projects.value = response.data
-      
+
       // Update pagination info
       updatePaginationInfo()
-      
+
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
-      
+
       return response.data
     } catch (err) {
       error.value = err.response?.data?.detail || err.message || 'Failed to load projects'
@@ -138,7 +138,7 @@ export const useProjectStore = defineStore('projects', () => {
     const filteredCount = filteredProjects.value.length
     totalProjects.value = filteredCount
     totalPages.value = Math.ceil(filteredCount / pageSize.value)
-    
+
     // Adjust current page if it's beyond the new total pages
     if (currentPage.value > totalPages.value && totalPages.value > 0) {
       currentPage.value = totalPages.value
@@ -266,13 +266,20 @@ export const useProjectStore = defineStore('projects', () => {
     pageSize.value = 20
   }
 
+  // Update page size
+  const setPageSize = (newSize) => {
+    pageSize.value = newSize
+    currentPage.value = 1 // Reset to first page when changing page size
+    updatePaginationInfo()
+  }
+
   // Project statistics
   const getProjectStats = computed(() => {
     const total = projects.value.length
     const active = projects.value.filter(p => p.active === true).length
     const inactive = projects.value.filter(p => p.active === false).length
     const withTags = projects.value.filter(p => p.tags && p.tags.length > 0).length
-    
+
     return {
       total,
       active,
@@ -297,14 +304,14 @@ export const useProjectStore = defineStore('projects', () => {
     searchQuery,
     activeOnly,
     selectedTags,
-    
+
     // Computed
     filteredProjects,
     paginatedProjects,
     hasPreviousPage,
     hasNextPage,
     getProjectStats,
-    
+
     // Methods
     loadProjects,
     getProjectById,
@@ -317,14 +324,14 @@ export const useProjectStore = defineStore('projects', () => {
     getInactiveProjectCount,
     getActivityStatus,
     getActivityStatusClass,
-    
+
     // Pagination methods
     goToPage,
     nextPage,
     previousPage,
     firstPage,
     lastPage,
-    
+
     // Filter methods
     setSearchQuery,
     setActiveFilter,
@@ -332,11 +339,12 @@ export const useProjectStore = defineStore('projects', () => {
     addTagFilter,
     removeTagFilter,
     clearFilters,
-    
+
     // Utility methods
     refreshProjects,
     clearError,
     resetPagination,
-    updatePaginationInfo
+    updatePaginationInfo,
+    setPageSize
   }
 })

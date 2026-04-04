@@ -73,8 +73,23 @@
 
           <!-- Tag Pagination Controls -->
           <div v-if="totalTagPages > 1" class="mb-4 flex items-center justify-between">
-            <div class="text-sm text-gray-700 dark:text-gray-300">
-              Showing {{ paginatedTags.length }} of {{ totalTags }} tags
+            <div class="flex items-center space-x-4">
+              <div class="text-sm text-gray-700 dark:text-gray-300">
+                Showing {{ paginatedTags.length }} of {{ totalTags }} tags
+              </div>
+              <div class="flex items-center space-x-2">
+                <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+                <select
+                  v-model="tagPageSize"
+                  @change="setTagPageSize(tagPageSize)"
+                  class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+                >
+                  <option :value="10">10</option>
+                  <option :value="20">20</option>
+                  <option :value="50">50</option>
+                  <option :value="100">100</option>
+                </select>
+              </div>
             </div>
             <div class="flex items-center space-x-2">
               <button
@@ -82,7 +97,10 @@
                 :disabled="!hasPreviousTagPage || tagsLoading"
                 class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Previous
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7 7" />
+                </svg>
               </button>
 
               <div class="flex items-center space-x-1">
@@ -119,7 +137,10 @@
                 :disabled="!hasNextTagPage || tagsLoading"
                 class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7 7" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
           </div>
@@ -268,8 +289,23 @@
 
           <!-- Project Pagination Controls -->
           <div v-if="totalProjectPages > 1" class="mb-4 flex items-center justify-between">
-            <div class="text-sm text-gray-700 dark:text-gray-300">
-              Showing {{ paginatedProjects.length }} of {{ totalProjects }} projects
+            <div class="flex items-center space-x-4">
+              <div class="text-sm text-gray-700 dark:text-gray-300">
+                Showing {{ paginatedProjects.length }} of {{ totalProjects }} projects
+              </div>
+              <div class="flex items-center space-x-2">
+                <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+                <select
+                  v-model="projectPageSize"
+                  @change="setProjectPageSize(projectPageSize)"
+                  class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+                >
+                  <option :value="10">10</option>
+                  <option :value="20">20</option>
+                  <option :value="50">50</option>
+                  <option :value="100">100</option>
+                </select>
+              </div>
             </div>
             <div class="flex items-center space-x-2">
               <button
@@ -277,7 +313,10 @@
                 :disabled="!hasPreviousProjectPage || projectsLoading"
                 class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Previous
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7 7" />
+                </svg>
               </button>
 
               <div class="flex items-center space-x-1">
@@ -314,7 +353,10 @@
                 :disabled="!hasNextProjectPage || projectsLoading"
                 class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7 7" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
           </div>
@@ -460,7 +502,7 @@ export default {
       isLoading: tagsLoading,
       error: tagsError,
       currentPage: currentTagPage,
-      pageSize,
+      pageSize: tagPageSize,
       totalTags,
       totalPages: totalTagPages,
       searchQuery: tagSearchQuery,
@@ -476,7 +518,8 @@ export default {
       goToPage: goToTagPage,
       nextPage: nextTagPage,
       previousPage: previousTagPage,
-      clearFilters: clearTagFilters
+      clearFilters: clearTagFilters,
+      setPageSize: setTagPageSize
     } = tagStore
 
     // Use project store
@@ -485,6 +528,7 @@ export default {
       isLoading: projectsLoading,
       error: projectsError,
       currentPage: currentProjectPage,
+      pageSize: projectPageSize,
       totalProjects,
       totalPages: totalProjectPages,
       searchQuery: projectSearchQuery,
@@ -504,7 +548,8 @@ export default {
       previousPage: previousProjectPage,
       clearFilters: clearProjectFilters,
       getActivityStatus,
-      getActivityStatusClass
+      getActivityStatusClass,
+      setPageSize: setProjectPageSize
     } = projectStore
 
     // Local state
@@ -677,7 +722,8 @@ export default {
       // Store pagination states
       currentTagPage,
       currentProjectPage,
-      pageSize,
+      tagPageSize,
+      projectPageSize,
       totalTags,
       totalProjects,
       totalTagPages,
@@ -710,6 +756,8 @@ export default {
       clearProjectFilters,
       getActivityStatus,
       getActivityStatusClass,
+      setTagPageSize,
+      setProjectPageSize,
 
       // Taxonomy store functions
       taxonomies,
