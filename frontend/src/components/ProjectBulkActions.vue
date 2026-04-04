@@ -651,6 +651,8 @@ export default {
     const setQuickFilter = (type) => {
       if (type === 'inactive-dt') {
         activityFilter.value = 'inactive-dt'
+      } else if (type === 'old-sbom') {
+        sbomFilter.value = 'old'
       } else if (type === 'cleanup-candidates') {
         activityFilter.value = 'inactive-dt'
         sbomFilter.value = 'none'
@@ -683,32 +685,25 @@ export default {
     }
 
     const getActiveStatus = (project) => {
-      if (project.active === true) return 'Active'
-      if (project.active === false) return 'Inactive'
+      if (project.active === true) return 'Active (DT)'
+      if (project.active === false) return 'Inactive (DT)'
       return 'Unknown'
     }
 
     const getActiveStatusClass = (project) => {
       const status = getActiveStatus(project)
-      if (status === 'Active') return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-      if (status === 'Inactive') return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+      if (status === 'Active (DT)') return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+      if (status === 'Inactive (DT)') return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
       return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
     }
 
     const getActivityStatus = (project) => {
+
+      // Fallback to time-based status if active flag is not available
       const now = new Date()
       const lastActivity = new Date(project.lastActivity)
       const daysDiff = Math.floor((now - lastActivity) / (1000 * 60 * 60 * 24))
 
-      // Show DT active status explicitly
-      if (project.active === false) {
-        return 'Inactive (DT)'
-      }
-      if (project.active === true) {
-        return 'Active (DT)'
-      }
-
-      // Fallback to time-based status if active flag is not available
       if (daysDiff <= 30) return 'Recently Active'
       if (daysDiff <= 90) return 'Stale'
       return 'Old'
@@ -716,11 +711,12 @@ export default {
 
     const getActivityStatusClass = (project) => {
       const status = getActivityStatus(project)
-      if (status === 'Active (DT)') return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-      if (status === 'Inactive (DT)') return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+      if (status === 'Active') return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+      if (status === 'Inactive') return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
       if (status === 'Recently Active') return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
       if (status === 'Stale') return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-      return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+      if (status === 'Old') return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
     }
 
     const getSbomStatus = (project) => {
