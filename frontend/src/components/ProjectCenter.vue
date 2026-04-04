@@ -2,7 +2,7 @@
   <div class="px-4 py-6 sm:px-0">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Projects</h2>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Project Center</h2>
 
         <!-- View Mode Controls -->
         <div class="flex items-center space-x-2">
@@ -77,7 +77,7 @@
       <!-- Loading State -->
       <div v-if="pagination.loading.value && data.length === 0" class="text-center py-8">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">Loading projects...</p>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Loading project center...</p>
       </div>
 
       <!-- Projects Display -->
@@ -215,7 +215,7 @@ import DateCell from './grid-cells/DateCell.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 
 export default {
-  name: 'Projects',
+  name: 'ProjectCenter',
   components: {
     FolderOpen,
     Pagination,
