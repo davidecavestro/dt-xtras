@@ -5,7 +5,7 @@ import App from './App.vue'
 import Dashboard from './components/Dashboard.vue'
 import TaxonomyEditor from './components/TaxonomyEditor.vue'
 import TaxonomyVisualization from './components/TaxonomyVisualization.vue'
-import TagManager from './components/TagManager.vue'
+import TagCenter from './components/TagCenter.vue'
 import TagBulkActions from './components/TagBulkActions.vue'
 import ProjectsList from './components/ProjectsList.vue'
 import ProjectsGrid from './components/ProjectsGrid.vue'
@@ -40,7 +40,7 @@ const routes = [
   },
   {
     path: '/tags',
-    component: TagManager,
+    component: TagCenter,
     meta: { requiresAuth: true }
   },
   {
