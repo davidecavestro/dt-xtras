@@ -271,6 +271,17 @@
               </svg>
             </button>
             <button
+              v-if="tag.projectsCount > 0"
+              @click="startCopyProjectsToTag(tag)"
+              class="p-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 inline-flex items-center justify-center transition-colors"
+              title="Copy Projects to Tag"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2a2 2 0 00-2-2h-2M8 7a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21l-4-4 4-4M4 13l4 4 4 4"></path>
+              </svg>
+            </button>
+            <button
               @click="handleDeleteTag(tag)"
               class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
               title="Delete"
@@ -453,7 +464,18 @@
               title="Clone Tag"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012-2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+            </button>
+            <button
+              v-if="tag.projectsCount > 0"
+              @click="startCopyProjectsToTag(tag)"
+              class="p-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 inline-flex items-center justify-center transition-colors"
+              title="Copy Projects to Tag"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2a2 2 0 00-2-2h-2M8 7a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21l-4-4 4-4M4 13l4 4 4 4"></path>
               </svg>
             </button>
             <button
@@ -780,6 +802,99 @@
               class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               Clone Tag
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Copy Projects to Tag Modal -->
+    <div v-if="showCopyProjectsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-auto max-h-[calc(100vh-2rem)] overflow-y">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              Copy Projects from "{{ sourceTag?.name }}" to Another Tag
+            </h3>
+            <button
+              @click="closeCopyProjectsModal"
+              class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Source Tag Display -->
+          <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Source Tag:</div>
+            <div class="font-medium text-gray-900 dark:text-white">{{ sourceTag?.name }}</div>
+          </div>
+
+          <!-- Target Tag Selection -->
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Select Target Tag
+              </label>
+              <div class="relative">
+                <input
+                  v-model="targetTagSearch"
+                  @input="filterTargetTags"
+                  @focus="showTargetTagDropdown = true"
+                  @blur="hideTargetTagDropdown"
+                  type="text"
+                  placeholder="Search and select a tag..."
+                  class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+
+                <!-- Dropdown for filtered tags - uses full viewport -->
+                <div v-if="showTargetTagDropdown" class="absolute z-[60] w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
+                  <div class="max-h-96 overflow-y-auto">
+                    <div
+                      v-for="tag in filteredTargetTags"
+                      :key="tag.name"
+                      @click="selectTargetTag(tag)"
+                      class="px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-600 last:border-b-0"
+                    >
+                      <div class="font-medium">{{ tag.name }}</div>
+                      <span v-if="tag.projectsCount" class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ tag.projectsCount }} projects
+                      </span>
+                    </div>
+                    <div v-if="filteredTargetTags.length === 0" class="px-4 py-3 text-gray-500 dark:text-gray-400">
+                      No tags found
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Selected target tag display -->
+              <div v-if="targetTag" class="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                <div class="text-sm text-blue-600 dark:text-blue-400">Selected target tag:</div>
+                <div class="font-medium text-blue-900 dark:text-blue-300">{{ targetTag.name }}</div>
+              </div>
+            </div>
+
+            <div v-if="copyProjectsValidation.message" class="text-sm" :class="copyProjectsValidation.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+              {{ copyProjectsValidation.message }}
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-3 mt-6">
+            <button
+              @click="closeCopyProjectsModal"
+              class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="confirmCopyProjectsToTag"
+              :disabled="!sourceTag || !targetTag"
+              class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Copy Projects
             </button>
           </div>
         </div>
@@ -1243,6 +1358,104 @@ export default {
       linkProjects.value = false
     }
 
+    // Copy Projects to Tag functionality
+    const showCopyProjectsModal = ref(false)
+    const sourceTag = ref(null)
+    const targetTag = ref(null)
+    const copyProjectsValidation = ref({ valid: false, message: '' })
+
+    // Searchable dropdown state
+    const targetTagSearch = ref('')
+    const showTargetTagDropdown = ref(false)
+    const filteredTargetTags = ref([])
+
+    const filterTargetTags = () => {
+      const searchTerm = targetTagSearch.value.toLowerCase()
+      const sourceTagName = sourceTag.value?.name || ''
+
+      filteredTargetTags.value = tags.value.filter(tag => {
+        const isNotSourceTag = tag.name !== sourceTagName
+        const matchesSearch = tag.name.toLowerCase().includes(searchTerm)
+        return isNotSourceTag && matchesSearch
+      })
+    }
+
+    const selectTargetTag = (tag) => {
+      targetTag.value = tag
+      targetTagSearch.value = tag.name
+      showTargetTagDropdown.value = false
+    }
+
+    const hideTargetTagDropdown = () => {
+      // Delay hiding to allow click events to register
+      setTimeout(() => {
+        showTargetTagDropdown.value = false
+      }, 200)
+    }
+
+    const startCopyProjectsToTag = (tag) => {
+      console.log('🔗 Starting copy projects to tag for:', tag)
+      // Handle both reactive proxy and regular objects
+      const tagObj = tag.name ? tag : { name: tag, taxonomy: tag.taxonomy, projectsCount: tag.projectsCount }
+      sourceTag.value = tagObj
+      targetTag.value = null
+      targetTagSearch.value = ''
+      copyProjectsValidation.value = { valid: true, message: '' }
+      showCopyProjectsModal.value = true
+
+      // Initialize filtered tags
+      filterTargetTags()
+    }
+
+    const confirmCopyProjectsToTag = async () => {
+      if (!sourceTag.value || !targetTag.value) {
+        copyProjectsValidation.value = { valid: false, message: 'Please select a target tag' }
+        return
+      }
+
+      // Handle both reactive proxy and regular objects
+      const sourceTagName = sourceTag.value.name ? sourceTag.value.name : sourceTag.value
+      const targetTagName = targetTag.value.name ? targetTag.value.name : targetTag.value
+
+      if (sourceTagName === targetTagName) {
+        copyProjectsValidation.value = { valid: false, message: 'Cannot copy projects to the same tag' }
+        return
+      }
+
+      try {
+        // Get all projects that have the source tag
+        const sourceTagProjects = await axios.get(`/api/tag/${encodeURIComponent(sourceTagName)}/project`)
+        const projectsToCopy = sourceTagProjects.data || []
+
+        if (projectsToCopy.length === 0) {
+          copyProjectsValidation.value = { valid: false, message: 'No projects found to copy' }
+          return
+        }
+
+        // Use the generic proxy endpoint to add target tag to all projects
+        await axios.post(`/api/v1/tag/${encodeURIComponent(targetTagName)}/project`, projectsToCopy.map(project => project.uuid))
+
+        showSuccess(`Successfully copied ${projectsToCopy.length} projects from "${sourceTagName}" to "${targetTagName}"`)
+        closeCopyProjectsModal()
+        await loadTags() // Refresh tags to update project counts
+      } catch (error) {
+        console.error('Error copying projects:', error)
+        copyProjectsValidation.value = {
+          valid: false,
+          message: `❌ Error: ${error.response?.data?.message || error.message || 'Unknown error'}`
+        }
+      }
+    }
+
+    const closeCopyProjectsModal = () => {
+      showCopyProjectsModal.value = false
+      sourceTag.value = null
+      targetTag.value = null
+      targetTagSearch.value = ''
+      showTargetTagDropdown.value = false
+      copyProjectsValidation.value = { valid: false, message: '' }
+    }
+
     const cloneTagFromBuilder = async () => {
       if (!canCreateTag.value || !generatedTag.value) {
         return
@@ -1593,38 +1806,15 @@ export default {
             if (relation && relation.targets) {
               const targetTaxonomyId = relation.targets
 
-              // Get tags from the related taxonomy
+              // Get tags from related taxonomy
               const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tags`)
               const relatedTags = response.data || []
 
-              // Extract values from related tags using their own regex pattern
-              const targetTaxonomy = taxonomies.value.find(t => t.id === targetTaxonomyId)
-              if (targetTaxonomy && targetTaxonomy.regex_pattern) {
-                const uniqueValues = [...new Set(relatedTags.map(tag => {
-                  try {
-                    const regex = new RegExp(targetTaxonomy.regex_pattern)
-                    const tag_name = tag.name || tag // Handle both tag object and string
-                    const match = tag_name.match(regex)
-                    if (match){
-                      if (match.length > 2){ // multiple capture groups, try to rejoin them by convention to discard the prefix
-                        return match[1] + ':' + match[2]
-                      } else if (match.length === 2){ // single capture group, use the captured value
-                        return match[1]
-                      }
-                    }
-                    return tag_name
-                  } catch (e){
-                    console.error(`Regex error for related tag ${tag.name}:`, e)
-                    return tag.name || tag // Fallback to tag name
-                  }
-                }).filter(Boolean))]
-
-                part.options = uniqueValues.sort()
-              } else {
-                // If no regex pattern, use tag names as-is
-                const tagNames = relatedTags.map(tag => tag.name || tag).filter(Boolean)
-                part.options = tagNames.sort()
-              }
+              // Add to dropdown options
+              part.options = relatedTags.map(tag => ({
+                value: tag.name,
+                text: tag.name
+              })).filter(Boolean)
             }
           }
         }
@@ -1712,6 +1902,21 @@ export default {
       editingTag,
       editingTagName,
 
+      // Copy Projects to Tag state
+      showCopyProjectsModal,
+      sourceTag,
+      targetTag,
+      copyProjectsValidation,
+      targetTagSearch,
+      showTargetTagDropdown,
+      filteredTargetTags,
+      startCopyProjectsToTag,
+      confirmCopyProjectsToTag,
+      closeCopyProjectsModal,
+      filterTargetTags,
+      selectTargetTag,
+      hideTargetTagDropdown,
+
       // Taxonomy store functions
       taxonomies,
       getTagTaxonomy,
@@ -1743,14 +1948,78 @@ export default {
       refreshTags,
       formatDate,
       closeProjectsModal,
-      // Create Tag Modal
+      buildDTProjectUrl,
+
+      // Tag store state
+      tags,
+      tagsLoading,
+      tagsError,
+      currentPage,
+      pageSize,
+      totalTags,
+      totalPages,
+      searchQuery,
+      filteredTags,
+      paginatedTags,
+      hasPreviousPage,
+      hasNextPage,
+
+      // Tag store methods
+      loadTags,
+      setSearchQuery,
+      setPageSize,
+      goToPage,
+      nextPage,
+      previousPage,
+      clearFilters,
+
+      // Local state
+      projects,
+      newTag,
+      tagValidation,
+      showProjectsModal,
+      selectedTag,
+      tagProjects,
+      tagsViewMode,
       showCreateTagModal,
+      editingTag,
+      editingTagName,
+
+      // Taxonomy store functions
+      taxonomies,
+      getTagTaxonomy,
+      getTaxonomyBadgeStyle,
       selectedTaxonomy,
-      tagBuilderParts,
-      generatedTag,
-      canCreateTag,
-      hasCaptureGroups,
-      closeCreateTagModal,
+
+      // Clone Tag state
+      showCloneTagModal,
+      cloningTag,
+      cloneTagName,
+      cloneTagValidation,
+      linkProjects,
+
+      // Other functions
+      isDarkMode,
+      gridColumns,
+      validateTag,
+      selectSuggestedTag,
+      handleCreateTag,
+      handleDeleteTag,
+      clearForm,
+      viewTagProjects,
+      startEditTag,
+      startAidedEditTag,
+      startCloneTag,
+      validateCloneTag,
+      cloneTag,
+      cloneTagFromBuilder,
+      closeCloneTagModal,
+      tagBelongsToTaxonomy,
+      cancelEditTag,
+      saveEditTag,
+      refreshTags,
+      formatDate,
+      closeProjectsModal,
       createOrUpdateTag,
       parseTaxonomyPattern,
       loadTagValuesForDropdowns,
