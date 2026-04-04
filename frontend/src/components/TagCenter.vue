@@ -104,7 +104,14 @@
               </button>
             </div>
             <div v-else>
-              <div class="font-medium text-gray-900 dark:text-white">{{ tag.name }}</div>
+              <div class="font-medium text-gray-900 dark:text-white flex items-center flex-wrap gap-2">
+                {{ tag.name }}
+                <span v-if="getTagTaxonomy(tag)"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                      :style="getTaxonomyBadgeStyle(getTagTaxonomy(tag))">
+                      {{ getTagTaxonomy(tag).name }}
+                </span>
+              </div>
               <div class="text-sm text-gray-600 dark:text-gray-400">
                 Used by {{ tag.projectsCount || 0 }} projects
               </div>
@@ -189,7 +196,14 @@
               </button>
             </div>
             <div v-else>
-              <div class="font-medium text-gray-900 dark:text-white mb-2">{{ tag.name }}</div>
+              <div class="font-medium text-gray-900 dark:text-white mb-2 flex items-center flex-wrap gap-2">
+                {{ tag.name }}
+                <span v-if="getTagTaxonomy(tag)"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                      :style="getTaxonomyBadgeStyle(getTagTaxonomy(tag))">
+                      {{ getTagTaxonomy(tag).name }}
+                </span>
+              </div>
               <div class="text-sm text-gray-600 dark:text-gray-400">
                 Used by {{ tag.projectsCount || 0 }} projects
               </div>
@@ -693,6 +707,30 @@ export default {
         taxonomies.value = response.data
       } catch (error) {
         console.error('Error loading taxonomies:', error)
+      }
+    }
+
+    const getTagTaxonomy = (tag) => {
+      if (!tag.taxonomy) return null
+
+      // Tags use taxonomy IDs, so match by ID
+      const taxonomyId = tag.taxonomy
+      return taxonomies.value.find(taxonomy => taxonomy.id === taxonomyId)
+    }
+
+    const getTaxonomyBadgeStyle = (taxonomy) => {
+      if (!taxonomy || !taxonomy.color) return {}
+
+      // Convert hex color to RGB for better opacity handling
+      const hex = taxonomy.color.replace('#', '')
+      const r = parseInt(hex.substring(0, 2), 16)
+      const g = parseInt(hex.substring(2, 4), 16)
+      const b = parseInt(hex.substring(4, 6), 16)
+
+      return {
+        backgroundColor: `${taxonomy.color}20`, // Add transparency
+        color: taxonomy.color,
+        borderColor: `${taxonomy.color}40`
       }
     }
 
@@ -1454,6 +1492,9 @@ export default {
       showCreateTagModal,
       editingTag,
       editingTagName,
+      // Taxonomy functions
+      getTagTaxonomy,
+      getTaxonomyBadgeStyle,
       // Clone Tag state
       showCloneTagModal,
       cloningTag,

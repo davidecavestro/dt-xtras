@@ -1,6 +1,6 @@
 <template>
-  <div class="px-4 py-6 sm:px-0">
-    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+  <div class="px-4 py-6 sm:px-0 h-full">
+    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md h-full flex flex-col">
       <!-- Header -->
       <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex justify-between items-center">
@@ -23,12 +23,53 @@
         </div>
       </div>
 
+      <!-- Bulk Action Buttons -->
+      <div class="px-4 py-3 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex flex-wrap gap-3">
+          <!-- Link Tags to Projects -->
+          <button
+            @click="showLinkConfirmation = true"
+            :disabled="selectedTags.length === 0 || selectedProjects.length === 0"
+            class="px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Link class="mr-2 h-4 w-4" />
+            Link Tags to Projects
+            <span class="ml-2 text-xs bg-green-200 dark:bg-green-800 dark:text-white px-2 py-1 rounded">
+              {{ selectedTags.length }} tags → {{ selectedProjects.length }} projects
+            </span>
+          </button>
+
+          <!-- Unlink Tags from Projects -->
+          <button
+            @click="showUnlinkConfirmation = true"
+            :disabled="selectedTags.length === 0 || selectedProjects.length === 0"
+            class="px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Unlink class="mr-2 h-4 w-4" />
+            Unlink Tags from Projects
+            <span class="ml-2 text-xs bg-red-200 dark:bg-red-800 dark:text-white px-2 py-1 rounded">
+              {{ selectedTags.length }} tags ← {{ selectedProjects.length }} projects
+            </span>
+          </button>
+
+          <!-- Clear Selection -->
+          <button
+            @click="clearSelection"
+            :disabled="selectedTags.length === 0 && selectedProjects.length === 0"
+            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <X class="mr-2 h-4 w-4" />
+            Clear Selection
+          </button>
+        </div>
+      </div>
+
       <!-- Three Column Layout: Tags | Selected Items | Projects -->
-      <div class="px-4 py-4 sm:px-6 flex flex-col lg:flex-row lg:gap-6">
+      <div class="px-4 py-4 sm:px-6 flex-1 flex flex-col lg:flex-row lg:gap-6 overflow-hidden">
         <!-- Left Column: Tag Selection -->
         <div class="flex-1">
           <!-- Tag Search -->
-          <div class="mb-4">
+          <div class="mb-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Search Tags
             </label>
@@ -40,54 +81,8 @@
             />
           </div>
 
-          <!-- Tags Grid -->
-          <div class="border border-gray-300 dark:border-gray-600 rounded-md max-h-64 overflow-y-auto">
-            <div class="p-2">
-              <label class="flex items-center mb-2">
-                <input
-                  type="checkbox"
-                  v-model="selectAllTags"
-                  @change="toggleSelectAllTags"
-                  class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 mr-2"
-                />
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Select All Tags (Current Page)
-                </span>
-              </label>
-
-              <div v-if="loadingTags" class="text-center py-4">
-                <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading tags...</p>
-              </div>
-
-              <div v-else class="space-y-2">
-                <div
-                  v-for="tag in filteredTags"
-                  :key="tag.name"
-                  class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
-                >
-                  <input
-                    type="checkbox"
-                    :value="tag.name"
-                    v-model="selectedTags"
-                    class="mr-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div class="flex-1">
-                    <div class="font-medium text-gray-900 dark:text-white">
-                      {{ tag.name }}
-                      <span v-if="tag.custom" class="ml-2 text-xs text-gray-500 dark:text-gray-400">(custom)</span>
-                    </div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">
-                      Used by {{ tag.projectsCount || 0 }} projects
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- Tag Pagination Controls -->
-          <div v-if="totalTagPages > 1" class="mt-4 flex items-center justify-between">
+          <div v-if="totalTagPages > 1" class="mb-4 flex items-center justify-between">
             <div class="text-sm text-gray-700 dark:text-gray-300">
               Showing {{ tags.length }} of {{ totalTags }} tags
             </div>
@@ -140,23 +135,61 @@
               </button>
             </div>
           </div>
+
+          <!-- Tags Grid -->
+          <div class="border border-gray-300 dark:border-gray-600 rounded-md flex-1 overflow-y-auto">
+            <div class="p-2">
+              <label class="flex items-center mb-2">
+                <input
+                  type="checkbox"
+                  v-model="selectAllTags"
+                  @change="toggleSelectAllTags"
+                  class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 mr-2"
+                />
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Select All Tags (Current Page)
+                </span>
+              </label>
+
+              <div v-if="loadingTags" class="text-center py-4">
+                <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading tags...</p>
+              </div>
+
+              <div v-else class="space-y-2">
+                <div
+                  v-for="tag in filteredTags"
+                  :key="tag.name"
+                  class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
+                >
+                  <input
+                    type="checkbox"
+                    :value="tag.name"
+                    v-model="selectedTags"
+                    class="mr-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div class="flex-1">
+                    <div class="font-medium text-gray-900 dark:text-white flex items-center flex-wrap gap-2">
+                      {{ tag.name }}
+                      <span v-if="tag.custom" class="text-xs text-gray-500 dark:text-gray-400">(custom)</span>
+                      <span v-if="getTagTaxonomy(tag)"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                      :style="getTaxonomyBadgeStyle(getTagTaxonomy(tag))">
+                      {{ getTagTaxonomy(tag).name }}
+                    </span>
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                      Used by {{ tag.projectsCount || 0 }} projects
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Middle Column: Selected Items -->
-        <div class="flex-1 lg:max-w-md">
-
-          <!-- Clear Selection -->
-          <div v-if="selectedTags.length > 0 || selectedProjects.length > 0" class="space-y-4">
-            <div class="p-4 flex justify-center">
-            <button
-              @click="clearSelection"
-              class="mt-4 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-            >
-              <X class="mr-2 h-4 w-4" />
-              Clear Selection
-            </button>
-            </div>
-          </div>
+        <div class="flex-1 flex flex-col">
           <div v-if="selectedTags.length > 0 || selectedProjects.length > 0" class="space-y-4">
             <!-- Selected Tags -->
             <div v-if="selectedTags.length > 0" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -212,9 +245,9 @@
         </div>
 
         <!-- Right Column: Project Selection -->
-        <div class="flex-1">
+        <div class="flex-1 flex flex-col">
           <!-- Project Search -->
-          <div class="mb-4">
+          <div class="mb-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Search Projects
             </label>
@@ -239,8 +272,63 @@
             </div>
           </div>
 
+          <!-- Project Pagination Controls -->
+          <div v-if="totalProjectPages > 1" class="mb-4 flex items-center justify-between">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
+              Showing {{ projects.length }} of {{ totalProjects }} projects
+            </div>
+            <div class="flex items-center space-x-2">
+              <button
+                @click="prevProjectPage"
+                :disabled="currentProjectPage === 1 || loadingProjects"
+                class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+
+              <div class="flex items-center space-x-1">
+                <button
+                  v-for="page in Math.min(5, totalProjectPages)"
+                  :key="page"
+                  @click="goToProjectPage(page)"
+                  :class="[
+                  'px-3 py-1 text-sm border rounded-md',
+                  page === currentProjectPage
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                ]"
+                >
+                  {{ page }}
+                </button>
+
+                <span v-if="totalProjectPages > 5" class="px-2 text-gray-500">...</span>
+
+                <button
+                  v-if="totalProjectPages > 5"
+                  @click="goToProjectPage(totalProjectPages)"
+                  :class="[
+                  'px-3 py-1 text-sm border rounded-md',
+                  totalProjectPages === currentProjectPage
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                ]"
+                >
+                  {{ totalProjectPages }}
+                </button>
+              </div>
+
+              <button
+                @click="nextProjectPage"
+                :disabled="currentProjectPage === totalProjectPages || loadingProjects"
+                class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
           <!-- Projects Grid -->
-          <div class="border border-gray-300 dark:border-gray-600 rounded-md max-h-64 overflow-y-auto">
+          <div class="border border-gray-300 dark:border-gray-600 rounded-md flex-1 overflow-y-auto">
             <div class="p-2">
               <label class="flex items-center mb-2">
                 <input
@@ -301,104 +389,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Project Pagination Controls -->
-          <div v-if="totalProjectPages > 1" class="mt-4 flex items-center justify-between">
-            <div class="text-sm text-gray-700 dark:text-gray-300">
-              Showing {{ projects.length }} of {{ totalProjects }} projects
-            </div>
-            <div class="flex items-center space-x-2">
-              <button
-                @click="prevProjectPage"
-                :disabled="currentProjectPage === 1 || loadingProjects"
-                class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-
-              <div class="flex items-center space-x-1">
-                <button
-                  v-for="page in Math.min(5, totalProjectPages)"
-                  :key="page"
-                  @click="goToProjectPage(page)"
-                  :class="[
-                  'px-3 py-1 text-sm border rounded-md',
-                  page === currentProjectPage
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                ]"
-                >
-                  {{ page }}
-                </button>
-
-                <span v-if="totalProjectPages > 5" class="px-2 text-gray-500">...</span>
-
-                <button
-                  v-if="totalProjectPages > 5"
-                  @click="goToProjectPage(totalProjectPages)"
-                  :class="[
-                  'px-3 py-1 text-sm border rounded-md',
-                  totalProjectPages === currentProjectPage
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                ]"
-                >
-                  {{ totalProjectPages }}
-                </button>
-              </div>
-
-              <button
-                @click="nextProjectPage"
-                :disabled="currentProjectPage === totalProjectPages || loadingProjects"
-                class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bulk Actions -->
-      <div class="px-4 py-4 sm:px-6">
-        <div class="flex flex-col lg:flex-row lg:gap-6">
-          <!-- Left Column: Action Buttons -->
-          <div class="flex-1">
-            <div class="flex flex-wrap gap-3">
-              <!-- Link Tags to Projects -->
-              <button
-                @click="showLinkConfirmation = true"
-                :disabled="selectedTags.length === 0 || selectedProjects.length === 0"
-                class="px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Link class="mr-2 h-4 w-4" />
-                Link Tags to Projects
-                <span class="ml-2 text-xs bg-green-200 dark:bg-green-800 dark:text-white px-2 py-1 rounded">
-                  {{ selectedTags.length }} tags → {{ selectedProjects.length }} projects
-                </span>
-              </button>
-
-              <!-- Unlink Tags from Projects -->
-              <button
-                @click="showUnlinkConfirmation = true"
-                :disabled="selectedTags.length === 0 || selectedProjects.length === 0"
-                class="px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Unlink class="mr-2 h-4 w-4" />
-                Unlink Tags from Projects
-                <span class="ml-2 text-xs bg-red-200 dark:bg-red-800 dark:text-white px-2 py-1 rounded">
-                  {{ selectedTags.length }} tags ← {{ selectedProjects.length }} projects
-                </span>
-              </button>
-            </div>
-
-          </div>
-
-        </div>
-
-        <!-- Status Messages -->
-        <div v-if="statusMessage" class="mt-4 p-3 rounded-md" :class="statusMessageClass">
-          {{ statusMessage }}
         </div>
       </div>
     </div>
@@ -576,11 +566,14 @@ export default {
     // Pagination state
     const currentTagPage = ref(1)
     const currentProjectPage = ref(1)
-    const pageSize = ref(20)
+    const pageSize = ref(15)
     const totalTags = ref(0)
     const totalProjects = ref(0)
     const totalTagPages = ref(1)
     const totalProjectPages = ref(1)
+
+    // Taxonomies data
+    const taxonomies = ref([])
 
     // Computed properties
     const filteredTags = computed(() => {
@@ -591,6 +584,35 @@ export default {
         tag.name.toLowerCase().includes(query)
       )
     })
+
+    const getTagTaxonomy = (tag) => {
+      if (!tag.taxonomy) return null
+
+      // Tags use taxonomy IDs, so match by ID instead of name
+      const taxonomyId = tag.taxonomy
+      console.log('Tag:', tag.name, 'Taxonomy ID:', taxonomyId)
+
+      // Find full taxonomy object from loaded taxonomies by ID
+      const foundTaxonomy = taxonomies.value.find(taxonomy => taxonomy.id === taxonomyId)
+      console.log('Found taxonomy:', foundTaxonomy)
+      return foundTaxonomy
+    }
+
+    const getTaxonomyBadgeStyle = (taxonomy) => {
+      if (!taxonomy || !taxonomy.color) return {}
+
+      // Convert hex color to RGB for better opacity handling
+      const hex = taxonomy.color.replace('#', '')
+      const r = parseInt(hex.substring(0, 2), 16)
+      const g = parseInt(hex.substring(2, 4), 16)
+      const b = parseInt(hex.substring(4, 6), 16)
+
+      return {
+        backgroundColor: `${taxonomy.color}20`, // Add transparency
+        color: taxonomy.color,
+        borderColor: `${taxonomy.color}40`
+      }
+    }
 
     const filteredProjects = computed(() => {
       if (!projectSearchQuery.value) return projects.value
@@ -607,27 +629,31 @@ export default {
     const loadTags = async () => {
       loadingTags.value = true
       try {
-        const params = {
-          page: currentTagPage.value,
-          limit: pageSize.value
-        }
+        // Load all tags (backend doesn't support pagination)
+        const response = await axios.get('/api/tags')
+        const allTags = response.data
 
-        // Add search parameter if exists
+        // Apply search filter if exists
+        let filteredTags = allTags
         if (tagSearchQuery.value) {
-          params.search = tagSearchQuery.value
+          filteredTags = allTags.filter(tag =>
+            tag.name.toLowerCase().includes(tagSearchQuery.value.toLowerCase())
+          )
         }
 
-        const response = await axios.get('/api/tags', { params })
-        tags.value = response.data
+        // Set total count
+        totalTags.value = filteredTags.length
 
-        // For tags, we'll use a simpler approach without count endpoint
-        // Assume we have more pages if we get a full page
-        totalTags.value = tags.value.length >= pageSize.value ?
-          (currentTagPage.value * pageSize.value) + 1 :
-          ((currentTagPage.value - 1) * pageSize.value) + tags.value.length
-        totalTagPages.value = tags.value.length >= pageSize.value ?
-          currentTagPage.value + 1 :
-          currentTagPage.value
+        // Calculate total pages
+        totalTagPages.value = Math.ceil(totalTags.value / pageSize.value)
+
+        // Apply client-side pagination
+        const startIndex = (currentTagPage.value - 1) * pageSize.value
+        const endIndex = startIndex + pageSize.value
+        tags.value = filteredTags.slice(startIndex, endIndex)
+
+        console.log('Loaded tags:', tags.value)
+        console.log('Sample tag with taxonomy:', tags.value.find(t => t.taxonomy))
       } catch (error) {
         console.error('Error loading tags:', error)
         tags.value = []
@@ -696,10 +722,23 @@ export default {
       }
     }
 
+    const loadTaxonomies = async () => {
+      try {
+        const response = await axios.get('/api/taxonomies')
+        taxonomies.value = response.data
+        console.log('Loaded taxonomies:', taxonomies.value)
+        console.log('Taxonomy names:', taxonomies.value.map(t => t.name))
+        console.log('Taxonomy IDs:', taxonomies.value.map(t => t.id))
+      } catch (error) {
+        console.error('Error loading taxonomies:', error)
+        taxonomies.value = []
+      }
+    }
+
     const refreshData = async () => {
       loading.value = true
       try {
-        await Promise.all([loadTags(), loadProjects()])
+        await Promise.all([loadTaxonomies(), loadTags(), loadProjects()])
         clearSelection()
       } finally {
         loading.value = false
@@ -908,6 +947,9 @@ export default {
       totalProjects,
       totalTagPages,
       totalProjectPages,
+      taxonomies,
+      getTagTaxonomy,
+      getTaxonomyBadgeStyle,
       filteredTags,
       filteredProjects,
       refreshData,
