@@ -419,8 +419,8 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Tag Input -->
-            <div>
+            <!-- Tag Input - Only show when no capture groups -->
+            <div v-if="!hasCaptureGroups">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 New Tag Name
                 <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
@@ -428,6 +428,8 @@
                 </span>
               </label>
               <input
+                ref="cloneTagInput"
+                data-clone-tag-input
                 v-model="cloneTagName"
                 type="text"
                 class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
@@ -476,10 +478,10 @@
               </code>
             </div>
 
-            <!-- Dynamic Tag Builder for Clone -->
-            <div class="space-y-4">
+            <!-- Dynamic Tag Builder for Clone - Only show when there are capture groups -->
+            <div v-if="hasCaptureGroups" class="space-y-4">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Build Clone Tag
+                Build Clone
               </label>
 
               <div class="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-600 rounded-lg">
@@ -493,6 +495,7 @@
                   <select
                     v-else-if="part.type === 'dropdown'"
                     v-model="part.value"
+                    :data-tag-builder-field="index === 0 ? 'first' : null"
                     class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   >
                     <option value="">Select {{ part.name }}...</option>
@@ -505,6 +508,7 @@
                   <input
                     v-else-if="part.type === 'text'"
                     v-model="part.value"
+                    :data-tag-builder-field="index === 0 ? 'first' : null"
                     type="text"
                     :placeholder="'Enter ' + part.name + '...'"
                     class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
@@ -533,16 +537,16 @@
             >
               Cancel
             </button>
-            <!-- Show simple clone button if no taxonomy -->
+            <!-- Show simple clone button when no capture groups -->
             <button
-              v-if="!cloningTag?.taxonomy"
+              v-if="!hasCaptureGroups"
               @click="cloneTag"
               :disabled="!cloneTagValidation.valid || !cloneTagName.trim()"
               class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               Clone Tag
             </button>
-            <!-- Show tag builder clone button if taxonomy exists -->
+            <!-- Show tag builder clone button when has capture groups -->
             <button
               v-else
               @click="cloneTagFromBuilder"
@@ -957,7 +961,23 @@ export default {
       }
 
       showCloneTagModal.value = true
-      console.log('🔧 Clone modal should be open now')
+
+      // Focus the first field after modal opens
+      nextTick(() => {
+        if (!hasCaptureGroups.value) {
+          // Focus simple text input
+          const input = document.querySelector('[data-clone-tag-input]')
+          if (input) {
+            input.focus()
+          }
+        } else {
+          // Focus first tag builder field
+          const firstField = document.querySelector('[data-tag-builder-field="first"]')
+          if (firstField) {
+            firstField.focus()
+          }
+        }
+      })
     }
 
     const validateCloneTag = () => {
@@ -1167,8 +1187,15 @@ export default {
     })
 
     const canCreateTag = computed(() => {
-      return tagBuilderParts.value.every(part =>
-        part.type === 'static' || (part.value && part.value.trim())
+      const taxonomy = taxonomies.value.find(t => t.id === cloningTag.value?.taxonomy)
+      // check that generatedTag is compatible with the tag pattern
+      return generatedTag.value.length > 0 && taxonomy && new RegExp(taxonomy.regex_pattern).test(generatedTag.value)
+    })
+
+    // Check if tag has capture groups (for showing simple vs advanced clone)
+    const hasCaptureGroups = computed(() => {
+      return tagBuilderParts.value.some(part =>
+        part.type === 'text' || part.type === 'dropdown'
       )
     })
 
@@ -1460,6 +1487,7 @@ export default {
       tagBuilderParts,
       generatedTag,
       canCreateTag,
+      hasCaptureGroups,
       closeCreateTagModal,
       createOrUpdateTag,
       parseTaxonomyPattern,
