@@ -567,6 +567,7 @@ import { useTagStore } from '../stores/tags.js'
 import { useToast } from '../composables/useToast.js'
 import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, Folder, Trash2, Edit2 } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
+import {parseRegExpLiteral} from 'regexpp'
 
 // URL encoding utility
 const encodeTagName = (tagName) => {
@@ -1246,52 +1247,75 @@ export default {
 
     const parseTaxonomyPattern = (pattern) => {
       const parts = []
-      let lastIndex = 0
 
-      // Remove regex anchors (^ and $) from pattern for display
-      let cleanPattern = pattern.replace(/^\^|\$$/g, '')
+      // use regexpp to process the regex pattern in a semantic fashion so that the parts are properly extracted
+      // i.e. this pattern '/^(?!(?:notThis|notThat):)(?<grpA>[\\w-]+):(?<grpB>[\\d\\w\\.-]+)$/'
+      // becomes [{type: 'static'}, {type: 'text', value: ':'}, {type: 'group', name: 'grpA', ...}, {type: 'static', value: ':'}, {type: 'group', name: 'grpB', ...}]
+      const ast = parseRegExpLiteral(`/${pattern}/`);
 
-      // Find all capture groups: (?<name>pattern)
-      const captureGroupRegex = /\(\?<([^>]+)>([^)]+)\)/g
-      let match
+      // The 'alternatives' array contains the top-level branches of the regex
+      // We assume a single path for this specific use case
+      const elements = ast.pattern.alternatives[0].elements;
 
-      while ((match = captureGroupRegex.exec(cleanPattern)) !== null) {
-        // Add static text before this capture group
-        if (match.index > lastIndex) {
-          const staticText = cleanPattern.substring(lastIndex, match.index)
-          if (staticText) {
-            parts.push({
-              type: 'static',
-              value: staticText
-            })
-          }
+      elements.forEach(node => {
+        // Process each node and build the parts array
+        switch (node.type) {
+            case "CapturingGroup":
+                parts.push({
+                    type: 'group',
+                    name: node.name // This is the 'grpA' or 'grpB'
+                });
+                // Check if this capture group has a corresponding relation
+                const hasRelation = selectedTaxonomy.value?.relations?.some(rel => rel.group === node.name)
+
+                // Add capture group part
+                parts.push({
+                  type: hasRelation ? 'dropdown' : 'text', // Use dropdown only if relation exists
+                  name: node.name,
+                  value: '',
+                  options: [],
+                  pattern: node.pattern
+                })
+                break;
+
+            case "Character":
+                // add a new static part if previous one wasn't static, otherwise append to the previous
+                if (parts.length > 0 && parts[parts.length - 1].type === 'static') {
+                    parts[parts.length - 1].value += String.fromCodePoint(node.value)
+                } else {
+                    parts.push({
+                        type: 'static',
+                        value: String.fromCodePoint(node.value)
+                    })
+                }
+                break;
+
+            case "CharacterClass":
+            case "CharacterSet":
+                // These represent things like [\w-] or \d
+                // For "generate" logic, you likely treat these as static placeholders
+                // or templates rather than literal strings.
+                parts.push({
+                    type: 'text',
+                    value: node.raw
+                });
+                break;
+
+            case "Assertion":
+                // Handles ^, $, lookaheads, etc.
+                // We mark them as static/meta or ignore them for generation logic.
+                if (node.kind === "lookahead" || node.kind === "lookbehind") {
+                    // You could recurse here if you need to find groups inside lookarounds
+                    parts.push({ type: 'assertion', kind: node.kind, raw: node.raw });
+                }
+                break;
+
+            default:
+                // Handle Quantifiers (+, *) or other types if necessary
+                break;
         }
+      })
 
-        // Check if this capture group has a corresponding relation
-        const hasRelation = selectedTaxonomy.value?.relations?.some(rel => rel.group === match[1])
-
-        // Add capture group part
-        parts.push({
-          type: hasRelation ? 'dropdown' : 'text', // Use dropdown only if relation exists
-          name: match[1],
-          value: '',
-          options: [],
-          pattern: match[2]
-        })
-
-        lastIndex = captureGroupRegex.lastIndex
-      }
-
-      // Add any remaining static text
-      if (lastIndex < cleanPattern.length) {
-        const staticText = cleanPattern.substring(lastIndex)
-        if (staticText) {
-          parts.push({
-            type: 'static',
-            value: staticText
-          })
-        }
-      }
 
       return parts
     }

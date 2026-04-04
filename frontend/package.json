@@ -16,6 +16,7 @@
     "cytoscape-dagre": "^2.5.0",
     "lucide-vue-next": "^0.294.0",
     "pinia": "^3.0.4",
+    "regexpp": "^3.2.0",
     "vue": "^3.3.8",
     "vue-router": "^4.2.5",
     "vue3-tree-vue": "^2.0.16"
