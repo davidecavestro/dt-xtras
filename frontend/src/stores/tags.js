@@ -262,6 +262,13 @@ export const useTagStore = defineStore('tags', () => {
     pageSize.value = 20
   }
 
+  // Update page size
+  const setPageSize = (newSize) => {
+    pageSize.value = newSize
+    currentPage.value = 1 // Reset to first page when changing page size
+    updatePaginationInfo()
+  }
+
   return {
     // State
     tags,
@@ -308,6 +315,7 @@ export const useTagStore = defineStore('tags', () => {
     refreshTags,
     clearError,
     resetPagination,
-    updatePaginationInfo
+    updatePaginationInfo,
+    setPageSize
   }
 })
