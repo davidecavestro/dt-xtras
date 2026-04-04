@@ -531,9 +531,12 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
-import axios from 'axios'
+import { storeToRefs } from 'pinia'
+import { useTaxonomyStore } from '../stores/taxonomies'
+import { useToast } from '../composables/useToast'
+import { X, Link, Unlink, RefreshCw, Folder } from 'lucide-vue-next'
 import { buildDTProjectUrl } from '../config.js'
-import { RefreshCw, Link, Unlink, X, Folder } from 'lucide-vue-next'
+import axios from 'axios'
 
 export default {
   name: 'TagBulkActions',
@@ -545,6 +548,11 @@ export default {
     Folder
   },
   setup() {
+    // Use taxonomy store
+    const taxonomyStore = useTaxonomyStore()
+    const { taxonomies, loading: taxonomiesLoading } = storeToRefs(taxonomyStore)
+    const { getTaxonomyBadgeStyle, getTagTaxonomy, loadTaxonomies } = taxonomyStore
+
     // State
     const loading = ref(false)
     const loadingTags = ref(false)
@@ -572,9 +580,6 @@ export default {
     const totalTagPages = ref(1)
     const totalProjectPages = ref(1)
 
-    // Taxonomies data
-    const taxonomies = ref([])
-
     // Computed properties
     const filteredTags = computed(() => {
       if (!tagSearchQuery.value) return tags.value
@@ -584,35 +589,6 @@ export default {
         tag.name.toLowerCase().includes(query)
       )
     })
-
-    const getTagTaxonomy = (tag) => {
-      if (!tag.taxonomy) return null
-
-      // Tags use taxonomy IDs, so match by ID instead of name
-      const taxonomyId = tag.taxonomy
-      console.log('Tag:', tag.name, 'Taxonomy ID:', taxonomyId)
-
-      // Find full taxonomy object from loaded taxonomies by ID
-      const foundTaxonomy = taxonomies.value.find(taxonomy => taxonomy.id === taxonomyId)
-      console.log('Found taxonomy:', foundTaxonomy)
-      return foundTaxonomy
-    }
-
-    const getTaxonomyBadgeStyle = (taxonomy) => {
-      if (!taxonomy || !taxonomy.color) return {}
-
-      // Convert hex color to RGB for better opacity handling
-      const hex = taxonomy.color.replace('#', '')
-      const r = parseInt(hex.substring(0, 2), 16)
-      const g = parseInt(hex.substring(2, 4), 16)
-      const b = parseInt(hex.substring(4, 6), 16)
-
-      return {
-        backgroundColor: `${taxonomy.color}20`, // Add transparency
-        color: taxonomy.color,
-        borderColor: `${taxonomy.color}40`
-      }
-    }
 
     const filteredProjects = computed(() => {
       if (!projectSearchQuery.value) return projects.value
@@ -719,19 +695,6 @@ export default {
         projects.value = []
       } finally {
         loadingProjects.value = false
-      }
-    }
-
-    const loadTaxonomies = async () => {
-      try {
-        const response = await axios.get('/api/taxonomies')
-        taxonomies.value = response.data
-        console.log('Loaded taxonomies:', taxonomies.value)
-        console.log('Taxonomy names:', taxonomies.value.map(t => t.name))
-        console.log('Taxonomy IDs:', taxonomies.value.map(t => t.id))
-      } catch (error) {
-        console.error('Error loading taxonomies:', error)
-        taxonomies.value = []
       }
     }
 
