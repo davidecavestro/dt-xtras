@@ -615,8 +615,7 @@ export default {
       loading.value = true
 
       try {
-        const response = await axios.post('/api/tags/link', {
-          tags: selectedTags.value,
+        const response = await axios.post(`/api/v1/tag/${encodeURIComponent(selectedTags.value[0])}/project`, {
           projects: selectedProjects.value
         })
 
@@ -641,8 +640,7 @@ export default {
       loading.value = true
 
       try {
-        const response = await axios.post('/api/tags/unlink', {
-          tags: selectedTags.value,
+        const response = await axios.delete(`/api/v1/tag/${encodeURIComponent(selectedTags.value[0])}/project`, {
           projects: selectedProjects.value
         })
 
