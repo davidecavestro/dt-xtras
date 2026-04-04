@@ -10,7 +10,7 @@ import TagBulkActions from './components/TagBulkActions.vue'
 import ProjectsList from './components/ProjectsList.vue'
 import ProjectsGrid from './components/ProjectsGrid.vue'
 import ProjectCenter from './components/ProjectCenter.vue'
-import ProjectBulkActions from './components/ProjectCleanup.vue'
+import ProjectBulkActions from './components/ProjectBulkActions.vue'
 import VulnerabilitiesList from './components/VulnerabilitiesList.vue'
 import Login from './components/Login.vue'
 import authService from './services/auth'
@@ -64,7 +64,7 @@ const routes = [
     redirect: '/projects'
   },
   {
-    path: '/cleanup',
+    path: '/project-bulk-actions',
     name: 'ProjectBulkActions',
     component: ProjectBulkActions,
     meta: { requiresAuth: true }

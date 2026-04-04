@@ -78,10 +78,10 @@
         </router-link>
 
         <router-link
-          to="/cleanup"
+          to="/project-bulk-actions"
           class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
           :class="[
-            $route.path === '/cleanup'
+            $route.path === '/project-bulk-actions'
               ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
