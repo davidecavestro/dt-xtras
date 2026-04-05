@@ -232,7 +232,7 @@
                     </span>
                   </div>
                   <div class="mt-1 text-sm italic text-gray-600 dark:text-gray-400">
-                    🏷 {{ project.tags.join(', ') }}
+                    🏷 {{ project.tags ? project.tags.join(', ') : 'No tags' }}
                   </div>
                   <div class="mt-2 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
                     <span class="flex items-center">

@@ -21,7 +21,7 @@ export const useTagStore = defineStore('tags', () => {
 
   // Computed properties
   const filteredTags = computed(() => {
-    let filtered = tags.value
+    let filtered = tags.value || []
 
     // Apply search filter
     if (searchQuery.value) {

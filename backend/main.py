@@ -18,6 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from collections import defaultdict, Counter
 from fastapi.middleware.cors import CORSMiddleware
+import networkx as nx
 
 app = FastAPI(title="dt-xtras", version="1.0.0")
 
@@ -339,6 +340,28 @@ async def logout():
     return {"message": "Successfully logged out"}
 
 # DT API Client
+async def get_project_tags(project_uuid: str, dt_token: str) -> List[str]:
+    """Get tags for a specific project from DT API"""
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{DT_API_URL}/api/v1/project/{project_uuid}/tag", headers=headers, timeout=10.0)
+            response.raise_for_status()
+            tags_data = response.json()
+
+            # Extract tag names from the response
+            if isinstance(tags_data, list):
+                return [tag.get('name', str(tag)) if isinstance(tag, dict) else str(tag) for tag in tags_data]
+            return []
+    except Exception as e:
+        print(f"Error fetching tags for project {project_uuid}: {e}")
+        return []
+
 async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search: Optional[str] = None, excludeInactive: Optional[str] = "false") -> List[Dict]:
     """Get projects from DT API with proper authentication and pagination"""
     headers = {}
@@ -382,6 +405,13 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
         projects_data = response.json()
         print(f"Successfully parsed {len(projects_data)} projects")
 
+        # Debug: Print first project to see structure
+        if projects_data:
+            print(f"First project structure: {projects_data[0]}")
+            print(f"First project keys: {list(projects_data[0].keys())}")
+            print(f"Name field: {projects_data[0].get('name', 'MISSING')}")
+            print(f"Version field: {projects_data[0].get('version', 'MISSING')}")
+
     # Enrich projects with additional fields
     enriched_projects = []
     for project in projects_data:
@@ -390,6 +420,9 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
         # Add active field (DT API includes this)
         if 'active' not in enriched_project:
             enriched_project['active'] = True  # Default to active if not specified
+
+        # Add empty tags field for now to prevent frontend errors
+        enriched_project['tags'] = []
 
         # Add lastActivity from lastBomImport or created date (convert timestamps to strings)
         if 'lastBomImport' in enriched_project:
@@ -859,7 +892,7 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
 
     return project_versions
 
-@app.get("/api/projects", response_model=List[DTProject])
+@app.get("/api/projects")
 async def get_projects(
     dt_token: str = Depends(get_dt_token_from_request),
     page: int = 1,
@@ -893,7 +926,50 @@ async def get_projects(
 
     projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search, excludeInactive=params.get("excludeInactive", "true"))
     print(f"Successfully retrieved {len(projects)} projects")
-    return projects
+
+    # Get total count for pagination
+    try:
+        headers = {}
+        if dt_token:
+            headers["Authorization"] = f"Bearer {dt_token}"
+        elif DT_API_KEY:
+            headers["X-API-Key"] = DT_API_KEY
+
+        # Build DT API parameters for count
+        count_params = {
+            "pageNumber": "1",
+            "pageSize": "1",
+            "excludeInactive": "true" if active_only else "false"
+        }
+        if search:
+            count_params["name"] = search
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=count_params, timeout=30.0)
+            response.raise_for_status()
+
+            # Get total count from X-Total-Count header
+            total_count = response.headers.get("X-Total-Count")
+            if total_count:
+                total_count = int(total_count)
+            else:
+                # Fallback - count the actual results
+                projects_response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params={"excludeInactive": count_params["excludeInactive"]}, timeout=30.0)
+                projects_data = projects_response.json()
+                total_count = len(projects_data)
+    except Exception as e:
+        print(f"Error getting project count: {e}")
+        raise HTTPException(status_code=500, detail=f"Error getting project count: {e}")
+
+    return {
+        "data": projects,
+        "pagination": {
+            "currentPage": page,
+            "pageSize": limit,
+            "totalItems": total_count,
+            "totalPages": (total_count + limit - 1) // limit
+        }
+    }
 
 @app.get("/api/projects/count")
 async def get_projects_count(
@@ -1562,6 +1638,243 @@ async def api_health_check():
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
         }, 500
+
+class SimpleTaxonomyGraphBuilder:
+    def build_graph(self, tags, taxonomies, root_taxonomy=None, associative_mode=False):
+        print(f'Building graph with {len(tags)} tags and {len(taxonomies)} taxonomies')
+        print(f'Associative mode: {associative_mode}')
+        print(f'Root taxonomy: {root_taxonomy}')
+
+        # Normalize all taxonomies to consistent structure
+        normalized_taxonomies = {}
+        for taxonomy in taxonomies:
+            normalized_relations = []
+            if hasattr(taxonomy, 'relations') and taxonomy.relations:
+                for relation in taxonomy.relations:
+                    normalized_relations.append({
+                        'group': relation.group,
+                        'targets': relation.targets
+                    })
+
+            normalized_taxonomies[taxonomy.id] = {
+                'id': taxonomy.id,
+                'name': taxonomy.name,
+                'regex_pattern': taxonomy.regex_pattern,
+                'relations': normalized_relations,
+                'associative': taxonomy.associative if hasattr(taxonomy, 'associative') else False
+            }
+
+        # Normalize all tags to consistent structure
+        normalized_tags = []
+        for tag in tags:
+            # Handle taxonomy - could be string ID, object, or None
+            tag_taxonomy = tag.get('taxonomy')
+            normalized_taxonomy = None
+
+            if tag_taxonomy:
+                if isinstance(tag_taxonomy, str):
+                    normalized_taxonomy = normalized_taxonomies.get(tag_taxonomy)
+                elif hasattr(tag_taxonomy, 'id'):
+                    normalized_taxonomy = normalized_taxonomies.get(tag_taxonomy.id)
+
+            normalized_tags.append({
+                'name': tag['name'],
+                'taxonomy': normalized_taxonomy,
+                'projectsCount': tag.get('projectsCount', 0)
+            })
+
+        # Use local variables instead of shared instance state
+        nodes = {}
+        tag_taxonomies = {}
+        edges = []
+
+        # Create nodes for all tags
+        for tag in normalized_tags:
+            if tag['taxonomy']:  # Only create nodes for tags with valid taxonomy
+                nodes[tag['name']] = {
+                    'id': tag['name'],
+                    'name': tag['name'],
+                    'taxonomy': tag['taxonomy']['id'],
+                    'associative': tag['taxonomy']['associative'],
+                    'projectsCount': tag.get('projectsCount', 0)
+                }
+
+        print(f'Created {len(nodes)} nodes')
+
+        # Build edges based on mode
+        if associative_mode:
+            edges = self._build_associative_relations(normalized_taxonomies, normalized_tags, root_taxonomy)
+        else:
+            edges = self._build_normal_relations(normalized_taxonomies, normalized_tags, root_taxonomy)
+
+        print(f'Created {len(edges)} edges')
+
+        return {
+            'nodes': list(nodes.values()),
+            'edges': edges
+        }
+
+    def _build_associative_relations(self, normalized_taxonomies, normalized_tags, root_taxonomy):
+        associative_nodes_to_hide = set()
+        edges = []
+
+        for tag in normalized_tags:
+            taxonomy = tag['taxonomy']
+            if taxonomy:  # Only process tags with valid taxonomy
+                # Create edges based on taxonomy's capture groups' relation
+                capture_groups = self._get_tag_values(tag, taxonomy)
+                if capture_groups and taxonomy['relations'] and len(taxonomy['relations']) > 0:
+                    if len(taxonomy['relations']) == len(capture_groups):
+                        associative_nodes_to_hide.add(tag['name'])
+
+                    group_relations = taxonomy['relations'].copy()
+                    if root_taxonomy:
+                        # Check if any group in groupRelations is the root taxonomy and get its position
+                        root_group_position = next((i for i, relation in enumerate(group_relations) if relation['group'] == root_taxonomy), -1)
+                        print(f'Root group position: {root_group_position}')
+                        if root_group_position > 0:
+                            # Reorder the groupRelations array so that the root group is first
+                            root_group = group_relations[root_group_position]
+                            group_relations.pop(root_group_position)
+                            group_relations.insert(0, root_group)
+
+                    prev = None
+                    for relation in group_relations:
+                        key = relation['group']
+                        relation_target = relation['targets']
+                        # Find the tag belonging to the relation target taxonomy
+                        target_taxonomy = normalized_taxonomies.get(relation_target)
+                        target_tag = next((t for t in normalized_tags if t['taxonomy'] and t['taxonomy']['id'] == target_taxonomy['id'] and self._get_tag_value(t, target_taxonomy) == capture_groups[key]), None)
+
+                        # Create edge between previous group and current group
+                        if prev and target_tag:
+                            edges.append({
+                                'id': f'{prev}-{target_tag["name"]}',
+                                'source': prev,
+                                'target': target_tag['name']
+                            })
+                        prev = target_tag['name'] if target_tag else None
+
+        return edges
+
+    def _get_tag_taxonomy(self, tag):
+        """Get taxonomy from tag, handling both string and object cases"""
+        tag_taxonomy = tag.get('taxonomy')
+        if isinstance(tag_taxonomy, str):
+            return tag_taxonomy
+        elif hasattr(tag_taxonomy, 'id'):
+            return tag_taxonomy.id
+        else:
+            return None
+
+    def _build_normal_relations(self, normalized_taxonomies, normalized_tags, root_taxonomy):
+        # The associative tags are visible here
+        edges = []
+
+        for tag in normalized_tags:
+            taxonomy = tag['taxonomy']
+            if taxonomy:  # Only process tags with valid taxonomy
+                # Create edges based on taxonomy's capture groups' relation
+                capture_groups = self._get_tag_values(tag, taxonomy)
+                if capture_groups and taxonomy['relations'] and len(taxonomy['relations']) > 0:
+                    for key in capture_groups.keys():
+                        relation = next((r for r in taxonomy['relations'] if r['group'] == key), None)
+                        if relation:
+                            relation_target = relation['targets']
+                            # Find the tag belonging to the relation target taxonomy
+                            target_taxonomy = normalized_taxonomies.get(relation_target)
+                            target_tag = next((t for t in normalized_tags if t['taxonomy'] and t['taxonomy']['id'] == target_taxonomy['id'] and self._get_tag_value(t, target_taxonomy) == capture_groups[key]), None)
+
+                            # Create edge between tag and target
+                            if target_tag:
+                                edges.append({
+                                    'id': f'{tag["name"]}-{target_tag["name"]}',
+                                    'source': tag['name'],
+                                    'target': target_tag['name']
+                                })
+
+        return edges
+
+    def _get_tag_values(self, tag, taxonomy):
+        pattern = taxonomy['regex_pattern']
+        match = regex.search(pattern, tag['name'])
+        if match and match.groupdict():
+            return match.groupdict()
+        return None
+
+    def _get_tag_value(self, tag, taxonomy):
+        values = self._get_tag_values(tag, taxonomy)
+        # Join all values with colons
+        return ':'.join(values.values()) if values else None
+
+
+@app.get("/api/graph")
+async def get_graph(
+    dt_token: str = Depends(get_dt_token_from_request),
+    root_taxonomy: Optional[str] = None,
+    associative_mode: bool = False
+):
+    """Build and return taxonomy graph with nodes and edges"""
+
+    # Fetch tags directly from DT API
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    # api is paginated, consume all pages
+    tags_response = []
+    page = 1
+    pageSize = 100
+    async with httpx.AsyncClient() as client:
+        while True:
+            response = await client.get(f"{DT_API_URL}/api/v1/tag?pageNumber={page}&pageSize={pageSize}", headers=headers)
+            response.raise_for_status()
+            if response.status_code != 200:
+                raise Exception(f"DT API returned status {response.status_code}: {response.text}")
+            page_response = response.json()
+            if not page_response or not isinstance(page_response, list):
+                break
+            tags_response.extend(page_response)
+            if len(page_response) < pageSize:
+                break
+            page += 1
+
+    taxonomies = load_taxonomies()
+
+    if not tags_response or not isinstance(tags_response, list):
+        raise Exception("No tags found in DT API response")
+
+    # Use tags directly without project count enrichment for now
+    enriched_tags = []
+    for tag in tags_response:
+        # Get taxonomy from tag if already present, otherwise find it
+        tag_taxonomy = tag.get('taxonomy')
+        if not tag_taxonomy:
+            # Find matching taxonomy for this tag
+            for taxonomy in taxonomies:
+                if taxonomy.regex_pattern and regex.search(taxonomy.regex_pattern, tag['name']):
+                    tag_taxonomy = taxonomy
+                    break
+
+        enriched_tags.append({
+            'name': tag['name'],
+            'taxonomy': tag_taxonomy,
+            'projectsCount': 0  # Default to 0 for now
+        })
+
+    # Build graph
+    graph_builder = SimpleTaxonomyGraphBuilder()
+    graph_data = graph_builder.build_graph(
+        enriched_tags,
+        taxonomies,
+        root_taxonomy,
+        associative_mode
+    )
+
+    return graph_data
+
 
 # Proxy endpoints for DT API
 @app.get("/api/v1/test")

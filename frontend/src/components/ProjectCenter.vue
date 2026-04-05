@@ -1,77 +1,96 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Project Center</h2>
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Project Center</h2>
+      <p class="text-gray-600 dark:text-gray-400 mb-6">
+        Browse and manage Dependency-Track projects
+      </p>
+    </div>
 
-        <!-- View Mode Controls -->
-        <div class="flex items-center space-x-2">
-          <button
-            @click="projectsViewMode = 'list'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'list'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            List
-          </button>
-          <button
-            @click="projectsViewMode = 'grid'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'grid'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            Grid
-          </button>
-          <button
-            @click="projectsViewMode = 'deck'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'deck'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            Deck
-          </button>
+    <!-- Projects List -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Projects</h2>
+        <div class="flex items-center gap-2">
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            {{ pagination.totalItems.value || 0 }} projects
+          </div>
+          <!-- View Mode Controls -->
+          <div class="flex items-center space-x-2">
+            <button
+              @click="projectsViewMode = 'list'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                projectsViewMode === 'list'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <ListIcon class="w-4 h-4" />
+            </button>
+            <button
+              @click="projectsViewMode = 'grid'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                projectsViewMode === 'grid'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <GridIcon class="w-4 h-4" />
+            </button>
+            <button
+              @click="projectsViewMode = 'deck'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                projectsViewMode === 'deck'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <SquareIcon class="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Search projects
-          </label>
-          <input
-            v-model="filters.search"
-            @input="debouncedSearch"
-            type="text"
-            placeholder="Search projects..."
-            class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Inactive Projects
-          </label>
-          <div class="flex items-center">
+      <!-- Search and Filters -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+        <div class="flex flex-col sm:flex-row gap-4">
+          <!-- Search -->
+          <div class="flex-1">
             <input
-              type="checkbox"
-              v-model="filters.showInactive"
-              @change="fetchProjects"
-              class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800"
+              v-model="filters.search"
+              @input="debouncedSearch"
+              type="text"
+              placeholder="Search projects..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             />
-            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-              Show
-            </span>
+          </div>
+          <!-- Filter -->
+          <div class="flex items-center">
+            <label class="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                v-model="filters.showInactive"
+                class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-blue-600 focus:ring-blue-500"
+              />
+              <span>Show inactive projects</span>
+            </label>
           </div>
         </div>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="pagination.totalItems.value > 0" class="mb-6">
+        <Pagination
+          :current-page="pagination.currentPage.value"
+          :page-size="pagination.pageSize.value"
+          :total-items="pagination.totalItems.value"
+          :page-size-options="[10, 20, 50, 100]"
+          @page-change="handlePageChange"
+          @page-size-change="handlePageSizeChange"
+        />
       </div>
 
       <!-- Loading State -->
@@ -185,26 +204,16 @@
         </div>
       </div>
 
-      <!-- Pagination (for List and Deck views) -->
-      <Pagination
-        v-if="pagination.totalItems.value > 0 && projectsViewMode !== 'grid'"
-        :current-page="pagination.currentPage.value"
-        :page-size="pagination.pageSize.value"
-        :total-items="pagination.totalItems.value"
-        :page-size-options="[10, 20, 50, 100]"
-        @page-change="handlePageChange"
-        @page-size-change="handlePageSizeChange"
-        class="mt-6"
-      />
     </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
-import { FolderOpen } from 'lucide-vue-next'
+import { FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
 import { usePaginatedData } from '../composables/usePagination'
 import apiService from '../services/api'
+import axios from 'axios'
 import Pagination from './Pagination.vue'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import ProjectCard from './ProjectCard.vue'
@@ -213,11 +222,15 @@ import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
+import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js'
 
 export default {
   name: 'ProjectCenter',
   components: {
     FolderOpen,
+    ListIcon,
+    GridIcon,
+    SquareIcon,
     Pagination,
     Vue3Datagrid,
     ProjectCard
@@ -296,21 +309,21 @@ export default {
     const { data, pagination, fetchData } = usePaginatedData(
       async (page, limit) => {
         const params = {
-          pageNumber: page,
-          pageSize: limit
+          pageNumber: page.toString(),
+          pageSize: limit.toString()
         }
 
-        const queryParams = {}
         if (filters.value.search) {
-          queryParams.search = filters.value.search
+          params.name = filters.value.search
         }
         if (filters.value.showInactive) {
-          queryParams.excludeInactive = false  // Show inactive when checked
+          params.excludeInactive = false
         } else {
-          queryParams.excludeInactive = true   // Hide inactive when unchecked (default)
+          params.excludeInactive = true
         }
 
-        return apiService.getProjects(params, queryParams)
+        // Call DT API directly through generic proxy
+        return axios.get(`/api/v1/project`, { params })
       },
       { initialPageSize: 20 }
     )

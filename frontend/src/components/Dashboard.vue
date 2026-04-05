@@ -257,34 +257,59 @@
               <div v-else-if="projectsViewMode === 'grid'" class="h-full overflow-y-auto">
                 <vue3-datagrid
                   :columns="gridColumns"
-                  :source="relatedProjects"
+                  :source="paginatedProjects"
                   :row-height="50"
                   :virtual="true"
-                  :page-size="50"
-                  :page="1"
+                  :page-size="pageSize"
+                  :page="currentPage"
                   :total="relatedProjects.length"
                   :theme="isDarkMode ? 'darkCompact' : 'compact'"
                   :resize="true"
                   :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
                   :stretch="true"
+                  @page-changed="onPageChanged"
                   class="w-full border-gray-200 dark:border-gray-700"
                   style="height: 100%;"
                   :readonly="true"
                 >
                 </vue3-datagrid>
+
+                <!-- Pagination for Grid View -->
+                <div v-if="relatedProjects.length > 0" class="mt-4">
+                  <Pagination
+                    :current-page="currentPage"
+                    :page-size="pageSize"
+                    :total-items="relatedProjects.length"
+                    :page-size-options="[10, 20, 50, 100]"
+                    @page-change="onPageChanged"
+                    @page-size-change="onPageSizeChanged"
+                  />
+                </div>
               </div>
 
               <!-- Deck View -->
               <div v-else-if="projectsViewMode === 'deck'" class="h-full overflow-y-auto">
                 <div class="grid gap-4 p-4" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
                   <ProjectCard
-                    v-for="project in relatedProjects"
+                    v-for="project in paginatedProjects"
                     :key="project.uuid"
                     :project="project"
                     @select="viewProject"
                     @view="viewProject"
                     @security-details="viewSecurityDetails"
                     @analyze="analyzeProject"
+                  />
+                </div>
+
+                <!-- Pagination for Deck View -->
+                <div v-if="relatedProjects.length > 0" class="mt-4">
+                  <Pagination
+                    :current-page="currentPage"
+                    :page-size="pageSize"
+                    :total-items="relatedProjects.length"
+                    :page-size-options="[10, 20, 50, 100]"
+                    @page-change="onPageChanged"
+                    @page-size-change="onPageSizeChanged"
                   />
                 </div>
               </div>
@@ -297,20 +322,23 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
-import { AlertCircle, RefreshCw, Folder, FolderOpen } from 'lucide-vue-next'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useTagStore } from '../stores/tags.js'
+import { useProjectStore } from '../stores/projects.js'
+import { useTaxonomyStore } from '../stores/taxonomies.js'
 import axios from 'axios'
-import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
-import RiskScoreBadge from './RiskScoreBadge.vue'
-import VulnerabilityBar from './VulnerabilityBar.vue'
 import TreeNode from './TreeNode.vue'
-import NameCell from './grid-cells/NameCell.vue'
-import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
-import ProjectCard from './ProjectCard.vue'
-import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
+import RiskScoreBadge from './RiskScoreBadge.vue'
+import VulnerabilityBar from './VulnerabilityBar.vue'
+import { AlertCircle, RefreshCw, Folder, FolderOpen } from 'lucide-vue-next'
+import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
+import Pagination from './Pagination.vue'
+import ProjectCard from './ProjectCard.vue'
+import NameCell from './grid-cells/NameCell.vue'
 
 export default {
   name: 'Dashboard',
@@ -320,6 +348,7 @@ export default {
     Folder,
     FolderOpen,
     Vue3Datagrid,
+    Pagination,
     ProjectCard,
     RiskScoreBadge,
     VulnerabilityBar,
@@ -333,6 +362,8 @@ export default {
     const selectedTreeNode = ref(null)
     const searchQuery = ref('')
     const treeData = ref([])
+    const allReachableNodes = ref(new Set())
+    const graphData = ref({ nodes: [], edges: [] })
     const allProjects = ref([])
     const tags = ref([])
     const taxonomiesData = ref([])
@@ -340,7 +371,16 @@ export default {
     const associativeMode = ref(true) // Default to associative mode like graph
     const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
 
-    const graphBuilder = new SimpleTaxonomyGraphBuilder()
+    // Pagination for projects grid
+    const currentPage = ref(1)
+    const pageSize = ref(50)
+
+    // Computed property for paginated projects
+    const paginatedProjects = computed(() => {
+      const start = (currentPage.value - 1) * pageSize.value
+      const end = start + pageSize.value
+      return relatedProjects.value.slice(start, end)
+    })
 
     // Grid columns for projects grid view
     const gridColumns = computed(() => [
@@ -508,7 +548,7 @@ export default {
 
     // Helper function to find reachable tags (same as TaxonomyVisualization)
     const findReachableTags = (startNodeId) => {
-      if (!startNodeId || !treeData.value || treeData.value.length === 0 || !graphBuilder.edges) return new Set()
+      if (!startNodeId || !treeData.value || treeData.value.length === 0 || !graphData.value.edges) return new Set()
 
       const visited = new Set()
       const queue = [startNodeId]
@@ -525,13 +565,13 @@ export default {
         const connectedNodes = treeData.value
           .filter(node => {
             // Check if this node has edges to other nodes
-            return graphBuilder.edges && graphBuilder.edges.some(edge =>
+            return graphData.value.edges && graphData.value.edges.some(edge =>
               edge.source === currentId || edge.target === currentId
             )
           })
           .map(node => {
             // Return the connected node ID
-            const edge = graphBuilder.edges.find(edge =>
+            const edge = graphData.value.edges.find(edge =>
               edge.source === currentId ? edge.target : edge.source
             )
             return edge.source === currentId ? edge.target : edge.source
@@ -604,12 +644,10 @@ export default {
 
       if (!selectedTreeNode.value) {
         // When no node selected, return all projects reachable from any root
-        const allReachableNodes = findAllReachableFromRoots()
-
-        return allProjects.value.filter(project => {
+        return allProjects.value.data.filter(project => {
           if (!project.tags || project.tags.length === 0) return false
           return project.tags.some(tag =>
-            allReachableNodes.has(tag.toLowerCase())
+            allReachableNodes.value.has(typeof tag === 'string' ? tag.toLowerCase() : tag.name?.toLowerCase() || '')
           )
         })
       }
@@ -618,19 +656,41 @@ export default {
       const reachableNodes = findNodesToRoot(selectedTreeNode.value.id)
 
       // Find all projects that have tags matching any reachable node
-      return allProjects.value.filter(project => {
+      return allProjects.value.data.filter(project => {
         if (!project.tags || project.tags.length === 0) return false
 
         return project.tags.some(tag =>
-          reachableNodes.has(tag.toLowerCase())
+          reachableNodes.has(typeof tag === 'string' ? tag.toLowerCase() : tag.name?.toLowerCase() || '')
         )
       })
     })
 
+    // Fetch graph from backend API
+    const fetchGraphFromBackend = async () => {
+      try {
+        const response = await axios.get('/api/graph', {
+          params: {
+            root_taxonomy: null,
+            associative_mode: associativeMode.value
+          }
+        })
+        return response.data
+      } catch (error) {
+        console.error('Error fetching graph from backend:', error)
+        return { nodes: [], edges: [] }
+      }
+    }
+
+    // Helper function to update all reachable nodes
+    const updateAllReachableNodes = async () => {
+      const reachable = await findAllReachableFromRoots()
+      allReachableNodes.value = reachable
+    }
+
     // Helper function to find all nodes reachable from any root
-    const findAllReachableFromRoots = () => {
-      // Build graph from current data
-      const graph = graphBuilder.buildGraph(tags.value, taxonomiesData.value, null, associativeMode.value)
+    const findAllReachableFromRoots = async () => {
+      // Fetch graph from backend
+      const graph = await fetchGraphFromBackend()
 
       if (!graph) return new Set()
 
@@ -726,13 +786,13 @@ export default {
         const parentNodes = treeData.value
           .filter(node => {
             // Check if this node has edges to current node
-            return graphBuilder.edges && graphBuilder.edges.some(edge =>
+            return graphData.value.edges && graphData.value.edges.some(edge =>
               edge.target === currentId && edge.source !== currentId
             )
           })
           .map(node => {
             // Return parent node ID
-            const edge = graphBuilder.edges.find(edge =>
+            const edge = graphData.value.edges.find(edge =>
               edge.target === currentId ? edge.source : null
             )
             return edge ? edge.source : null
@@ -748,12 +808,12 @@ export default {
         // Also traverse down from current node to include children
         const childNodes = treeData.value
           .filter(node => {
-            return graphBuilder.edges && graphBuilder.edges.some(edge =>
+            return graphData.value.edges && graphData.value.edges.some(edge =>
               edge.source === currentId && edge.target !== currentId
             )
           })
           .map(node => {
-            const edge = graphBuilder.edges.find(edge =>
+            const edge = graphData.value.edges.find(edge =>
               edge.source === currentId ? edge.target : null
             )
             return edge ? edge.target : null
@@ -799,11 +859,15 @@ export default {
           ? taxonomiesResponse.data.filter(taxonomy => taxonomy.relations !== undefined)
           : taxonomiesResponse.data
 
-        // Build graph using same logic as TaxonomyVisualization
-        const graph = graphBuilder.buildGraph(tagsResponse.data, taxonomiesData.value, null, associativeMode.value)
+        // Build graph using backend API
+        const graph = await fetchGraphFromBackend()
+        graphData.value = graph
 
         // Build tree structure from graph
         treeData.value = buildTreeFromGraph(graph)
+
+        // Update all reachable nodes for the computed property
+        await updateAllReachableNodes()
 
         // Auto-expand the whole tree
         const expandAll = (nodes) => {
@@ -884,6 +948,16 @@ export default {
       window.open(buildDTProjectFindingsUrl(project.uuid), '_blank')
     }
 
+    // Pagination handler
+    const onPageChanged = (page) => {
+      currentPage.value = page
+    }
+
+    const onPageSizeChanged = (newPageSize) => {
+      pageSize.value = newPageSize
+      currentPage.value = 1 // Reset to first page when changing page size
+    }
+
     onMounted(() => {
       refreshData()
     })
@@ -900,9 +974,12 @@ export default {
       filteredSecurityData,
       associativeMode,
       relatedProjects,
+      paginatedProjects,
       projectsViewMode,
       gridColumns,
       isDarkMode,
+      currentPage,
+      pageSize,
       refreshData,
       toggleTreeNode,
       selectTreeNode,
@@ -923,7 +1000,9 @@ export default {
       formatDate,
       getProjectVulnerabilities,
       buildDTProjectUrl,
-      buildDTProjectFindingsUrl
+      buildDTProjectFindingsUrl,
+      onPageChanged,
+      onPageSizeChanged
     }
   }
 }

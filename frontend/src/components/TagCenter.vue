@@ -1064,8 +1064,8 @@ export default {
     // Methods
     const loadProjects = async () => {
       try {
-        // Load projects from our backend - auth service handles token automatically
-        const response = await axios.get('/api/projects')
+        // Load projects from DT API directly
+        const response = await axios.get('/api/v1/project')
 
         projects.value = response.data.map(project => ({
           id: project.uuid, // Use uuid as id
