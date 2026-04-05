@@ -656,7 +656,7 @@ export default {
             offset: (page - 1) * pageSize.value
           }
         });
-        const allProjects = response.data;
+        const allProjects = response.data.data;
 
         // Filter projects that have any of the specified tags
         const filteredProjects = allProjects.filter(project => {

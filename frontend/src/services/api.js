@@ -63,7 +63,16 @@ class ApiService {
     try {
       const response = await axios.get(`/api/${endpoint}`, { params })
 
-      // Extract pagination metadata from response
+      // If the backend already returns {data, pagination}, use it directly
+      if (response.data && response.data.data && response.data.pagination) {
+        return {
+          data: response.data.data,
+          pagination: response.data.pagination,
+          headers: response.headers
+        }
+      }
+
+      // Extract pagination metadata from response headers (fallback)
       const paginationMetadata = this.extractPaginationMetadata(response, pagination)
 
       return {
