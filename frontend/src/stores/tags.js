@@ -65,7 +65,7 @@ export const useTagStore = defineStore('tags', () => {
       const { default: axios } = await import('axios')
 
       // Load all tags (backend doesn't support pagination)
-      const response = await axios.get('/api/tags')
+      const response = await axios.get('/api/tag')
       tags.value = response.data
 
       // Update pagination info
@@ -104,7 +104,7 @@ export const useTagStore = defineStore('tags', () => {
     try {
       const { default: axios } = await import('axios')
 
-      const response = await axios.post('/api/tags', tagData)
+      const response = await axios.post('/api/tag', tagData)
 
       // Add new tag to local state
       tags.value.push(response.data)
@@ -131,7 +131,7 @@ export const useTagStore = defineStore('tags', () => {
     try {
       const { default: axios } = await import('axios')
 
-      const response = await axios.put(`/api/tags/${tagName}`, tagData)
+      const response = await axios.put(`/api/tag/${tagName}`, tagData)
 
       // Update tag in local state
       const index = tags.value.findIndex(tag => tag.name === tagName)
@@ -158,7 +158,7 @@ export const useTagStore = defineStore('tags', () => {
     try {
       const { default: axios } = await import('axios')
 
-      await axios.delete(`/api/tags/${tagName}`)
+      await axios.delete(`/api/tag/${tagName}`)
 
       // Remove tag from local state
       const index = tags.value.findIndex(tag => tag.name === tagName)

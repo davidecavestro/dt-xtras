@@ -113,7 +113,7 @@ export const useProjectStore = defineStore('projects', () => {
       // Import here to avoid circular dependency
       const { default: axios } = await import('axios')
 
-      const response = await axios.get('/api/projects')
+      const response = await axios.get('/api/project')
       projects.value = response.data.data
 
       // Update pagination info

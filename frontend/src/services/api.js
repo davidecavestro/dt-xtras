@@ -222,7 +222,7 @@ class ApiService {
 
   /**
    * Get projects with pagination
-   * Endpoint: /projects
+   * Endpoint: /project
    * Operation: getProjects
    * @param {Object} pagination - Pagination configuration
    * @param {Object} filters - Additional filters
@@ -250,14 +250,14 @@ class ApiService {
 
   /**
    * Get tags with pagination
-   * Endpoint: /tags
+   * Endpoint: /tag
    * Operation: getTags
    * @param {Object} pagination - Pagination configuration
    * @param {Object} filters - Additional filters
    * @returns {Promise} - Paginated tags data
    */
   async getTags(pagination = {}, filters = {}) {
-    return this.getPaginated('/tags', pagination, filters)
+    return this.getPaginated('/tag', pagination, filters)
   }
 
   /**

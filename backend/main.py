@@ -462,7 +462,7 @@ async def health_check():
 async def get_taxonomies():
     return load_taxonomies()
 
-@app.get("/api/taxonomies/{taxonomy_id}/tags", response_model=List[Tag])
+@app.get("/api/taxonomies/{taxonomy_id}/tag", response_model=List[Tag])
 async def get_taxonomy_tags(taxonomy_id: str, dt_token: str = Depends(get_dt_token_from_request)):
     """Get all tags that match a specific taxonomy pattern"""
     # Load taxonomies to find the pattern
@@ -523,7 +523,7 @@ async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
 
     return tags
 
-@app.put("/api/tags/{tag_name}")
+@app.put("/api/tag/{tag_name}")
 async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Depends(require_edit_permissions), credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Update a tag name using the create-new-delete-old approach"""
     new_name = tag_data.get('name', '').strip()
@@ -892,13 +892,14 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
 
     return project_versions
 
-@app.get("/api/projects")
+@app.get("/api/project")
 async def get_projects(
     dt_token: str = Depends(get_dt_token_from_request),
     page: int = 1,
     limit: int = 50,
     search: Optional[str] = None,
-    active_only: Optional[bool] = False
+    active_only: Optional[bool] = False,
+    excludeInactive: Optional[str] = None
 ):
     """Get projects from DT API with pagination"""
     print(f"Getting projects with DT token: {dt_token[:50] if dt_token else 'None'}...")
@@ -915,12 +916,17 @@ async def get_projects(
         params["name"] = search
 
     # Add active_only parameter logic
-    if active_only is not None:
+    if excludeInactive is not None:
+        # Use excludeInactive parameter if provided
+        params["excludeInactive"] = excludeInactive
+        print(f"Setting excludeInactive to: {params['excludeInactive']} (from excludeInactive parameter)")
+    elif active_only is not None:
+        # Fall back to active_only parameter
         params["excludeInactive"] = "true" if active_only else "false"
         print(f"Setting excludeInactive to: {params['excludeInactive']} (active_only={active_only})")
     else:
         params["excludeInactive"] = "false"  # Default to include all projects when not specified
-        print(f"Using default excludeInactive: {params['excludeInactive']} (active_only is None)")
+        print(f"Using default excludeInactive: {params['excludeInactive']} (both parameters are None)")
 
     print(f"API params: {params}")  # Debug log
 
@@ -938,9 +944,17 @@ async def get_projects(
         # Build DT API parameters for count
         count_params = {
             "pageNumber": "1",
-            "pageSize": "1",
-            "excludeInactive": "true" if active_only else "false"
+            "pageSize": "1"
         }
+
+        # Use the same excludeInactive logic as the main request
+        if excludeInactive is not None:
+            count_params["excludeInactive"] = excludeInactive
+        elif active_only is not None:
+            count_params["excludeInactive"] = "true" if active_only else "false"
+        else:
+            count_params["excludeInactive"] = "false"
+
         if search:
             count_params["name"] = search
 
@@ -953,8 +967,8 @@ async def get_projects(
             if total_count:
                 total_count = int(total_count)
             else:
-                # Fallback - count the actual results
-                projects_response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params={"excludeInactive": count_params["excludeInactive"]}, timeout=30.0)
+                # Fallback - count the actual results with same parameters
+                projects_response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=count_params, timeout=30.0)
                 projects_data = projects_response.json()
                 total_count = len(projects_data)
     except Exception as e:
@@ -971,7 +985,7 @@ async def get_projects(
         }
     }
 
-@app.get("/api/projects/count")
+@app.get("/api/project/count")
 async def get_projects_count(
     dt_token: str = Depends(get_dt_token_from_request),
     search: Optional[str] = None,
@@ -1010,7 +1024,7 @@ async def get_projects_count(
             projects = response.json()
             return {"total": len(projects), "page_size": 50}
 
-@app.delete("/api/projects/{project_uuid}")
+@app.delete("/api/project{project_uuid}")
 async def delete_project(project_uuid: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
     """Delete a project from Dependency-Track"""
     async with httpx.AsyncClient() as client:
@@ -1053,7 +1067,7 @@ async def delete_project(project_uuid: str, dt_token: str = Depends(get_dt_token
 
         return {"message": "Project deleted successfully"}
 
-@app.patch("/api/projects/{project_uuid}/activate")
+@app.patch("/api/project/{project_uuid}/activate")
 async def activate_project(project_uuid: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
     """Activate a project in Dependency-Track"""
     async with httpx.AsyncClient() as client:
@@ -1076,7 +1090,7 @@ async def activate_project(project_uuid: str, dt_token: str = Depends(get_dt_tok
 
         return {"message": "Project activated successfully"}
 
-@app.patch("/api/projects/{project_uuid}/deactivate")
+@app.patch("/api/project/{project_uuid}/deactivate")
 async def deactivate_project(project_uuid: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
     """Deactivate a project in Dependency-Track"""
     async with httpx.AsyncClient() as client:
@@ -1099,7 +1113,7 @@ async def deactivate_project(project_uuid: str, dt_token: str = Depends(get_dt_t
 
         return {"message": "Project deactivated successfully"}
 
-@app.put("/api/projects/{project_uuid}/refresh")
+@app.put("/api/project/{project_uuid}/refresh")
 async def refresh_project(project_uuid: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
     """Refresh a project in Dependency-Track (trigger re-analysis)"""
     async with httpx.AsyncClient() as client:
@@ -1160,7 +1174,7 @@ async def delete_project_version(version_id: str, dt_token: str = Depends(get_dt
     return {"message": "Project version deleted successfully"}
 
 # Tag Management (using DT native API)
-@app.get("/api/tags")
+@app.get("/api/tag")
 async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
     """Get all tags from DT with project counts and taxonomy information"""
     headers = {}
@@ -1226,7 +1240,7 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
 
         return tags_with_taxonomy
 
-@app.post("/api/tags")
+@app.post("/api/tag")
 async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
     """Create a new tag in DT"""
     tag_name = tag_data.get('name')
@@ -1282,7 +1296,7 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
             print(error_detail)
             raise HTTPException(status_code=500, detail=error_detail)
 
-@app.delete("/api/tags/{tag_name}")
+@app.delete("/api/tag/{tag_name}")
 async def delete_tag(tag_name: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
     """Delete a tag from DT"""
     headers = {}
@@ -1305,23 +1319,14 @@ async def delete_tag(tag_name: str, dt_token: str = Depends(get_dt_token_from_re
         raise HTTPException(status_code=response.status_code, detail="Failed to delete tag")
 
 @app.get("/api/tag/{tag_name}/project")
-async def get_tag_projects(tag_name: str, dt_token: str = Depends(get_dt_token_from_request)):
-    """Get all projects that use a specific tag"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{DT_API_URL}/api/v1/tag/{tag_name}/project",
-            headers=headers
-        )
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise HTTPException(status_code=404, detail="Tag not found")
+async def get_projects_for_tag(tag_name: str, dt_token: str = Depends(get_dt_token_from_request)):
+    """Get all projects that have a specific tag"""
+    try:
+        projects = await get_projects_with_tag(dt_token, tag_name)
+        return projects
+    except Exception as e:
+        print(f"Error getting projects for tag {tag_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error getting projects for tag: {e}")
 
 
 @app.post("/api/tag/{tag_name}/project")
@@ -1717,6 +1722,7 @@ class SimpleTaxonomyGraphBuilder:
     def _build_associative_relations(self, normalized_taxonomies, normalized_tags, root_taxonomy):
         associative_nodes_to_hide = set()
         edges = []
+        edge_ids = set()  # Track edge IDs to prevent duplicates
 
         for tag in normalized_tags:
             taxonomy = tag['taxonomy']
@@ -1748,11 +1754,14 @@ class SimpleTaxonomyGraphBuilder:
 
                         # Create edge between previous group and current group
                         if prev and target_tag:
-                            edges.append({
-                                'id': f'{prev}-{target_tag["name"]}',
-                                'source': prev,
-                                'target': target_tag['name']
-                            })
+                            edge_id = f'{prev}-{target_tag["name"]}'
+                            if edge_id not in edge_ids:  # Only add if not duplicate
+                                edges.append({
+                                    'id': edge_id,
+                                    'source': prev,
+                                    'target': target_tag['name']
+                                })
+                                edge_ids.add(edge_id)
                         prev = target_tag['name'] if target_tag else None
 
         return edges
@@ -1770,6 +1779,7 @@ class SimpleTaxonomyGraphBuilder:
     def _build_normal_relations(self, normalized_taxonomies, normalized_tags, root_taxonomy):
         # The associative tags are visible here
         edges = []
+        edge_ids = set()  # Track edge IDs to prevent duplicates
 
         for tag in normalized_tags:
             taxonomy = tag['taxonomy']
@@ -1787,11 +1797,14 @@ class SimpleTaxonomyGraphBuilder:
 
                             # Create edge between tag and target
                             if target_tag:
-                                edges.append({
-                                    'id': f'{tag["name"]}-{target_tag["name"]}',
-                                    'source': tag['name'],
-                                    'target': target_tag['name']
-                                })
+                                edge_id = f'{tag["name"]}-{target_tag["name"]}'
+                                if edge_id not in edge_ids:  # Only add if not duplicate
+                                    edges.append({
+                                        'id': edge_id,
+                                        'source': tag['name'],
+                                        'target': target_tag['name']
+                                    })
+                                    edge_ids.add(edge_id)
 
         return edges
 

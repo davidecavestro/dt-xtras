@@ -104,6 +104,79 @@
         </div>
       </div>
 
+      <!-- Pagination Controls -->
+      <div v-if="totalProjects > 0" class="flex items-center justify-between mb-6 px-4 pt-4">
+        <div class="flex items-center space-x-4">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
+            Showing {{ projects.length }} of {{ totalProjects }} projects
+          </div>
+          <div class="flex items-center space-x-2">
+            <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+            <select
+              v-model="pageSize"
+              @change="handlePageSizeChange(pageSize)"
+              class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+            >
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button
+            @click="prevPage"
+            :disabled="currentPage <= 1"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <!-- Page Numbers -->
+          <div class="flex items-center space-x-1">
+            <button
+              v-for="page in Math.min(5, totalPages)"
+              :key="page"
+              @click="goToPage(page)"
+              :class="[
+                'px-3 py-1 text-sm border rounded-md',
+                page === currentPage
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ page }}
+            </button>
+            <span v-if="totalPages > 5" class="px-2 text-gray-500">...</span>
+            <button
+              v-if="totalPages > 5"
+              @click="goToPage(totalPages)"
+              :class="[
+                'px-3 py-1 text-sm border rounded-md',
+                totalPages === currentPage
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ totalPages }}
+            </button>
+          </div>
+
+          <button
+            @click="nextPage"
+            :disabled="currentPage >= totalPages"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <!-- Bulk Actions -->
       <div class="px-4 py-3 sm:px-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex justify-between items-center">
@@ -273,64 +346,6 @@
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pagination Controls -->
-      <div class="px-4 py-4 sm:px-6 border-t border-gray-200 dark:border-gray-700">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-700 dark:text-gray-300">
-            Showing {{ projects.length }} of {{ totalProjects }} projects
-            <span v-if="totalPages > 1"> (Page {{ currentPage }} of {{ totalPages }})</span>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button
-              @click="prevPage"
-              :disabled="currentPage === 1 || loading"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-
-            <div class="flex items-center space-x-1">
-              <button
-                v-for="page in Math.min(5, totalPages)"
-                :key="page"
-                @click="goToPage(page)"
-                :class="[
-                  'px-3 py-1 text-sm border rounded-md',
-                  page === currentPage
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                ]"
-              >
-                {{ page }}
-              </button>
-
-              <span v-if="totalPages > 5" class="px-2 text-gray-500">...</span>
-
-              <button
-                v-if="totalPages > 5"
-                @click="goToPage(totalPages)"
-                :class="[
-                  'px-3 py-1 text-sm border rounded-md',
-                  totalPages === currentPage
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                ]"
-              >
-                {{ totalPages }}
-              </button>
-            </div>
-
-            <button
-              @click="nextPage"
-              :disabled="currentPage === totalPages || loading"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
           </div>
         </div>
       </div>
@@ -621,12 +636,12 @@ export default {
           params.search = searchQuery.value
         }
 
-        const response = await axios.get('/api/projects', { params })
-        projects.value = response.data
+        const response = await axios.get('/api/project', { params })
+        projects.value = response.data.data
 
         // Get total count for pagination
         try {
-          const countResponse = await axios.get('/api/projects/count', {
+          const countResponse = await axios.get('/api/project/count', {
             params: { search: searchQuery.value }
           })
           totalProjects.value = countResponse.data.total
@@ -764,7 +779,7 @@ export default {
     const deleteProject = async (project) => {
       if (confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
         try {
-          await axios.delete(`/api/projects/${project.uuid}`)
+          await axios.delete(`/api/project/${project.uuid}`)
           projects.value = projects.value.filter(p => p.uuid !== project.uuid)
           selectedProjects.value = selectedProjects.value.filter(uuid => uuid !== project.uuid)
         } catch (error) {
@@ -777,7 +792,7 @@ export default {
     const confirmDelete = async () => {
       try {
         const deletePromises = selectedProjects.value.map(uuid =>
-          axios.delete(`/api/projects/${uuid}`)
+          axios.delete(`/api/project/${uuid}`)
         )
         await Promise.all(deletePromises)
 
@@ -794,7 +809,7 @@ export default {
     const confirmActivate = async () => {
       try {
         const activatePromises = selectedProjects.value.map(uuid =>
-          axios.patch(`/api/projects/${uuid}/activate`)
+          axios.patch(`/api/project/${uuid}/activate`)
         )
         await Promise.all(activatePromises)
 
@@ -818,7 +833,7 @@ export default {
     const confirmDeactivate = async () => {
       try {
         const deactivatePromises = selectedProjects.value.map(uuid =>
-          axios.patch(`/api/projects/${uuid}/deactivate`)
+          axios.patch(`/api/project/${uuid}/deactivate`)
         )
         await Promise.all(deactivatePromises)
 
@@ -842,7 +857,7 @@ export default {
     const refreshSelectedProjects = async () => {
       try {
         const refreshPromises = selectedProjects.value.map(uuid =>
-          axios.put(`/api/projects/${uuid}/refresh`)
+          axios.put(`/api/project/${uuid}/refresh`)
         )
         await Promise.all(refreshPromises)
 
@@ -873,6 +888,12 @@ export default {
         currentPage.value--
         refreshProjects()
       }
+    }
+
+    const handlePageSizeChange = (newPageSize) => {
+      pageSize.value = newPageSize
+      currentPage.value = 1 // Reset to first page when changing page size
+      refreshProjects()
     }
 
     // Watch for search changes and reset pagination
@@ -921,7 +942,8 @@ export default {
       refreshSelectedProjects,
       goToPage,
       nextPage,
-      prevPage
+      prevPage,
+      handlePageSizeChange
     }
   }
 }

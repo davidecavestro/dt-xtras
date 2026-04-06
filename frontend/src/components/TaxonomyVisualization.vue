@@ -210,7 +210,9 @@
                   DT
                 </a>
               </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ project.tags.join(', ') }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                {{ project.tags && Array.isArray(project.tags) ? project.tags.join(', ') : 'No tags' }}
+              </div>
 
               <!-- Security Info -->
               <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
@@ -330,7 +332,7 @@ export default {
         error.value = null;
 
         const [tagsResponse, taxonomiesResponse] = await Promise.all([
-          axios.get('/api/tags'),
+          axios.get('/api/tag'),
           axios.get('/api/taxonomies')
         ]);
 
@@ -376,7 +378,7 @@ export default {
         loading.value = true;
 
         // Get fresh tags data
-        const tagsResponse = await axios.get('/api/tags');
+        const tagsResponse = await axios.get('/api/tag');
         const tags = tagsResponse.data.tags || tagsResponse.data;
 
         if (!tags) {
@@ -649,37 +651,50 @@ export default {
       try {
         loadingRelatedProjects.value = true;
 
-        // Get projects with pagination support
-        const response = await axios.get('/api/projects', {
-          params: {
-            limit: pageSize.value,
-            offset: (page - 1) * pageSize.value
+        // Convert Set to Array for easier handling
+        const tagArray = Array.from(tagIds);
+        console.log('🔍 Getting projects for tags:', tagArray);
+
+        // For now, get projects for each tag individually and merge the results
+        // TODO: Backend should support multiple tag filtering in a single request
+        const allProjectsSet = new Set();
+
+        for (const tagId of tagArray) {
+          try {
+            const response = await axios.get(`/api/tag/${encodeURIComponent(tagId)}/project`);
+            const projects = response.data || [];
+
+            // Add projects to the set (avoid duplicates)
+            projects.forEach(project => {
+              allProjectsSet.add(JSON.stringify(project));
+            });
+
+            console.log(`📁 Found ${projects.length} projects for tag ${tagId}`);
+          } catch (error) {
+            console.warn(`Could not get projects for tag ${tagId}:`, error);
           }
-        });
-        const allProjects = response.data.data;
-
-        // Filter projects that have any of the specified tags
-        const filteredProjects = allProjects.filter(project => {
-          const projectTags = project.tags || [];
-          return Array.from(tagIds).some(tagId => projectTags.includes(tagId));
-        });
-
-        // Get total count for pagination
-        try {
-          const countResponse = await axios.get('/api/projects/count');
-          relatedProjectsTotal.value = countResponse.data.total;
-          relatedProjectsTotalPages.value = Math.ceil(relatedProjectsTotal.value / pageSize.value);
-        } catch (countError) {
-          console.warn('Could not get project count:', countError);
-          relatedProjectsTotal.value = filteredProjects.length;
-          relatedProjectsTotalPages.value = 1;
         }
 
-        relatedProjects.value = filteredProjects;
+        // Convert Set back to Array of objects
+        const allProjects = Array.from(allProjectsSet).map(projectStr => JSON.parse(projectStr));
+
+        // Apply pagination
+        const startIndex = (page - 1) * pageSize.value;
+        const endIndex = startIndex + pageSize.value;
+        const paginatedProjects = allProjects.slice(startIndex, endIndex);
+
+        relatedProjectsTotal.value = allProjects.length;
+        relatedProjectsTotalPages.value = Math.ceil(allProjects.length / pageSize.value);
+        relatedProjects.value = paginatedProjects;
         relatedProjectsPage.value = page;
-        return filteredProjects;
+
+        console.log(`📊 Total projects found: ${allProjects.length}, showing page ${page}`);
+        return paginatedProjects;
       } catch (error) {
         console.error('Error fetching projects for tags:', error);
+        relatedProjects.value = [];
+        relatedProjectsTotal.value = 0;
+        relatedProjectsTotalPages.value = 1;
         return [];
       } finally {
         loadingRelatedProjects.value = false;
