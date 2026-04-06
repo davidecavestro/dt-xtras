@@ -99,7 +99,6 @@
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7 7" />
                 </svg>
               </button>
 
@@ -138,7 +137,6 @@
                 class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7 7" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -315,7 +313,6 @@
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7 7" />
                 </svg>
               </button>
 
@@ -354,7 +351,6 @@
                 class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7 7" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -615,9 +611,7 @@ export default {
       loading.value = true
 
       try {
-        const response = await axios.post(`/api/v1/tag/${encodeURIComponent(selectedTags.value[0])}/project`, {
-          projects: selectedProjects.value
-        })
+        const response = await axios.post(`/api/v1/tag/${encodeURIComponent(selectedTags.value[0])}/project`, selectedProjects.value)
 
         statusMessage.value = `Successfully linked ${selectedTags.value.length} tags to ${selectedProjects.value.length} projects`
         statusMessageClass.value = 'text-green-600 dark:text-green-400'
@@ -771,6 +765,7 @@ export default {
       toggleProjectSelection,
       confirmLink,
       confirmUnlink,
+      clearSelection,
       buildDTProjectUrl,
       refreshData
     }

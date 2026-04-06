@@ -153,18 +153,7 @@
                       : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                   ]"
                 >
-                  List
-                </button>
-                <button
-                  @click="projectsViewMode = 'grid'"
-                  :class="[
-                    'px-3 py-1 text-sm rounded-md',
-                    projectsViewMode === 'grid'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                  ]"
-                >
-                  Grid
+                  <ListIcon class="w-4 h-4" />
                 </button>
                 <button
                   @click="projectsViewMode = 'deck'"
@@ -175,7 +164,18 @@
                       : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                   ]"
                 >
-                  Deck
+                  <SquareIcon class="w-4 h-4" />
+                </button>
+                <button
+                  @click="projectsViewMode = 'grid'"
+                  :class="[
+                    'px-3 py-1 text-sm rounded-md',
+                    projectsViewMode === 'grid'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  ]"
+                >
+                  <GridIcon class="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -324,17 +324,19 @@
 <script>
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTagStore } from '../stores/tags.js'
-import { useProjectStore } from '../stores/projects.js'
-import { useTaxonomyStore } from '../stores/taxonomies.js'
+import { storeToRefs } from 'pinia'
+import { useProjectStore } from '../stores/projects'
+import { useTagStore } from '../stores/tags'
+import { useGraphStore } from '../stores/graph'
 import axios from 'axios'
 import TreeNode from './TreeNode.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
+import StatusCell from './grid-cells/StatusCell.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import VulnerabilityBar from './VulnerabilityBar.vue'
-import { AlertCircle, RefreshCw, Folder, FolderOpen } from 'lucide-vue-next'
+import { AlertCircle, RefreshCw, Folder, FolderOpen, ListIcon, GridIcon, SquareIcon } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import Pagination from './Pagination.vue'
 import ProjectCard from './ProjectCard.vue'
@@ -347,14 +349,49 @@ export default {
     RefreshCw,
     Folder,
     FolderOpen,
+    ListIcon,
+    GridIcon,
+    SquareIcon,
     Vue3Datagrid,
     Pagination,
     ProjectCard,
     RiskScoreBadge,
     VulnerabilityBar,
-    TreeNode
+    TreeNode,
+    TagsCell,
+    DateCell,
+    StatusCell,
+    NameCell
   },
   setup() {
+    const router = useRouter()
+
+    // Use stores
+    const projectStore = useProjectStore()
+    const tagStore = useTagStore()
+    const graphStore = useGraphStore()
+
+    // Reactive properties from stores
+    const { projects, isLoading: projectsLoading, error: projectsError } = storeToRefs(projectStore)
+    const { tags, isLoading: tagsLoading, error: tagsError } = storeToRefs(tagStore)
+    const {
+      graphData,
+      loading: graphLoading,
+      error: graphError,
+      nodes,
+      edges,
+      rootNodes
+    } = storeToRefs(graphStore)
+
+    // Methods from stores
+    const { loadProjects } = projectStore
+    const { loadTags } = tagStore
+    const {
+      loadGraph: loadGraphAction,
+      findReachableNodes,
+      setAssociativeMode: setAssociativeModeAction
+    } = graphStore
+
     const loading = ref(false)
     const error = ref('')
     const securityData = ref([])
@@ -363,11 +400,8 @@ export default {
     const searchQuery = ref('')
     const treeData = ref([])
     const allReachableNodes = ref(new Set())
-    const graphData = ref({ nodes: [], edges: [] })
-    const allProjects = ref([])
-    const tags = ref([])
-    const taxonomiesData = ref([])
     const allTaxonomiesData = ref([])
+    const taxonomiesData = ref([])
     const associativeMode = ref(true) // Default to associative mode like graph
     const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
 
@@ -462,8 +496,10 @@ export default {
       // Get related projects for the selected node (or all projects if no node selected)
       const related = relatedProjects.value
 
-      // If no related projects, return empty array
-      if (!related || related.length === 0) return []
+      // If no related projects, return all security data
+      if (!related || related.length === 0) {
+        return securityData.value
+      }
 
       // Extract security data from related projects only
       return related
@@ -548,7 +584,7 @@ export default {
 
     // Helper function to find reachable tags (same as TaxonomyVisualization)
     const findReachableTags = (startNodeId) => {
-      if (!startNodeId || !treeData.value || treeData.value.length === 0 || !graphData.value.edges) return new Set()
+      if (!startNodeId || !treeData.value || treeData.value.length === 0 || !edges.value) return new Set()
 
       const visited = new Set()
       const queue = [startNodeId]
@@ -565,13 +601,13 @@ export default {
         const connectedNodes = treeData.value
           .filter(node => {
             // Check if this node has edges to other nodes
-            return graphData.value.edges && graphData.value.edges.some(edge =>
+            return edges.value && edges.value.some(edge =>
               edge.source === currentId || edge.target === currentId
             )
           })
           .map(node => {
             // Return the connected node ID
-            const edge = graphData.value.edges.find(edge =>
+            const edge = edges.value.find(edge =>
               edge.source === currentId ? edge.target : edge.source
             )
             return edge.source === currentId ? edge.target : edge.source
@@ -609,7 +645,16 @@ export default {
       })
 
       // Build tree structure from edges
+      const edgeMap = new Map()
       graph.edges.forEach(edge => {
+        // Deduplicate edges by using the edge ID as key
+        if (!edgeMap.has(edge.id)) {
+          edgeMap.set(edge.id, edge)
+        }
+      })
+
+      // Process deduplicated edges
+      edgeMap.forEach(edge => {
         const parent = nodeMap.get(edge.source)
         const child = nodeMap.get(edge.target)
 
@@ -643,21 +688,19 @@ export default {
       if (!treeData.value || treeData.value.length === 0) return []
 
       if (!selectedTreeNode.value) {
-        // When no node selected, return all projects reachable from any root
-        return allProjects.value.data.filter(project => {
-          if (!project.tags || project.tags.length === 0) return false
-          return project.tags.some(tag =>
-            allReachableNodes.value.has(typeof tag === 'string' ? tag.toLowerCase() : tag.name?.toLowerCase() || '')
-          )
-        })
+        // When no node selected, return all projects
+        return projects.value
       }
 
       // Find all nodes reachable from selected node to root (upward traversal)
       const reachableNodes = findNodesToRoot(selectedTreeNode.value.id)
 
       // Find all projects that have tags matching any reachable node
-      return allProjects.value.data.filter(project => {
-        if (!project.tags || project.tags.length === 0) return false
+      return projects.value.filter(project => {
+        if (!project.tags || project.tags.length === 0) {
+          // If project has no tags, don't include it when a node is selected
+          return false
+        }
 
         return project.tags.some(tag =>
           reachableNodes.has(typeof tag === 'string' ? tag.toLowerCase() : tag.name?.toLowerCase() || '')
@@ -665,107 +708,18 @@ export default {
       })
     })
 
-    // Fetch graph from backend API
-    const fetchGraphFromBackend = async () => {
-      try {
-        const response = await axios.get('/api/graph', {
-          params: {
-            root_taxonomy: null,
-            associative_mode: associativeMode.value
-          }
-        })
-        return response.data
-      } catch (error) {
-        console.error('Error fetching graph from backend:', error)
-        return { nodes: [], edges: [] }
-      }
-    }
-
     // Helper function to update all reachable nodes
     const updateAllReachableNodes = async () => {
-      const reachable = await findAllReachableFromRoots()
-      allReachableNodes.value = reachable
-    }
+      // Get all root nodes and find all reachable nodes from them
+      const allReachable = new Set()
 
-    // Helper function to find all nodes reachable from any root
-    const findAllReachableFromRoots = async () => {
-      // Fetch graph from backend
-      const graph = await fetchGraphFromBackend()
+      // Find reachable nodes from each root node
+      rootNodes.value.forEach(rootNode => {
+        const reachable = findReachableNodes(rootNode.id)
+        reachable.forEach(nodeId => allReachable.add(nodeId))
+      })
 
-      if (!graph) return new Set()
-
-      // Handle different graph structures
-      let nodes = []
-      let edges = []
-
-      if (Array.isArray(graph.nodes)) {
-        nodes = graph.nodes
-      } else if (graph.nodes && typeof graph.nodes === 'object') {
-        // Check if it's a Map
-        if (graph.nodes instanceof Map) {
-          nodes = Array.from(graph.nodes.values())
-        } else {
-          // If nodes is a regular object, try to get values
-          nodes = Object.values(graph.nodes)
-        }
-      } else {
-        return new Set()
-      }
-
-      if (Array.isArray(graph.edges)) {
-        edges = graph.edges
-      } else if (graph.edges && typeof graph.edges === 'object') {
-        // Check if it's a Map
-        if (graph.edges instanceof Map) {
-          edges = Array.from(graph.edges.values())
-        } else {
-          // If edges is a regular object, try to get values
-          edges = Object.values(graph.edges)
-        }
-      } else {
-        return new Set()
-      }
-
-      if (nodes.length === 0) return new Set()
-
-      const allReachableNodes = new Set()
-      const visited = new Set()
-
-      // Find all root nodes
-      const allTargetIds = new Set(edges.map(edge => edge.target))
-      const allSourceIds = new Set(edges.map(edge => edge.source))
-
-      const rootNodes = nodes
-        .filter(node => !allTargetIds.has(node.id) && allSourceIds.has(node.id))
-        .map(node => node.id)
-
-      // If no root nodes found, try alternative approach - use all nodes as starting points
-      const startNodes = rootNodes.length > 0 ? rootNodes : nodes.map(n => n.id)
-
-      // Start BFS from all root nodes (or all nodes if no roots found)
-      const queue = [...startNodes]
-
-      while (queue.length > 0) {
-        const currentId = queue.shift()
-
-        if (visited.has(currentId)) continue
-        visited.add(currentId)
-        allReachableNodes.add(currentId)
-
-        // Find all child nodes
-        const childNodes = edges
-          .filter(edge => edge.source === currentId)
-          .map(edge => edge.target)
-          .filter(nodeId => nodeId !== null)
-
-        childNodes.forEach(nodeId => {
-          if (!visited.has(nodeId)) {
-            queue.push(nodeId)
-          }
-        })
-      }
-
-      return allReachableNodes
+      allReachableNodes.value = allReachable
     }
 
     // Helper function to find all nodes from selected node up to root
@@ -786,13 +740,13 @@ export default {
         const parentNodes = treeData.value
           .filter(node => {
             // Check if this node has edges to current node
-            return graphData.value.edges && graphData.value.edges.some(edge =>
+            return edges.value && edges.value.some(edge =>
               edge.target === currentId && edge.source !== currentId
             )
           })
           .map(node => {
             // Return parent node ID
-            const edge = graphData.value.edges.find(edge =>
+            const edge = edges.value.find(edge =>
               edge.target === currentId ? edge.source : null
             )
             return edge ? edge.source : null
@@ -808,12 +762,12 @@ export default {
         // Also traverse down from current node to include children
         const childNodes = treeData.value
           .filter(node => {
-            return graphData.value.edges && graphData.value.edges.some(edge =>
+            return edges.value && edges.value.some(edge =>
               edge.source === currentId && edge.target !== currentId
             )
           })
           .map(node => {
-            const edge = graphData.value.edges.find(edge =>
+            const edge = edges.value.find(edge =>
               edge.source === currentId ? edge.target : null
             )
             return edge ? edge.target : null
@@ -841,16 +795,15 @@ export default {
       error.value = ''
 
       try {
-        // Load all required data
-        const [securityResponse, projectsResponse, tagsResponse] = await Promise.all([
-          axios.get('/api/aggregate'),
-          axios.get('/api/projects'),
-          axios.get('/api/tags')
+        // Load data using stores
+        await Promise.all([
+          loadProjects(),
+          tagStore.loadTags()
         ])
 
+        // Load security data directly
+        const securityResponse = await axios.get('/api/aggregate')
         securityData.value = securityResponse.data
-        allProjects.value = projectsResponse.data
-        tags.value = tagsResponse.data
 
         // Load taxonomies (reuse from TaxonomyVisualization logic)
         const taxonomiesResponse = await axios.get('/api/taxonomies')
@@ -860,11 +813,13 @@ export default {
           : taxonomiesResponse.data
 
         // Build graph using backend API
-        const graph = await fetchGraphFromBackend()
-        graphData.value = graph
+        await loadGraphAction({
+          rootTaxonomy: null,
+          associativeMode: associativeMode.value
+        })
 
         // Build tree structure from graph
-        treeData.value = buildTreeFromGraph(graph)
+        treeData.value = buildTreeFromGraph(graphData.value)
 
         // Update all reachable nodes for the computed property
         await updateAllReachableNodes()
@@ -884,6 +839,7 @@ export default {
         }
       } catch (err) {
         error.value = err.response?.data?.detail || err.message || 'Failed to load data'
+        throw err
       } finally {
         loading.value = false
       }

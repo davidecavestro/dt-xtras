@@ -56,41 +56,130 @@
 
       <!-- Search and Filters -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div class="flex flex-col sm:flex-row gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <!-- Search -->
-          <div class="flex-1">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Search Projects
+            </label>
             <input
               v-model="filters.search"
               @input="debouncedSearch"
               type="text"
-              placeholder="Search projects..."
+              placeholder="Search by name or tags..."
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
-          <!-- Filter -->
-          <div class="flex items-center">
+
+          <!-- Activity Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Activity Status
+            </label>
+            <select
+              v-model="filters.activityFilter"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="all">All Projects</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+              <option value="recent">Recent (Last 7 days)</option>
+              <option value="old">Old (30+ days)</option>
+            </select>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="flex items-end space-x-2">
             <label class="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
               <input
                 type="checkbox"
                 v-model="filters.showInactive"
                 class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-blue-600 focus:ring-blue-500"
               />
-              <span>Show inactive projects</span>
+              <span>Show inactive</span>
             </label>
+            <button
+              @click="clearFilters"
+              v-if="hasActiveFilters"
+              class="px-3 py-2 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800"
+            >
+              Clear
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Pagination -->
-      <div v-if="pagination.totalItems.value > 0" class="mb-6">
-        <Pagination
-          :current-page="pagination.currentPage.value"
-          :page-size="pagination.pageSize.value"
-          :total-items="pagination.totalItems.value"
-          :page-size-options="[10, 20, 50, 100]"
-          @page-change="handlePageChange"
-          @page-size-change="handlePageSizeChange"
-        />
+      <!-- Pagination Controls -->
+      <div v-if="pagination.totalItems.value > 0" class="flex items-center justify-between mb-6 px-4">
+        <div class="flex items-center space-x-4">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
+            Showing {{ data.length }} of {{ pagination.totalItems.value }} projects
+          </div>
+          <div class="flex items-center space-x-2">
+            <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+            <select
+              v-model="pagination.pageSize.value"
+              @change="handlePageSizeChange(pagination.pageSize.value)"
+              class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+            >
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button
+            @click="handlePageChange(pagination.currentPage.value - 1)"
+            :disabled="pagination.currentPage.value <= 1"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <!-- Page Numbers -->
+          <div class="flex items-center space-x-1">
+            <button
+              v-for="page in Math.min(5, pagination.totalPages.value)"
+              :key="page"
+              @click="handlePageChange(page)"
+              :class="[
+                'px-3 py-1 text-sm border rounded-md',
+                page === pagination.currentPage.value
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ page }}
+            </button>
+            <span v-if="pagination.totalPages.value > 5" class="px-2 text-gray-500">...</span>
+            <button
+              v-if="pagination.totalPages.value > 5"
+              @click="handlePageChange(pagination.totalPages.value)"
+              :class="[
+                'px-3 py-1 text-sm border rounded-md',
+                pagination.totalPages.value === pagination.currentPage.value
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ pagination.totalPages.value }}
+            </button>
+          </div>
+
+          <button
+            @click="handlePageChange(pagination.currentPage.value + 1)"
+            :disabled="pagination.currentPage.value >= pagination.totalPages.value"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -121,7 +210,7 @@
               <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
               <div v-if="project.tags && project.tags.length > 0" class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">
-                🏷 {{ project.tags.join(', ') }}
+                🏷 {{ Array.isArray(project.tags) ? project.tags.join(', ') : 'No tags' }}
               </div>
             </div>
             <div class="text-right">
@@ -214,7 +303,6 @@ import { FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } 
 import { usePaginatedData } from '../composables/usePagination'
 import apiService from '../services/api'
 import axios from 'axios'
-import Pagination from './Pagination.vue'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import ProjectCard from './ProjectCard.vue'
 import NameCell from './grid-cells/NameCell.vue'
@@ -231,14 +319,14 @@ export default {
     ListIcon,
     GridIcon,
     SquareIcon,
-    Pagination,
     Vue3Datagrid,
     ProjectCard
   },
   setup() {
     const filters = ref({
       search: '',
-      showInactive: false
+      showInactive: false,
+      activityFilter: 'all'
     })
 
     const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
@@ -309,12 +397,12 @@ export default {
     const { data, pagination, fetchData } = usePaginatedData(
       async (page, limit) => {
         const params = {
-          pageNumber: page.toString(),
-          pageSize: limit.toString()
+          page: page.toString(),
+          limit: limit.toString()
         }
 
         if (filters.value.search) {
-          params.name = filters.value.search
+          params.search = filters.value.search
         }
         if (filters.value.showInactive) {
           params.excludeInactive = false
@@ -322,8 +410,16 @@ export default {
           params.excludeInactive = true
         }
 
-        // Call DT API directly through generic proxy
-        return axios.get(`/api/v1/project`, { params })
+        // Call backend API endpoint
+        const response = await axios.get(`/api/project`, { params })
+
+        // Transform response to match composable expectations
+        return {
+          data: response.data.data, // Extract projects array
+          headers: {
+            'x-total-count': response.data.pagination.totalItems.toString()
+          }
+        }
       },
       { initialPageSize: 20 }
     )
@@ -391,6 +487,28 @@ export default {
       return (metrics.critical || 0) + (metrics.high || 0) + (metrics.medium || 0) + (metrics.low || 0)
     }
 
+    // Computed property to check if any filters are active
+    const hasActiveFilters = computed(() => {
+      return filters.value.search ||
+             filters.value.showInactive ||
+             filters.value.activityFilter !== 'all'
+    })
+
+    // Clear all filters
+    const clearFilters = () => {
+      filters.value = {
+        search: '',
+        showInactive: false,
+        activityFilter: 'all'
+      }
+    }
+
+    // Watch for filter changes and refetch data
+    watch(filters, async () => {
+      pagination.setPage(1) // Reset to first page when filters change
+      await fetchProjects()
+    }, { deep: true })
+
     onMounted(() => {
       fetchProjects()
     })
@@ -402,10 +520,12 @@ export default {
       projectsViewMode,
       gridColumns,
       isDarkMode,
+      hasActiveFilters,
       fetchProjects,
       debouncedSearch,
       handlePageChange,
       handlePageSizeChange,
+      clearFilters,
       onPageChanged,
       onFilterChanged,
       onSearch,

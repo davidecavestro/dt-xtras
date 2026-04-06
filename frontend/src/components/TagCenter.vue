@@ -965,6 +965,7 @@ export default {
       updateTag,
       deleteTag,
       setSearchQuery,
+      setTaxonomyFilter,
       setPageSize,
       goToPage,
       nextPage,
@@ -1159,7 +1160,7 @@ export default {
       if (!confirm(`Are you sure you want to delete tag "${tag.name}"?`)) return
 
       try {
-        await axios.delete(`/api/tags/${encodeTagName(tag.name)}`)
+        await axios.delete(`/api/tag/${encodeTagName(tag.name)}`)
 
         // Remove the tag from our list
         const index = tags.value.findIndex(t => t.name === tag.name)
@@ -1178,7 +1179,7 @@ export default {
       showProjectsModal.value = true
 
       try {
-        const response = await axios.get(`/api/tags/${encodeTagName(tag.name)}/projects`)
+        const response = await axios.get(`/api/tag/${encodeTagName(tag.name)}/project`)
         tagProjects.value = response.data
       } catch (error) {
         console.error('Error loading tag projects:', error)
@@ -1476,7 +1477,7 @@ export default {
           // If linking projects is enabled, get projects from original tag and link them
           if (linkProjects.value && cloningTag.value && cloningTag.value.projectsCount > 0) {
             try {
-              const projectsResponse = await axios.get(`/api/tags/${encodeTagName(cloningTag.value.name)}/projects`)
+              const projectsResponse = await axios.get(`/api/tag/${encodeTagName(cloningTag.value.name)}/project`)
               const projects = projectsResponse.data
 
               if (projects && projects.length > 0) {
@@ -1526,7 +1527,7 @@ export default {
           // If linking projects is enabled, get projects from original tag and link them
           if (linkProjects.value && cloningTag.value && cloningTag.value.projectsCount > 0) {
             try {
-              const projectsResponse = await axios.get(`/api/tags/${encodeTagName(cloningTag.value.name)}/projects`)
+              const projectsResponse = await axios.get(`/api/tag/${encodeTagName(cloningTag.value.name)}/project`)
               const projects = projectsResponse.data
 
               if (projects && projects.length > 0) {
@@ -1599,7 +1600,7 @@ export default {
       }
 
       try {
-        await axios.put(`/api/tags/${encodeTagName(editingTag.value.name)}`, {
+        await axios.put(`/api/tag/${encodeTagName(editingTag.value.name)}`, {
           name: editingTagName.value.trim()
         })
 
@@ -1807,7 +1808,7 @@ export default {
               const targetTaxonomyId = relation.targets
 
               // Get tags from related taxonomy
-              const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tags`)
+              const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tag`)
               const relatedTags = response.data || []
 
               // Add to dropdown options
@@ -1839,7 +1840,7 @@ export default {
             return
           }
 
-          await axios.put(`/api/tags/${encodeTagName(editingTag.value.name)}`, {
+          await axios.put(`/api/tag/${encodeTagName(editingTag.value.name)}`, {
             name: generatedTag.value,
             taxonomy_id: selectedTaxonomy.value.id
           })
@@ -1884,6 +1885,7 @@ export default {
       // Tag store methods
       loadTags,
       setSearchQuery,
+      setTaxonomyFilter,
       setPageSize,
       goToPage,
       nextPage,
@@ -1967,6 +1969,7 @@ export default {
       // Tag store methods
       loadTags,
       setSearchQuery,
+      setTaxonomyFilter,
       setPageSize,
       goToPage,
       nextPage,
