@@ -14,15 +14,15 @@
         </div>
         <button
           @click="refreshData"
-          :disabled="loading"
+          :disabled="isLoading"
           class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
         >
-          <RefreshCw v-if="loading" class="animate-spin w-4 h-4" />
+          <RefreshCw v-if="isLoading" class="animate-spin w-4 h-4" />
           <span v-else>Refresh</span>
         </button>
       </div>
 
-      <div v-if="loading" class="text-center py-6">
+      <div v-if="isLoading" class="text-center py-6">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <p class="mt-2 text-gray-600 dark:text-gray-400">Loading security data...</p>
       </div>
@@ -37,20 +37,33 @@
         </div>
       </div>
 
-      <div v-else-if="(!treeData || treeData.length === 0) || (!filteredSecurityData || filteredSecurityData.length === 0)" class="text-center py-6">
-        <div v-if="loading" class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div v-else-if="!treeData.value || treeData.value.length === 0" class="text-center py-6">
+        <div v-if="isLoading" class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <div v-else class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-          {{ loading ? 'Loading security data...' : 'No security data available' }}
+          {{ isLoading ? 'Loading tree data...' : 'No tree data available' }}
         </h3>
         <p class="mt-1 text-gray-600 dark:text-gray-400">
-          {{ loading ? 'Please wait while we load your security data.' : 'Try adjusting your filters or check your connection.' }}
+          {{ isLoading ? 'Please wait while we load your taxonomy data.' : 'Try adjusting your filters or check your connection.' }}
         </p>
       </div>
 
       <div v-else class="px-4 py-3 sm:px-6">
         <!-- Security Overview -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div v-if="!filteredSecurityData || filteredSecurityData.length === 0" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-4">
+          <div class="flex items-center">
+            <AlertCircle class="h-5 w-5 text-yellow-400" />
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">No security data available</h3>
+              <p class="text-sm text-yellow-700 dark:text-yellow-300">
+                No projects found with security metrics. Try selecting different tree nodes or check if projects have security data.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Overview (only show if security data exists) -->
+        <div v-if="filteredSecurityData && filteredSecurityData.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
             <div class="text-center">
               <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ totalVulnerabilities }}</div>
@@ -111,25 +124,24 @@
         </div>
 
         <div class="flex-1 overflow-y-auto p-4">
-          <div v-if="loading" class="text-center py-4">
+          <div v-if="isLoading" class="text-center py-4">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           </div>
 
-          <div v-else-if="treeData.length === 0" class="text-center py-4 text-gray-500 dark:text-gray-400">
-            No tree data available
-          </div>
-
-          <div v-else class="space-y-1">
+          <div v-else-if="treeData.value && treeData.value.length > 0" class="space-y-1" :key="treeData.value.length">
             <TreeNode
-              v-for="node in filteredTreeData"
+              v-for="node in treeData.value"
               :key="node.id"
               :node="node"
-              :selected-node="selectedTreeNode"
-              :expanded-nodes="expandedNodes"
-              :search-query="searchQuery"
+              :selected-node="selectedTreeNode.value"
+              :expanded-nodes="expandedNodes.value"
+              :search-query="searchQuery.value"
               @select="selectTreeNode"
               @toggle="toggleTreeNode"
             />
+          </div>
+          <div v-else class="text-center py-4 text-gray-500 dark:text-gray-400">
+            No tree data available
           </div>
         </div>
       </div>
@@ -181,7 +193,7 @@
             </div>
 
             <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              <span v-if="selectedTreeNode">
+              <span v-if="selectedTreeNode && selectedTreeNode.name">
                 {{ relatedProjects.length }} projects found for "{{ selectedTreeNode.name }}"
               </span>
               <span v-else>
@@ -213,7 +225,7 @@
                       <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
                       <div class="text-xs text-gray-500 dark:text-gray-400">Version: {{ project.version }}</div>
                       <div v-if="project.tags && project.tags.length > 0" class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">
-                        🏷 {{ project.tags.join(', ') }}
+                        🏷 {{ tags.value.join(', ') }}
                       </div>
                     </div>
                     <div class="text-right">
@@ -259,15 +271,12 @@
                   :columns="gridColumns"
                   :source="paginatedProjects"
                   :row-height="50"
-                  :virtual="true"
-                  :page-size="pageSize"
-                  :page="currentPage"
-                  :total="relatedProjects.length"
+                  :virtual="false"
                   :theme="isDarkMode ? 'darkCompact' : 'compact'"
                   :resize="true"
                   :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
                   :stretch="true"
-                  @page-changed="onPageChanged"
+                  :pagination="false"
                   class="w-full border-gray-200 dark:border-gray-700"
                   style="height: 100%;"
                   :readonly="true"
@@ -281,7 +290,7 @@
                     :page-size="pageSize"
                     :total-items="relatedProjects.length"
                     :page-size-options="[10, 20, 50, 100]"
-                    @page-change="onPageChanged"
+                    @page-change="onPageSizeChanged"
                     @page-size-change="onPageSizeChanged"
                   />
                 </div>
@@ -307,9 +316,8 @@
                     :current-page="currentPage"
                     :page-size="pageSize"
                     :total-items="relatedProjects.length"
-                    :page-size-options="[10, 20, 50, 100]"
+                    :page-size-options="[6, 12, 24, 48]"
                     @page-change="onPageChanged"
-                    @page-size-change="onPageSizeChanged"
                   />
                 </div>
               </div>
@@ -322,7 +330,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, triggerRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useProjectStore } from '../stores/projects'
@@ -370,18 +378,20 @@ export default {
     const projectStore = useProjectStore()
     const tagStore = useTagStore()
     const graphStore = useGraphStore()
+    const { edges, graphData, nodes, rootNodes } = storeToRefs(graphStore)
+    const { isLoading, error } = storeToRefs(projectStore)
+    const { tags } = storeToRefs(tagStore)
 
-    // Reactive properties from stores
-    const { projects, isLoading: projectsLoading, error: projectsError } = storeToRefs(projectStore)
-    const { tags, isLoading: tagsLoading, error: tagsError } = storeToRefs(tagStore)
-    const {
-      graphData,
-      loading: graphLoading,
-      error: graphError,
-      nodes,
-      edges,
-      rootNodes
-    } = storeToRefs(graphStore)
+    // Local state
+    const expandedNodes = ref(new Set())
+    const treeData = ref([])
+    const searchQuery = ref('')
+    const selectedTreeNode = ref(null)
+
+    // Initialize data on component mount
+    onMounted(() => {
+      refreshData()
+    })
 
     // Methods from stores
     const { loadProjects } = projectStore
@@ -389,32 +399,21 @@ export default {
     const {
       loadGraph: loadGraphAction,
       findReachableNodes,
-      setAssociativeMode: setAssociativeModeAction
     } = graphStore
 
-    const loading = ref(false)
-    const error = ref('')
-    const securityData = ref([])
-    const expandedNodes = ref(new Set())
-    const selectedTreeNode = ref(null)
-    const searchQuery = ref('')
-    const treeData = ref([])
-    const allReachableNodes = ref(new Set())
-    const allTaxonomiesData = ref([])
-    const taxonomiesData = ref([])
+    const setAssociativeMode = (isAssociative) => {
+      graphStore.setAssociativeMode(isAssociative);
+    };
+
     const associativeMode = ref(true) // Default to associative mode like graph
     const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
 
-    // Pagination for projects grid
+    // Pagination state
     const currentPage = ref(1)
-    const pageSize = ref(50)
+    const pageSize = ref(20)
 
-    // Computed property for paginated projects
-    const paginatedProjects = computed(() => {
-      const start = (currentPage.value - 1) * pageSize.value
-      const end = start + pageSize.value
-      return relatedProjects.value.slice(start, end)
-    })
+    // Local state for reachable nodes
+    const allReachableNodes = ref(new Set())
 
     // Grid columns for projects grid view
     const gridColumns = computed(() => [
@@ -477,13 +476,14 @@ export default {
 
       const query = searchQuery.value.toLowerCase()
       const filterNode = (node) => {
-        const matchesSearch = node.name.toLowerCase().includes(query)
-        const filteredChildren = node.children ? node.children.filter(filterNode) : []
+        if (node.name.toLowerCase().includes(query)) return true
 
-        return {
-          ...node,
-          children: filteredChildren.length > 0 ? filteredChildren : (matchesSearch ? [] : node.children)
+        if (node.children && node.children.length > 0) {
+          node.children = node.children.map(filterNode)
+          return node.children.some(child => child.name.toLowerCase().includes(query))
         }
+
+        return false
       }
 
       return treeData.value.map(filterNode).filter(node =>
@@ -493,25 +493,17 @@ export default {
     })
 
     const filteredSecurityData = computed(() => {
-      // Get related projects for the selected node (or all projects if no node selected)
       const related = relatedProjects.value
 
-      // If no related projects, return all security data
-      if (!related || related.length === 0) {
-        return securityData.value
-      }
-
-      // Extract security data from related projects only
-      return related
-        .filter(project => project.metrics)
+      return related.filter(project => project.tags && project.tags.length > 0)
         .map(project => ({
           name: project.name,
           type: 'project',
           vulnerabilities: getProjectVulnerabilities(project.metrics),
-          critical: project.metrics.critical || 0,
-          high: project.metrics.high || 0,
-          medium: project.metrics.medium || 0,
-          low: project.metrics.low || 0,
+          critical: project.metrics.critical,
+          high: project.metrics.high,
+          medium: project.metrics.medium,
+          low: project.metrics.low,
           metrics: project.metrics,
           uuid: project.uuid
         }))
@@ -564,27 +556,23 @@ export default {
       const high = highVulns.value
       const medium = mediumVulns.value
       const low = lowVulns.value
-      const info = infoVulns.value
+      const total = critical + high + medium + low
 
-      const riskTotal = critical + high + medium + low
+      if (total === 0) return []
 
-      const distribution = [
-        { range: 'Critical', count: critical, percentage: riskTotal > 0 ? Math.round((critical / riskTotal) * 100) : 0 },
-        { range: 'High', count: high, percentage: riskTotal > 0 ? Math.round((high / riskTotal) * 100) : 0 },
-        { range: 'Medium', count: medium, percentage: riskTotal > 0 ? Math.round((medium / riskTotal) * 100) : 0 },
-        { range: 'Low', count: low, percentage: riskTotal > 0 ? Math.round((low / riskTotal) * 100) : 0 }
+      return [
+        { level: 'Critical', count: critical, percentage: (critical / total) * 100 },
+        { level: 'High', count: high, percentage: (high / total) * 100 },
+        { level: 'Medium', count: medium, percentage: (medium / total) * 100 },
+        { level: 'Low', count: low, percentage: (low / total) * 100 }
       ]
-
-      if (info > 0) {
-        distribution.push({ range: 'Info', count: info, percentage: 0 })
-      }
 
       return distribution
     })
 
     // Helper function to find reachable tags (same as TaxonomyVisualization)
     const findReachableTags = (startNodeId) => {
-      if (!startNodeId || !treeData.value || treeData.value.length === 0 || !edges.value) return new Set()
+      if (!startNodeId || !graphData.value || !graphData.value.nodes || !edges.value) return new Set()
 
       const visited = new Set()
       const queue = [startNodeId]
@@ -598,20 +586,14 @@ export default {
         reachableTags.add(currentId)
 
         // Find connected nodes using graph builder's edge structure
-        const connectedNodes = treeData.value
-          .filter(node => {
-            // Check if this node has edges to other nodes
-            return edges.value && edges.value.some(edge =>
-              edge.source === currentId || edge.target === currentId
-            )
-          })
-          .map(node => {
-            // Return the connected node ID
-            const edge = edges.value.find(edge =>
-              edge.source === currentId ? edge.target : edge.source
-            )
-            return edge.source === currentId ? edge.target : edge.source
-          })
+        const connectedNodes = edges.value
+          .filter(edge =>
+            (edge.source === currentId && edge.target !== currentId) || (edge.target === currentId && edge.source !== currentId)
+          )
+          .map(edge =>
+            edge.target === currentId ? edge.source : edge.target
+          )
+          .filter(nodeId => nodeId !== null)
 
         connectedNodes.forEach(nodeId => {
           if (!visited.has(nodeId)) {
@@ -623,15 +605,63 @@ export default {
       return reachableTags
     }
 
-    // Tree building function using graph builder data
-    const buildTreeFromGraph = (graph) => {
-      if (!graph || !graph.nodes) return []
+    // Tree building function using taxonomy data
+    const buildTreeFromTaxonomies = (taxonomies) => {
+      if (!taxonomies || !taxonomies.nodes) return []
 
       const nodeMap = new Map()
-      const rootNodes = []
+      const rootNodesArray = []
+
+      // Create map of all nodes from taxonomy data
+      taxonomies.nodes.forEach(node => {
+        nodeMap.set(node.id, {
+          id: node.id,
+          name: node.name,
+          type: 'taxonomy', // All taxonomy nodes are taxonomy type
+          children: [],
+          vulnerabilities: 0, // Will be calculated from security data
+          projectsCount: node.projectsCount || 0,
+        })
+      })
+
+      // Build tree structure from edges
+      const edgeMap = new Map()
+      taxonomies.edges.forEach(edge => {
+        // Deduplicate edges by using the edge ID as key
+        if (!edgeMap.has(edge.id)) {
+          edgeMap.set(edge.id, edge)
+        }
+      })
+
+      // Find root nodes (nodes without incoming edges)
+      const allTargetIds = new Set(taxonomies.edges.map(edge => edge.target))
+      const allSourceIds = new Set(taxonomies.edges.map(edge => edge.source))
+
+      taxonomies.nodes.forEach(node => {
+        if (!allTargetIds.has(node.id) && allSourceIds.has(node.id)) {
+          rootNodesArray.push(node.id)
+        }
+      })
+
+      // Return sorted tree nodes
+      return rootNodesArray.map(nodeId => nodeMap.get(nodeId)).sort((a, b) => {
+        // Sort: taxonomy nodes first, then by name
+        if (a.type !== b.type) {
+          return a.type === 'taxonomy' ? -1 : 1
+        }
+        return a.name.localeCompare(b.name)
+      })
+    }
+
+    // Tree building function using graph builder data
+    const buildTreeFromGraph = (graph) => {
+      if (!graph || !nodes.value) return []
+
+      const nodeMap = new Map()
+      const rootNodesArray = []
 
       // Create map of all nodes from graph data
-      graph.nodes.forEach(node => {
+      nodes.value.forEach(node => {
         nodeMap.set(node.id, {
           id: node.id,
           name: node.name,
@@ -639,42 +669,31 @@ export default {
           children: [],
           vulnerabilities: 0, // Will be calculated from security data
           projectsCount: node.projectsCount || 0,
-          taxonomy: node.taxonomy,
-          associative: node.associative
         })
       })
 
       // Build tree structure from edges
-      const edgeMap = new Map()
-      graph.edges.forEach(edge => {
-        // Deduplicate edges by using the edge ID as key
-        if (!edgeMap.has(edge.id)) {
-          edgeMap.set(edge.id, edge)
-        }
-      })
+      edges.value.forEach(edge => {
+        const parentNode = nodeMap.get(edge.source)
+        const childNode = nodeMap.get(edge.target)
 
-      // Process deduplicated edges
-      edgeMap.forEach(edge => {
-        const parent = nodeMap.get(edge.source)
-        const child = nodeMap.get(edge.target)
-
-        if (parent && child) {
-          parent.children.push(child)
+        if (parentNode && childNode) {
+          parentNode.children.push(childNode)
         }
       })
 
       // Find root nodes (nodes without incoming edges)
-      const allTargetIds = new Set(graph.edges.map(edge => edge.target))
-      const allSourceIds = new Set(graph.edges.map(edge => edge.source))
+      const allTargetIds = new Set(edges.value.map(edge => edge.target))
+      const allSourceIds = new Set(edges.value.map(edge => edge.source))
 
-      graph.nodes.forEach(node => {
+      nodes.value.forEach(node => {
         if (!allTargetIds.has(node.id) && allSourceIds.has(node.id)) {
-          rootNodes.push(node.id)
+          rootNodesArray.push(node.id)
         }
       })
 
       // Return sorted tree nodes
-      return rootNodes.map(nodeId => nodeMap.get(nodeId)).sort((a, b) => {
+      return rootNodesArray.map(nodeId => nodeMap.get(nodeId)).sort((a, b) => {
         // Sort: taxonomy nodes first, then by name
         if (a.type !== b.type) {
           return a.type === 'taxonomy' ? -1 : 1
@@ -684,105 +703,39 @@ export default {
     }
 
     const relatedProjects = computed(() => {
-      // Wait for tree data to be available
       if (!treeData.value || treeData.value.length === 0) return []
 
       if (!selectedTreeNode.value) {
-        // When no node selected, return all projects
-        return projects.value
+        return projectStore.projects
       }
 
-      // Find all nodes reachable from selected node to root (upward traversal)
-      const reachableNodes = findNodesToRoot(selectedTreeNode.value.id)
+      const reachableNodes = findReachableTags(selectedTreeNode.value.id)
 
-      // Find all projects that have tags matching any reachable node
-      return projects.value.filter(project => {
+      return projectStore.projects.filter(project => {
         if (!project.tags || project.tags.length === 0) {
-          // If project has no tags, don't include it when a node is selected
           return false
         }
 
         return project.tags.some(tag =>
-          reachableNodes.has(typeof tag === 'string' ? tag.toLowerCase() : tag.name?.toLowerCase() || '')
+          reachableNodes.has(tag)
         )
       })
     })
 
     // Helper function to update all reachable nodes
     const updateAllReachableNodes = async () => {
-      // Get all root nodes and find all reachable nodes from them
       const allReachable = new Set()
 
-      // Find reachable nodes from each root node
-      rootNodes.value.forEach(rootNode => {
-        const reachable = findReachableNodes(rootNode.id)
-        reachable.forEach(nodeId => allReachable.add(nodeId))
-      })
-
-      allReachableNodes.value = allReachable
-    }
-
-    // Helper function to find all nodes from selected node up to root
-    const findNodesToRoot = (startNodeId) => {
-      const reachableNodes = new Set()
-      const visited = new Set()
-      const queue = [startNodeId]
-
-      // First, traverse up to find all parent nodes
-      while (queue.length > 0) {
-        const currentId = queue.shift()
-        if (visited.has(currentId)) continue
-
-        visited.add(currentId)
-        reachableNodes.add(currentId)
-
-        // Find parent nodes (nodes that have edges TO current node)
-        const parentNodes = treeData.value
-          .filter(node => {
-            // Check if this node has edges to current node
-            return edges.value && edges.value.some(edge =>
-              edge.target === currentId && edge.source !== currentId
-            )
-          })
-          .map(node => {
-            // Return parent node ID
-            const edge = edges.value.find(edge =>
-              edge.target === currentId ? edge.source : null
-            )
-            return edge ? edge.source : null
-          })
-          .filter(nodeId => nodeId !== null) // Remove null values
-
-        parentNodes.forEach(nodeId => {
-          if (!visited.has(nodeId)) {
-            queue.push(nodeId)
-          }
-        })
-
-        // Also traverse down from current node to include children
-        const childNodes = treeData.value
-          .filter(node => {
-            return edges.value && edges.value.some(edge =>
-              edge.source === currentId && edge.target !== currentId
-            )
-          })
-          .map(node => {
-            const edge = edges.value.find(edge =>
-              edge.source === currentId ? edge.target : null
-            )
-            return edge ? edge.target : null
-          })
-          .filter(nodeId => nodeId !== null)
-
-        childNodes.forEach(nodeId => {
-          if (!visited.has(nodeId)) {
-            queue.push(nodeId)
-          }
+      // Get all root nodes and find all reachable nodes from them
+      if (rootNodes.value && rootNodes.value.length > 0) {
+        rootNodes.value.forEach(rootNode => {
+          const reachable = findReachableTags(rootNode.id)
+          reachable.forEach(nodeId => allReachable.add(nodeId))
         })
       }
 
-      return reachableNodes
-    }
+      allReachableNodes.value = allReachable;
+    };
 
     // Helper function to get total vulnerabilities from project metrics
     const getProjectVulnerabilities = (metrics) => {
@@ -790,173 +743,181 @@ export default {
       return (metrics.critical || 0) + (metrics.high || 0) + (metrics.medium || 0) + (metrics.low || 0)
     }
 
+    // Load graph
+    const loadGraph = async () => {
+      await graphStore.loadGraph();
+    };
+
+    // Helper function to expand all nodes
+    const expandAll = (nodes) => {
+      const expanded = new Set()
+      nodes.forEach(node => expanded.add(node.id))
+      expandedNodes.value = expanded
+    };
+
     const refreshData = async () => {
-      loading.value = true
-      error.value = ''
+      isLoading.value = true;
+      error.value = '';
 
       try {
         // Load data using stores
         await Promise.all([
           loadProjects(),
           tagStore.loadTags()
-        ])
+        ]);
 
-        // Load security data directly
-        const securityResponse = await axios.get('/api/aggregate')
-        securityData.value = securityResponse.data
-
-        // Load taxonomies (reuse from TaxonomyVisualization logic)
-        const taxonomiesResponse = await axios.get('/api/taxonomies')
-        allTaxonomiesData.value = taxonomiesResponse.data
-        taxonomiesData.value = associativeMode.value
-          ? taxonomiesResponse.data.filter(taxonomy => taxonomy.relations !== undefined)
-          : taxonomiesResponse.data
-
-        // Build graph using backend API
+        // Load graph data with associative mode
         await loadGraphAction({
           rootTaxonomy: null,
           associativeMode: associativeMode.value
-        })
+        });
 
         // Build tree structure from graph
-        treeData.value = buildTreeFromGraph(graphData.value)
+        treeData.value = buildTreeFromGraph(graphData.value);
 
         // Update all reachable nodes for the computed property
-        await updateAllReachableNodes()
-
-        // Auto-expand the whole tree
-        const expandAll = (nodes) => {
-          nodes.forEach(node => {
-            expandedNodes.value.add(node.id)
-            if (node.children && node.children.length > 0) {
-              expandAll(node.children)
-            }
-          })
-        }
-
-        if (treeData.value.length > 0) {
-          expandAll(treeData.value)
+        await updateAllReachableNodes();
+        if (treeData.value) {
+          expandAll(treeData.value);
         }
       } catch (err) {
-        error.value = err.response?.data?.detail || err.message || 'Failed to load data'
-        throw err
+        error.value = err.message || 'Failed to load data';
+        throw err;
       } finally {
-        loading.value = false
+        isLoading.value = false;
       }
-    }
+    };
 
     const toggleTreeNode = (nodeId) => {
       if (expandedNodes.value.has(nodeId)) {
-        expandedNodes.value.delete(nodeId)
+        expandedNodes.value.delete(nodeId);
       } else {
-        expandedNodes.value.add(nodeId)
+        expandedNodes.value.add(nodeId);
       }
-    }
+    };
 
     const selectTreeNode = (node) => {
-      selectedTreeNode.value = node
+      if (node && node.id) {
+        selectedTreeNode.value = node
+      }
     }
 
     const clearSelection = () => {
-      selectedTreeNode.value = null
-    }
+      selectedTreeNode.value = null;
+    };
 
     const getSeverityColor = (severity) => {
       switch (severity) {
-        case 'Critical': return 'bg-red-500'
-        case 'High': return 'bg-orange-500'
-        case 'Medium': return 'bg-yellow-500'
-        case 'Low': return 'bg-green-500'
-        case 'Info': return 'bg-gray-500'
-        default: return 'bg-blue-500'
+        case 'Critical': return 'bg-red-500';
+        case 'High': return 'bg-orange-500';
+        case 'Medium': return 'bg-yellow-500';
+        case 'Low': return 'bg-green-500';
+        case 'Info': return 'bg-gray-500';
+        default: return 'bg-blue-500';
       }
-    }
+    };
 
     const getRiskBarColor = (range) => {
       switch (range) {
-        case 'Critical': return 'bg-orange-500'
-        case 'High': return 'bg-red-500'
-        case 'Medium': return 'bg-yellow-500'
-        case 'Low': return 'bg-green-500'
-        case 'Info': return 'bg-gray-500'
-        default: return 'bg-blue-500'
+        case 'Critical': return 'bg-orange-500';
+        case 'High': return 'bg-red-500';
+        case 'Medium': return 'bg-yellow-500';
+        case 'Low': return 'bg-green-500';
+        case 'Info': return 'bg-gray-500';
+        default: return 'bg-blue-500';
       }
-    }
+    };
 
     const formatDate = (dateString) => {
-      if (!dateString) return 'Unknown'
-      return new Date(dateString).toLocaleDateString()
-    }
+      if (!dateString) return 'Unknown';
+      return new Date(dateString).toLocaleDateString();
+    };
 
     // Project action handlers
     const viewProject = (project) => {
       // Navigate to project details page
-      window.open(buildDTProjectUrl(project.uuid), '_blank')
-    }
+      window.open(buildDTProjectUrl(project.uuid), '_blank');
+    };
 
     const viewSecurityDetails = (project) => {
       // Navigate to security details page
-      window.open(buildDTProjectFindingsUrl(project.uuid), '_blank')
-    }
+      window.open(buildDTProjectFindingsUrl(project.uuid), '_blank');
+    };
 
     const analyzeProject = (project) => {
       // Navigate to project analysis page
-      window.open(buildDTProjectFindingsUrl(project.uuid), '_blank')
-    }
+      window.open(buildDTProjectFindingsUrl(project.uuid), '_blank');
+    };
 
     // Pagination handler
     const onPageChanged = (page) => {
-      currentPage.value = page
-    }
+      currentPage.value = page;
+    };
 
     const onPageSizeChanged = (newPageSize) => {
-      pageSize.value = newPageSize
-      currentPage.value = 1 // Reset to first page when changing page size
-    }
+      pageSize.value = newPageSize;
+      currentPage.value = 1; // Reset to first page when changing page size
+    };
 
-    onMounted(() => {
-      refreshData()
+    // Computed property for paginated projects
+    const paginatedProjects = computed(() => {
+      // Defensive check to prevent undefined access
+      if (!currentPage.value || !pageSize.value || !relatedProjects.value) {
+        return []
+      }
+      const start = (currentPage.value - 1) * pageSize.value
+      const end = start + pageSize.value
+      return relatedProjects.value.slice(start, end)
     })
 
     return {
-      loading,
+      // Graph data
+      graphData,
+      isLoading,
       error,
-      securityData,
-      expandedNodes,
-      selectedTreeNode,
-      searchQuery,
+      nodes,
+      edges,
+      rootNodes,
+
+      // Tag data
+      tags: tags.value,
+
+      // Tree data
       treeData,
       filteredTreeData,
-      filteredSecurityData,
-      associativeMode,
+      expandedNodes,
+      searchQuery,
+      selectedTreeNode,
+      allReachableNodes,
+
+      // Project data
       relatedProjects,
       paginatedProjects,
-      projectsViewMode,
-      gridColumns,
-      isDarkMode,
-      currentPage,
-      pageSize,
-      refreshData,
-      toggleTreeNode,
-      selectTreeNode,
-      clearSelection,
-      viewProject,
-      viewSecurityDetails,
-      analyzeProject,
+      filteredSecurityData,
       totalVulnerabilities,
       criticalVulns,
       highVulns,
       mediumVulns,
       lowVulns,
-      infoVulns,
-      recentVulns,
       riskDistribution,
-      getSeverityColor,
-      getRiskBarColor,
-      formatDate,
-      getProjectVulnerabilities,
-      buildDTProjectUrl,
-      buildDTProjectFindingsUrl,
+
+      // UI state
+      associativeMode,
+      projectsViewMode,
+
+      // Pagination
+      currentPage,
+      pageSize,
+
+      // Methods
+      refreshData,
+      selectTreeNode,
+      findReachableTags,
+      setAssociativeMode,
+      buildTreeFromGraph,
+      buildTreeFromTaxonomies,
+      updateAllReachableNodes,
+      expandAll,
       onPageChanged,
       onPageSizeChanged
     }

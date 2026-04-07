@@ -114,7 +114,7 @@ export const useProjectStore = defineStore('projects', () => {
       const { default: axios } = await import('axios')
 
       const response = await axios.get('/api/project')
-      projects.value = response.data.data
+      projects.value = response.data.data || []
 
       // Update pagination info
       updatePaginationInfo()

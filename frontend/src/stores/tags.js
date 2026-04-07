@@ -66,7 +66,7 @@ export const useTagStore = defineStore('tags', () => {
 
       // Load all tags (backend doesn't support pagination)
       const response = await axios.get('/api/tag')
-      tags.value = response.data
+      tags.value = response.data.data || []
 
       // Update pagination info
       updatePaginationInfo()

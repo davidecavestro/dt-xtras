@@ -13,7 +13,7 @@
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Projects</h2>
         <div class="flex items-center gap-2">
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            {{ pagination.totalItems.value || 0 }} projects
+            {{ totalProjects || 0 }} projects
           </div>
           <!-- View Mode Controls -->
           <div class="flex items-center space-x-2">
@@ -29,17 +29,6 @@
               <ListIcon class="w-4 h-4" />
             </button>
             <button
-              @click="projectsViewMode = 'grid'"
-              :class="[
-                'px-3 py-1 text-sm rounded-md',
-                projectsViewMode === 'grid'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              ]"
-            >
-              <GridIcon class="w-4 h-4" />
-            </button>
-            <button
               @click="projectsViewMode = 'deck'"
               :class="[
                 'px-3 py-1 text-sm rounded-md',
@@ -49,6 +38,17 @@
               ]"
             >
               <SquareIcon class="w-4 h-4" />
+            </button>
+            <button
+              @click="projectsViewMode = 'grid'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                projectsViewMode === 'grid'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <GridIcon class="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -109,17 +109,17 @@
         </div>
       </div>
 
-      <!-- Pagination Controls -->
-      <div v-if="pagination.totalItems.value > 0" class="flex items-center justify-between mb-6 px-4">
+      <!-- Pagination Controls - Always show -->
+      <div class="flex items-center justify-between mb-6 px-4">
         <div class="flex items-center space-x-4">
-          <div class="text-sm text-gray-700 dark:text-gray-300">
-            Showing {{ data.length }} of {{ pagination.totalItems.value }} projects
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            Showing {{ data.length }} of {{ totalProjects }} projects
           </div>
           <div class="flex items-center space-x-2">
             <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
             <select
-              v-model="pagination.pageSize.value"
-              @change="handlePageSizeChange(pagination.pageSize.value)"
+              v-model="projectStore.pageSize"
+              @change="handlePageSizeChange(projectStore.pageSize)"
               class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
             >
               <option :value="10">10</option>
@@ -131,48 +131,20 @@
         </div>
         <div class="flex items-center space-x-2">
           <button
-            @click="handlePageChange(pagination.currentPage.value - 1)"
-            :disabled="pagination.currentPage.value <= 1"
+            @click="handlePageChange(projectStore.currentPage - 1)"
+            :disabled="projectStore.currentPage <= 1"
             class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-
-          <!-- Page Numbers -->
-          <div class="flex items-center space-x-1">
-            <button
-              v-for="page in Math.min(5, pagination.totalPages.value)"
-              :key="page"
-              @click="handlePageChange(page)"
-              :class="[
-                'px-3 py-1 text-sm border rounded-md',
-                page === pagination.currentPage.value
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-              ]"
-            >
-              {{ page }}
-            </button>
-            <span v-if="pagination.totalPages.value > 5" class="px-2 text-gray-500">...</span>
-            <button
-              v-if="pagination.totalPages.value > 5"
-              @click="handlePageChange(pagination.totalPages.value)"
-              :class="[
-                'px-3 py-1 text-sm border rounded-md',
-                pagination.totalPages.value === pagination.currentPage.value
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-              ]"
-            >
-              {{ pagination.totalPages.value }}
-            </button>
-          </div>
-
+          <span class="text-sm text-gray-700 dark:text-gray-300">
+            {{ projectStore.currentPage }} of {{ projectStore.totalPages }}
+          </span>
           <button
-            @click="handlePageChange(pagination.currentPage.value + 1)"
-            :disabled="pagination.currentPage.value >= pagination.totalPages.value"
+            @click="handlePageChange(projectStore.currentPage + 1)"
+            :disabled="projectStore.currentPage >= projectStore.totalPages"
             class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,13 +155,13 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="pagination.loading.value && data.length === 0" class="text-center py-8">
+      <div v-if="isLoading && data.length === 0" class="text-center py-8">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <p class="mt-2 text-gray-600 dark:text-gray-400">Loading project center...</p>
       </div>
 
       <!-- Projects Display -->
-      <div v-else-if="data.length === 0 && !pagination.loading.value" class="text-center py-8 text-gray-500 dark:text-gray-400">
+      <div v-else-if="data.length === 0 && !isLoading" class="text-center py-8 text-gray-500 dark:text-gray-400">
         <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
         <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -253,22 +225,62 @@
 
       <!-- Grid View -->
       <div v-else-if="projectsViewMode === 'grid'" class="overflow-y-auto">
+        <!-- Pagination Controls for Grid View -->
+        <div class="flex items-center justify-between mb-6 px-4">
+          <div class="flex items-center space-x-4">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
+              Showing {{ data.length }} of {{ totalProjects }} projects
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+              <select
+                v-model="projectStore.pageSize"
+                @change="handlePageSizeChange(projectStore.pageSize)"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+              >
+                <option :value="10">10</option>
+                <option :value="25">25</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="handlePageChange(projectStore.currentPage - 1)"
+              :disabled="projectStore.currentPage <= 1"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              {{ projectStore.currentPage }} of {{ projectStore.totalPages }}
+            </span>
+            <button
+              @click="handlePageChange(projectStore.currentPage + 1)"
+              :disabled="projectStore.currentPage >= projectStore.totalPages"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
         <vue3-datagrid
           :columns="gridColumns"
           :source="data"
           :row-height="50"
-          :virtual="true"
-          :page-size="pagination.pageSize.value"
-          :page="pagination.currentPage.value"
-          :total="pagination.totalItems.value"
+          :virtual="false"
           :theme="isDarkMode ? 'darkCompact' : 'compact'"
-          :filter="true"
+          :filter="false"
           :resize="true"
           :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
           :stretch="true"
-          @page-changed="onPageChanged"
-          @filter-changed="onFilterChanged"
-          @search="onSearch"
+          :pagination="false"
           @row-click="onRowClick"
           @row-select="onRowSelect"
           :show-selection="true"
@@ -276,10 +288,100 @@
           style="height: 500px;"
         >
         </vue3-datagrid>
+
+        <!-- Pagination Controls for Grid View -->
+        <div class="flex items-center justify-between mb-6 px-4">
+          <div class="flex items-center space-x-4">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
+              Showing {{ data.length }} of {{ totalProjects }} projects
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+              <select
+                v-model="projectStore.pageSize"
+                @change="handlePageSizeChange(projectStore.pageSize)"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+              >
+                <option :value="10">10</option>
+                <option :value="25">25</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="handlePageChange(projectStore.currentPage - 1)"
+              :disabled="projectStore.currentPage <= 1"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              {{ projectStore.currentPage }} of {{ projectStore.totalPages }}
+            </span>
+            <button
+              @click="handlePageChange(projectStore.currentPage + 1)"
+              :disabled="projectStore.currentPage >= projectStore.totalPages"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Deck View -->
       <div v-else-if="projectsViewMode === 'deck'" class="overflow-y-auto">
+        <!-- Pagination Controls for Deck View -->
+        <div class="flex items-center justify-between mb-6 px-4">
+          <div class="flex items-center space-x-4">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
+              Showing {{ data.length }} of {{ totalProjects }} projects
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+              <select
+                v-model="projectStore.pageSize"
+                @change="handlePageSizeChange(projectStore.pageSize)"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+              >
+                <option :value="6">6</option>
+                <option :value="12">12</option>
+                <option :value="24">24</option>
+                <option :value="48">48</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="handlePageChange(projectStore.currentPage - 1)"
+              :disabled="projectStore.currentPage <= 1"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              {{ projectStore.currentPage }} of {{ projectStore.totalPages }}
+            </span>
+            <button
+              @click="handlePageChange(projectStore.currentPage + 1)"
+              :disabled="projectStore.currentPage >= projectStore.totalPages"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-4">
           <ProjectCard
             v-for="project in data"
@@ -291,6 +393,51 @@
             @analyze="analyzeProject"
           />
         </div>
+
+        <!-- Pagination Controls for Deck View -->
+        <div class="flex items-center justify-between mb-6 px-4">
+          <div class="flex items-center space-x-4">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
+              Showing {{ data.length }} of {{ totalProjects }} projects
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+              <select
+                v-model="projectStore.pageSize"
+                @change="handlePageSizeChange(projectStore.pageSize)"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+              >
+                <option :value="6">6</option>
+                <option :value="12">12</option>
+                <option :value="24">24</option>
+                <option :value="48">48</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="handlePageChange(projectStore.currentPage - 1)"
+              :disabled="projectStore.currentPage <= 1"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              {{ projectStore.currentPage }} of {{ projectStore.totalPages }}
+            </span>
+            <button
+              @click="handlePageChange(projectStore.currentPage + 1)"
+              :disabled="projectStore.currentPage >= projectStore.totalPages"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -299,8 +446,8 @@
 
 <script>
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
-import { usePaginatedData } from '../composables/usePagination'
 import apiService from '../services/api'
 import axios from 'axios'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
@@ -311,6 +458,7 @@ import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js'
+import { useProjectStore } from '../stores/projects'
 
 export default {
   name: 'ProjectCenter',
@@ -320,9 +468,16 @@ export default {
     GridIcon,
     SquareIcon,
     Vue3Datagrid,
-    ProjectCard
+    ProjectCard,
+    NameCell,
+    StatusCell,
+    TagsCell,
+    DateCell
   },
   setup() {
+    const projectStore = useProjectStore()
+    const { projects, isLoading, error, totalProjects } = storeToRefs(projectStore)
+
     const filters = ref({
       search: '',
       showInactive: false,
@@ -334,40 +489,62 @@ export default {
     // Grid columns for projects grid view
     const gridColumns = computed(() => [
       {
-        prop: 'name',
-        name: 'Project Name',
-        width: 200,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(NameCell)
+        field: 'name',
+        headerName: 'Project',
+        flexGrow: 4,
+        minWidth: 200,
+        cellRenderer: NameCell
       },
       {
-        prop: 'version',
-        name: 'Version',
-        width: 100,
-        sortable: true
-      },
-      {
-        prop: 'active',
-        name: 'Status',
-        width: 80,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(StatusCell)
-      },
-      {
-        prop: 'lastActivity',
-        name: 'Last Activity',
+        field: 'version',
+        headerName: 'Version',
         width: 120,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(DateCell)
+        cellRenderer: NameCell
       },
       {
-        prop: 'tags',
-        name: 'Tags',
-        width: 250,
-        sortable: false,
-        cellTemplate: VGridVueTemplate(TagsCell)
+        field: 'lastActivity',
+        headerName: 'Last Activity',
+        width: 150,
+        cellRenderer: DateCell
+      },
+      {
+        field: 'vulnerabilities.critical',
+        headerName: 'Critical',
+        width: 100,
+        cellRenderer: StatusCell
+      },
+      {
+        field: 'vulnerabilities.high',
+        headerName: 'High',
+        width: 80,
+        cellRenderer: StatusCell
+      },
+      {
+        field: 'vulnerabilities.medium',
+        headerName: 'Medium',
+        width: 100,
+        cellRenderer: StatusCell
+      },
+      {
+        field: 'vulnerabilities.low',
+        headerName: 'Low',
+        width: 80,
+        cellRenderer: StatusCell
+      },
+      {
+        field: 'vulnerabilities',
+        headerName: 'Total',
+        width: 100,
+        cellRenderer: StatusCell
       }
     ])
+
+    // Reactive data for grid and deck views
+    const data = computed(() => {
+      const startIndex = (projectStore.currentPage - 1) * projectStore.pageSize
+      const endIndex = startIndex + projectStore.pageSize
+      return projects.value.slice(startIndex, endIndex)
+    })
 
     // Dark mode detection for grid
     const isDarkMode = ref(document.documentElement.classList.contains('dark'))
@@ -394,63 +571,32 @@ export default {
       }, 500)
     }
 
-    const { data, pagination, fetchData } = usePaginatedData(
-      async (page, limit) => {
-        const params = {
-          page: page.toString(),
-          limit: limit.toString()
-        }
-
-        if (filters.value.search) {
-          params.search = filters.value.search
-        }
-        if (filters.value.showInactive) {
-          params.excludeInactive = false
-        } else {
-          params.excludeInactive = true
-        }
-
-        // Call backend API endpoint
-        const response = await axios.get(`/api/project`, { params })
-
-        // Transform response to match composable expectations
-        return {
-          data: response.data.data, // Extract projects array
-          headers: {
-            'x-total-count': response.data.pagination.totalItems.toString()
-          }
-        }
-      },
-      { initialPageSize: 20 }
-    )
-
-    const fetchProjects = () => {
-      return fetchData().catch(error => {
-        console.error('Error fetching projects:', error)
-        pagination.setError(error.message || 'Failed to fetch projects')
-        throw error
-      })
+    // Use store directly instead of composable
+    const fetchProjects = async () => {
+      await projectStore.loadProjects()
+      return projectStore.projects
     }
 
     const handlePageChange = (page) => {
-      pagination.setPage(page)
+      projectStore.currentPage = page
       fetchProjects().catch(() => {}) // Ignore errors for page changes
     }
 
     const handlePageSizeChange = (pageSize) => {
-      pagination.setPageSize(pageSize)
+      projectStore.pageSize = pageSize
       fetchProjects().catch(() => {}) // Ignore errors for page size changes
     }
 
-    // Grid event handlers
     const onPageChanged = (page) => {
-      pagination.setPage(page)
+      projectStore.currentPage = page
       fetchProjects().catch(() => {})
     }
 
+    // Grid event handlers
     const onFilterChanged = (filters) => {
-      // Handle grid filters
-      console.log('Grid filters changed:', filters)
+      // Use store filters instead
+      projectStore.searchQuery = filters.search
+      fetchProjects().catch(() => {})
     }
 
     const onSearch = (searchTerm) => {
@@ -505,7 +651,8 @@ export default {
 
     // Watch for filter changes and refetch data
     watch(filters, async () => {
-      pagination.setPage(1) // Reset to first page when filters change
+      // Use store pagination instead
+      projectStore.currentPage = 1 // Reset to first page when filters change
       await fetchProjects()
     }, { deep: true })
 
@@ -515,7 +662,10 @@ export default {
 
     return {
       data,
-      pagination,
+      totalProjects,
+      isLoading,
+      error,
+      projectStore,
       filters,
       projectsViewMode,
       gridColumns,

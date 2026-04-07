@@ -368,20 +368,65 @@
       </div>
 
       <!-- Grid View -->
-      <div v-else-if="tagsViewMode === 'grid'" class="overflow-y-auto" style="height: 400px;">
+      <div v-else-if="tagsViewMode === 'grid'" class="overflow-y-auto">
         <vue3-datagrid
           :columns="gridColumns"
-          :source="tags"
+          :source="paginatedTags"
           :row-height="60"
-          :virtual="true"
-          :page-size="20"
+          :virtual="false"
           :theme="isDarkMode ? 'darkCompact' : 'compact'"
-          :filter="true"
+          :filter="false"
           :resize="true"
           :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
           :stretch="true"
           :readonly="true"
+          :pagination="false"
         />
+
+        <!-- Pagination Controls for Grid View -->
+        <div v-if="totalPages > 1" class="flex items-center justify-between mb-6 px-4">
+          <div class="flex items-center space-x-4">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
+              Showing {{ paginatedTags.length }} of {{ totalTags }} tags
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+              <select
+                v-model="pageSize"
+                @change="setPageSize(pageSize)"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+              >
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="previousPage"
+              :disabled="!hasPreviousPage"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              {{ currentPage }} of {{ totalPages }}
+            </span>
+            <button
+              @click="nextPage"
+              :disabled="!hasNextPage"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Deck View (Current Default) -->
@@ -484,6 +529,51 @@
               title="Delete"
             >
               <Trash2 class="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Pagination Controls for Deck View -->
+        <div v-if="totalPages > 1" class="flex items-center justify-between mb-6 px-4">
+          <div class="flex items-center space-x-4">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
+              Showing {{ paginatedTags.length }} of {{ totalTags }} tags
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+              <select
+                v-model="pageSize"
+                @change="setPageSize(pageSize)"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+              >
+                <option :value="6">6</option>
+                <option :value="12">12</option>
+                <option :value="24">24</option>
+                <option :value="48">48</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="previousPage"
+              :disabled="!hasPreviousPage"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              {{ currentPage }} of {{ totalPages }}
+            </span>
+            <button
+              @click="nextPage"
+              :disabled="!hasNextPage"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
         </div>
@@ -1065,10 +1155,9 @@ export default {
     // Methods
     const loadProjects = async () => {
       try {
-        // Load projects from DT API directly
-        const response = await axios.get('/api/v1/project')
-
-        projects.value = response.data.map(project => ({
+        // Load projects from store instead of direct API call
+        await projectStore.loadProjects()
+        projects.value = projectStore.projects.map(project => ({
           id: project.uuid, // Use uuid as id
           uuid: project.uuid,
           name: project.name,
