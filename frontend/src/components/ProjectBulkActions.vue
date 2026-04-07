@@ -636,15 +636,13 @@ export default {
           params.search = searchQuery.value
         }
 
-        const response = await axios.get('/api/project', { params })
-        projects.value = response.data.data
+        // Use store instead of direct API call
+        await projectStore.loadProjects()
+        projects.value = projectStore.projects
 
         // Get total count for pagination
         try {
-          const countResponse = await axios.get('/api/project/count', {
-            params: { search: searchQuery.value }
-          })
-          totalProjects.value = countResponse.data.total
+          totalProjects.value = projectStore.projects.length
           totalPages.value = Math.ceil(totalProjects.value / pageSize.value)
         } catch (countError) {
           console.warn('Could not get project count:', countError)

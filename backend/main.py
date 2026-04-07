@@ -421,9 +421,6 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
         if 'active' not in enriched_project:
             enriched_project['active'] = True  # Default to active if not specified
 
-        # Add empty tags field for now to prevent frontend errors
-        enriched_project['tags'] = []
-
         # Add lastActivity from lastBomImport or created date (convert timestamps to strings)
         if 'lastBomImport' in enriched_project:
             last_bom_import = enriched_project['lastBomImport']
