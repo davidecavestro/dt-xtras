@@ -24,7 +24,7 @@
 
       <div v-if="loading" class="text-center py-6">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">Loading security data...</p>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Loading dashboard data...</p>
       </div>
 
       <div v-else-if="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
@@ -41,10 +41,10 @@
         <div v-if="loading" class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <div v-else class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-          {{ loading ? 'Loading security data...' : 'No security data available' }}
+          {{ loading ? 'Loading dashboard data...' : 'No security data available' }}
         </h3>
         <p class="mt-1 text-gray-600 dark:text-gray-400">
-          {{ loading ? 'Please wait while we load your security data.' : 'Try adjusting your filters or check your connection.' }}
+          {{ loading ? 'Please wait while we load your dashboard data.' : 'Try adjusting your filters or check your connection.' }}
         </p>
       </div>
 
@@ -153,18 +153,7 @@
                       : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                   ]"
                 >
-                  List
-                </button>
-                <button
-                  @click="projectsViewMode = 'grid'"
-                  :class="[
-                    'px-3 py-1 text-sm rounded-md',
-                    projectsViewMode === 'grid'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                  ]"
-                >
-                  Grid
+                  <ListIcon class="w-4 h-4" />
                 </button>
                 <button
                   @click="projectsViewMode = 'deck'"
@@ -175,7 +164,18 @@
                       : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                   ]"
                 >
-                  Deck
+                  <SquareIcon class="w-4 h-4" />
+                </button>
+                <button
+                  @click="projectsViewMode = 'grid'"
+                  :class="[
+                    'px-3 py-1 text-sm rounded-md',
+                    projectsViewMode === 'grid'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  ]"
+                >
+                  <GridIcon class="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -298,8 +298,7 @@
 
 <script>
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
-import { AlertCircle, RefreshCw, Folder, FolderOpen } from 'lucide-vue-next'
-import axios from 'axios'
+import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, AlertCircle, RefreshCw, Folder, FolderOpen } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import VulnerabilityBar from './VulnerabilityBar.vue'
@@ -311,6 +310,8 @@ import DateCell from './grid-cells/DateCell.vue'
 import ProjectCard from './ProjectCard.vue'
 import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
+import { useDashboardStore } from '../stores/dashboard'
+import { useSecurityStore } from '../stores/security'
 
 export default {
   name: 'Dashboard',
@@ -323,22 +324,24 @@ export default {
     ProjectCard,
     RiskScoreBadge,
     VulnerabilityBar,
-    TreeNode
+    TreeNode,
+    ListIcon,
+    GridIcon,
+    SquareIcon,
   },
   setup() {
-    const loading = ref(false)
-    const error = ref('')
-    const securityData = ref([])
+    // Store instances
+    const dashboardStore = useDashboardStore()
+    const securityStore = useSecurityStore()
+
+    // Local state (not managed by stores)
     const expandedNodes = ref(new Set())
     const selectedTreeNode = ref(null)
     const searchQuery = ref('')
     const treeData = ref([])
-    const allProjects = ref([])
-    const tags = ref([])
     const taxonomiesData = ref([])
-    const allTaxonomiesData = ref([])
     const associativeMode = ref(true) // Default to associative mode like graph
-    const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
+    const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
 
     const graphBuilder = new SimpleTaxonomyGraphBuilder()
 
@@ -425,23 +428,11 @@ export default {
       // If no related projects, return empty array
       if (!related || related.length === 0) return []
 
-      // Extract security data from related projects only
-      return related
-        .filter(project => project.metrics)
-        .map(project => ({
-          name: project.name,
-          type: 'project',
-          vulnerabilities: getProjectVulnerabilities(project.metrics),
-          critical: project.metrics.critical || 0,
-          high: project.metrics.high || 0,
-          medium: project.metrics.medium || 0,
-          low: project.metrics.low || 0,
-          metrics: project.metrics,
-          uuid: project.uuid
-        }))
+      // Use security store to get security data for projects
+      return securityStore.getSecurityDataForProjects(related)
     })
 
-    // Reuse computed properties from original dashboard but with filtered data
+    // Use security store computed properties for filtered data
     const totalVulnerabilities = computed(() => {
       const data = filteredSecurityData.value
       if (!data || data.length === 0) return 0
@@ -473,17 +464,14 @@ export default {
     })
 
     const infoVulns = computed(() => {
-      return 0
+      return securityStore.infoVulns
     })
 
     const recentVulns = computed(() => {
-      return []
+      return [] // Not implemented yet
     })
 
     const riskDistribution = computed(() => {
-      const data = filteredSecurityData.value
-      if (!data || data.length === 0) return []
-
       const critical = criticalVulns.value
       const high = highVulns.value
       const medium = mediumVulns.value
@@ -606,7 +594,7 @@ export default {
         // When no node selected, return all projects reachable from any root
         const allReachableNodes = findAllReachableFromRoots()
 
-        return allProjects.value.filter(project => {
+        return dashboardStore.projectStore.projects.filter(project => {
           if (!project.tags || project.tags.length === 0) return false
           return project.tags.some(tag =>
             allReachableNodes.has(tag.toLowerCase())
@@ -618,7 +606,7 @@ export default {
       const reachableNodes = findNodesToRoot(selectedTreeNode.value.id)
 
       // Find all projects that have tags matching any reachable node
-      return allProjects.value.filter(project => {
+      return dashboardStore.projectStore.projects.filter(project => {
         if (!project.tags || project.tags.length === 0) return false
 
         return project.tags.some(tag =>
@@ -630,7 +618,7 @@ export default {
     // Helper function to find all nodes reachable from any root
     const findAllReachableFromRoots = () => {
       // Build graph from current data
-      const graph = graphBuilder.buildGraph(tags.value, taxonomiesData.value, null, associativeMode.value)
+      const graph = graphBuilder.buildGraph(dashboardStore.tagStore.tags, taxonomiesData.value, null, associativeMode.value)
 
       if (!graph) return new Set()
 
@@ -770,37 +758,24 @@ export default {
       return reachableNodes
     }
 
-    // Helper function to get total vulnerabilities from project metrics
+    // Helper function to get total vulnerabilities from project metrics (using store)
     const getProjectVulnerabilities = (metrics) => {
-      if (!metrics) return 0
-      return (metrics.critical || 0) + (metrics.high || 0) + (metrics.medium || 0) + (metrics.low || 0)
+      return securityStore.getProjectVulnerabilities(metrics)
     }
 
     const refreshData = async () => {
-      loading.value = true
-      error.value = ''
-
       try {
-        // Load all required data
-        const [securityResponse, projectsResponse, tagsResponse] = await Promise.all([
-          axios.get('/api/aggregate'),
-          axios.get('/api/projects'),
-          axios.get('/api/tags')
-        ])
+        // Use dashboard store to load all data in parallel
+        await dashboardStore.refreshAllData()
 
-        securityData.value = securityResponse.data
-        allProjects.value = projectsResponse.data
-        tags.value = tagsResponse.data
-
-        // Load taxonomies (reuse from TaxonomyVisualization logic)
-        const taxonomiesResponse = await axios.get('/api/taxonomies')
-        allTaxonomiesData.value = taxonomiesResponse.data
+        // Set taxonomies data for tree building
+        const allTaxonomies = dashboardStore.taxonomyStore.taxonomies
         taxonomiesData.value = associativeMode.value
-          ? taxonomiesResponse.data.filter(taxonomy => taxonomy.relations !== undefined)
-          : taxonomiesResponse.data
+          ? allTaxonomies.filter(taxonomy => taxonomy.relations !== undefined)
+          : allTaxonomies
 
         // Build graph using same logic as TaxonomyVisualization
-        const graph = graphBuilder.buildGraph(tagsResponse.data, taxonomiesData.value, null, associativeMode.value)
+        const graph = graphBuilder.buildGraph(dashboardStore.tagStore.tags, taxonomiesData.value, null, associativeMode.value)
 
         // Build tree structure from graph
         treeData.value = buildTreeFromGraph(graph)
@@ -819,9 +794,8 @@ export default {
           expandAll(treeData.value)
         }
       } catch (err) {
-        error.value = err.response?.data?.detail || err.message || 'Failed to load data'
-      } finally {
-        loading.value = false
+        // Error is handled by the dashboard store, but we can add additional handling if needed
+        console.error('Dashboard refresh error:', err)
       }
     }
 
@@ -885,13 +859,18 @@ export default {
     }
 
     onMounted(() => {
-      refreshData()
+      // Ensure all data is loaded and ready
+      dashboardStore.ensureDataReady().then(() => {
+        refreshData()
+      })
     })
 
     return {
-      loading,
-      error,
-      securityData,
+      // Use coordinated loading states
+      loading: dashboardStore.shouldShowLoading,
+      error: dashboardStore.error,
+
+      // Local state
       expandedNodes,
       selectedTreeNode,
       searchQuery,
@@ -903,6 +882,8 @@ export default {
       projectsViewMode,
       gridColumns,
       isDarkMode,
+
+      // Methods
       refreshData,
       toggleTreeNode,
       selectTreeNode,
@@ -910,6 +891,8 @@ export default {
       viewProject,
       viewSecurityDetails,
       analyzeProject,
+
+      // Computed properties
       totalVulnerabilities,
       criticalVulns,
       highVulns,
@@ -918,6 +901,8 @@ export default {
       infoVulns,
       recentVulns,
       riskDistribution,
+
+      // Helper functions
       getSeverityColor,
       getRiskBarColor,
       formatDate,
