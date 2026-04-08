@@ -178,7 +178,7 @@
                 >
                   <SquareIcon class="w-4 h-4" />
                 </button>
-                <button
+                <!-- <button
                   @click="projectsViewMode = 'grid'"
                   :class="[
                     'px-3 py-1 text-sm rounded-md',
@@ -188,7 +188,7 @@
                   ]"
                 >
                   <GridIcon class="w-4 h-4" />
-                </button>
+                </button> -->
               </div>
             </div>
 
@@ -199,6 +199,74 @@
               <span v-else>
                 {{ relatedProjects.length }} projects found (all projects reachable from any root taxonomy)
               </span>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div v-if="relatedProjects.length > pageSize" class="flex items-center justify-between mb-4 px-4">
+              <div class="flex items-center space-x-4">
+                <div class="text-sm text-gray-700 dark:text-gray-300">
+                  Showing {{ paginatedProjects.length }} of {{ relatedProjects.length }} projects
+                </div>
+                <div class="flex items-center space-x-2">
+                  <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+                  <select
+                    v-model="pageSize"
+                    @change="onPageSizeChanged(pageSize)"
+                    class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+                  >
+                    <option :value="10">10</option>
+                    <option :value="20">20</option>
+                    <option :value="50">50</option>
+                    <option :value="100">100</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button
+                  @click="onPageChanged(currentPage - 1)"
+                  :disabled="currentPage === 1"
+                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <!-- Page Numbers -->
+                <div class="flex items-center space-x-1">
+                  <button
+                    v-for="page in Math.min(5, Math.ceil(relatedProjects.length / pageSize))"
+                    :key="page"
+                    @click="onPageChanged(page)"
+                    :class="[
+                      'px-3 py-1 text-sm border rounded-md',
+                      page === currentPage
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ]"
+                  >
+                    {{ page }}
+                  </button>
+                  <span v-if="Math.ceil(relatedProjects.length / pageSize) > 5" class="px-2 text-gray-500">...</span>
+                  <button
+                    v-if="Math.ceil(relatedProjects.length / pageSize) > 5"
+                    @click="onPageChanged(Math.ceil(relatedProjects.length / pageSize))"
+                    class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    {{ Math.ceil(relatedProjects.length / pageSize) }}
+                  </button>
+                </div>
+
+                <button
+                  @click="onPageChanged(currentPage + 1)"
+                  :disabled="currentPage >= Math.ceil(relatedProjects.length / pageSize)"
+                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <!-- Projects Display -->
@@ -214,111 +282,97 @@
               </div>
 
               <!-- List View -->
-              <div v-else-if="projectsViewMode === 'list'" class="h-full overflow-y-auto space-y-2 p-4">
-                <div
-                  v-for="project in relatedProjects"
-                  :key="project.uuid"
-                  class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
-                >
-                  <div class="flex justify-between items-start mb-2">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400">Version: {{ project.version }}</div>
-                      <div v-if="project.tags && project.tags.length > 0" class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">
-                        🏷 {{ project.tags.map( tag => tag.name).join(', ') }}
+              <div v-else-if="projectsViewMode === 'list'" class="h-full flex flex-col">
+                <div class="flex-1 overflow-y-auto space-y-2 p-4">
+                  <div
+                    v-for="project in paginatedProjects"
+                    :key="project.uuid"
+                    class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
+                  >
+                    <div class="flex justify-between items-start mb-2">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Version: {{ project.version }}</div>
+                        <div v-if="project.tags && project.tags.length > 0" class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">
+                          🏷 {{ project.tags.map( tag => tag.name).join(', ') }}
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <a
+                          :href="buildDTProjectUrl(project.uuid)"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
+                          title="View in Dependency-Track"
+                        >
+                          <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
+                            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                          </svg>
+                          DT
+                        </a>
                       </div>
                     </div>
-                    <div class="text-right">
-                      <a
-                        :href="buildDTProjectUrl(project.uuid)"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
-                        title="View in Dependency-Track"
-                      >
-                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
-                          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
-                        </svg>
-                        DT
-                      </a>
+
+                    <!-- Security Info -->
+                    <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
+                      <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
+                        🔴 {{ project.metrics.critical }} Critical
+                      </span>
+                      <span v-if="project.metrics.high > 0" class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
+                        🟠 {{ project.metrics.high }} High
+                      </span>
+                      <span v-if="project.metrics.medium > 0" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">
+                        🟡 {{ project.metrics.medium }} Medium
+                      </span>
+                      <span v-if="project.metrics.low > 0" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                        🔵 {{ project.metrics.low }} Low
+                      </span>
+                      <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
+                        No Vulnerabilities
+                      </span>
                     </div>
                   </div>
-
-                  <!-- Security Info -->
-                  <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
-                    <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
-                      🔴 {{ project.metrics.critical }} Critical
-                    </span>
-                    <span v-if="project.metrics.high > 0" class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
-                      🟠 {{ project.metrics.high }} High
-                    </span>
-                    <span v-if="project.metrics.medium > 0" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">
-                      🟡 {{ project.metrics.medium }} Medium
-                    </span>
-                    <span v-if="project.metrics.low > 0" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                      🔵 {{ project.metrics.low }} Low
-                    </span>
-                    <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-                      No Vulnerabilities
-                    </span>
-                  </div>
                 </div>
+
               </div>
               <!-- Grid View -->
-              <div v-else-if="projectsViewMode === 'grid'" class="h-full overflow-y-auto">
-                <vue3-datagrid
-                  :columns="gridColumns"
-                  :source="paginatedProjects"
-                  :row-height="50"
-                  :virtual="false"
-                  :theme="isDarkMode ? 'darkCompact' : 'compact'"
-                  :resize="true"
-                  :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
-                  :stretch="true"
-                  :pagination="false"
-                  class="w-full border-gray-200 dark:border-gray-700"
-                  style="height: 100%;"
-                  :readonly="true"
-                >
-                </vue3-datagrid>
+              <div v-else-if="projectsViewMode === 'grid'" class="h-full flex flex-col">
 
-                <!-- Pagination for Grid View -->
-                <div v-if="relatedProjects.length > 0" class="mt-4">
-                  <Pagination
-                    :current-page="currentPage"
-                    :page-size="pageSize"
-                    :total-items="relatedProjects.length"
-                    :page-size-options="PAGE_SIZE_OPTIONS"
-                    @page-change="onPageSizeChanged"
-                    @page-size-change="onPageSizeChanged"
-                  />
+                <div class="flex-1 overflow-y-auto">
+                  <vue3-datagrid
+                    :columns="gridColumns"
+                    :source="paginatedProjects"
+                    :row-height="50"
+                    :virtual="false"
+                    :theme="isDarkMode ? 'darkCompact' : 'compact'"
+                    :resize="true"
+                    :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
+                    :stretch="true"
+                    :pagination="false"
+                    class="w-full border-gray-200 dark:border-gray-700"
+                    style="height: 100%;"
+                    :readonly="true"
+                  >
+                  </vue3-datagrid>
                 </div>
               </div>
 
               <!-- Deck View -->
-              <div v-else-if="projectsViewMode === 'deck'" class="h-full overflow-y-auto">
-                <div class="grid gap-4 p-4" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
-                  <ProjectCard
-                    v-for="project in paginatedProjects"
-                    :key="project.uuid"
-                    :project="project"
-                    @select="viewProject"
-                    @view="viewProject"
-                    @security-details="viewSecurityDetails"
-                    @analyze="analyzeProject"
-                  />
-                </div>
+              <div v-else-if="projectsViewMode === 'deck'" class="h-full flex flex-col">
 
-                <!-- Pagination for Deck View -->
-                <div v-if="relatedProjects.length > 0" class="mt-4">
-                  <Pagination
-                    :current-page="currentPage"
-                    :page-size="pageSize"
-                    :total-items="relatedProjects.length"
-                    :page-size-options="PAGE_SIZE_OPTIONS"
-                    @page-change="onPageChanged"
-                  />
+                <div class="flex-1 overflow-y-auto">
+                  <div class="grid gap-4 p-4" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <ProjectCard
+                      v-for="project in paginatedProjects"
+                      :key="project.uuid"
+                      :project="project"
+                      @select="viewProject"
+                      @view="viewProject"
+                      @security-details="viewSecurityDetails"
+                      @analyze="analyzeProject"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -991,6 +1045,7 @@ export default {
       // Pagination
       currentPage,
       pageSize,
+      PAGE_SIZE_OPTIONS,
 
       // Methods
       refreshData,

@@ -155,9 +155,24 @@ export const useProjectStore = defineStore('projects', () => {
 
   const getProjectsByTags = (tags) => {
     if (!tags || tags.length === 0) return []
-    return projects.value.filter(project =>
-      project.tags && tags.some(tag => project.tags.includes(tag))
-    )
+    return projects.value.filter(project => {
+      if (!project.tags || project.tags.length === 0) return false
+
+      // Handle both tag names and tag IDs
+      return tags.some(tag => {
+        // Check if tag is an object (with id property) or string
+        const tagId = typeof tag === 'object' ? tag.id || tag.name : tag
+        const tagName = typeof tag === 'object' ? tag.name : tag
+
+        // Check if project has this tag (by ID or name)
+        return project.tags.some(projectTag => {
+          const projectTagId = typeof projectTag === 'object' ? projectTag.id || projectTag.name : projectTag
+          const projectTagName = typeof projectTag === 'object' ? projectTag.name : projectTag
+
+          return projectTagId === tagId || projectTagName === tagName
+        })
+      })
+    })
   }
 
   const getActiveProjects = () => {
