@@ -49,7 +49,7 @@
             >
               <SquareIcon class="w-4 h-4" />
             </button>
-            <button
+            <!-- <button
               @click="tagsViewMode = 'grid'"
               :class="[
                 'px-3 py-1 text-sm rounded-md',
@@ -59,7 +59,7 @@
               ]"
             >
               <GridIcon class="w-4 h-4" />
-            </button>
+            </button> -->
           </div>
         </div>
       </div>
@@ -99,11 +99,6 @@
           >
             Clear Filters
           </button>
-        </div>
-
-        <!-- Results Count -->
-        <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-          Showing {{ paginatedTags.length }} of {{ totalTags }} tags
         </div>
       </div>
 
@@ -292,81 +287,6 @@
         </div>
       </div>
 
-      <!-- Pagination Controls for List View -->
-      <div v-if="tagsViewMode === 'list' && totalPages > 1" class="flex items-center justify-between mb-6 px-4">
-        <div class="flex items-center space-x-4">
-          <div class="text-sm text-gray-700 dark:text-gray-300">
-            Showing {{ paginatedTags.length }} of {{ totalTags }} tags
-          </div>
-          <div class="flex items-center space-x-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
-            <select
-              v-model="pageSize"
-              @change="setPageSize(pageSize)"
-              class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
-            >
-              <option :value="10">10</option>
-              <option :value="20">20</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select>
-          </div>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button
-            @click="previousPage"
-            :disabled="!hasPreviousPage"
-            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <!-- Page Numbers -->
-          <div class="flex items-center space-x-1">
-            <button
-              v-for="page in Math.min(5, totalPages)"
-              :key="page"
-              @click="goToPage(page)"
-              :class="[
-                'px-3 py-1 text-sm border rounded-md',
-                page === currentPage
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-              ]"
-            >
-              {{ page }}
-            </button>
-            <span v-if="totalPages > 5" class="px-2 text-gray-500">...</span>
-            <button
-              v-if="totalPages > 5"
-              @click="goToPage(totalPages)"
-              :class="[
-                'px-3 py-1 text-sm border rounded-md',
-                totalPages === currentPage
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-              ]"
-            >
-              {{ totalPages }}
-            </button>
-          </div>
-
-          <button
-            @click="nextPage"
-            :disabled="!hasNextPage"
-            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
       <!-- Grid View -->
       <div v-else-if="tagsViewMode === 'grid'" class="overflow-y-auto">
         <vue3-datagrid
@@ -383,50 +303,6 @@
           :pagination="false"
         />
 
-        <!-- Pagination Controls for Grid View -->
-        <div v-if="totalPages > 1" class="flex items-center justify-between mb-6 px-4">
-          <div class="flex items-center space-x-4">
-            <div class="text-sm text-gray-700 dark:text-gray-300">
-              Showing {{ paginatedTags.length }} of {{ totalTags }} tags
-            </div>
-            <div class="flex items-center space-x-2">
-              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
-              <select
-                v-model="pageSize"
-                @change="setPageSize(pageSize)"
-                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
-              >
-                <option :value="10">10</option>
-                <option :value="20">20</option>
-                <option :value="50">50</option>
-                <option :value="100">100</option>
-              </select>
-            </div>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button
-              @click="previousPage"
-              :disabled="!hasPreviousPage"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              {{ currentPage }} of {{ totalPages }}
-            </span>
-            <button
-              @click="nextPage"
-              :disabled="!hasNextPage"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- Deck View (Current Default) -->
@@ -533,50 +409,6 @@
           </div>
         </div>
 
-        <!-- Pagination Controls for Deck View -->
-        <div v-if="totalPages > 1" class="flex items-center justify-between mb-6 px-4">
-          <div class="flex items-center space-x-4">
-            <div class="text-sm text-gray-700 dark:text-gray-300">
-              Showing {{ paginatedTags.length }} of {{ totalTags }} tags
-            </div>
-            <div class="flex items-center space-x-2">
-              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
-              <select
-                v-model="pageSize"
-                @change="setPageSize(pageSize)"
-                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
-              >
-                <option :value="6">6</option>
-                <option :value="12">12</option>
-                <option :value="24">24</option>
-                <option :value="48">48</option>
-              </select>
-            </div>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button
-              @click="previousPage"
-              :disabled="!hasPreviousPage"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              {{ currentPage }} of {{ totalPages }}
-            </span>
-            <button
-              @click="nextPage"
-              :disabled="!hasNextPage"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
 

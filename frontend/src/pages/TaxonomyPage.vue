@@ -1,16 +1,16 @@
 <template>
   <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-    <TaxonomyVisualization />
+    <TagsGraph />
   </div>
 </template>
 
 <script>
-import TaxonomyVisualization from '../components/TaxonomyVisualization.vue';
+import TagsGraph from '../components/TagsGraph.vue';
 
 export default {
   name: 'TaxonomyPage',
   components: {
-    TaxonomyVisualization
+    TagsGraph
   }
 };
 </script>
