@@ -18,17 +18,6 @@
             List
           </button>
           <button
-            @click="projectsViewMode = 'grid'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'grid'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            Grid
-          </button>
-          <button
             @click="projectsViewMode = 'deck'"
             :class="[
               'px-3 py-1 text-sm rounded-md',
@@ -38,6 +27,17 @@
             ]"
           >
             Deck
+          </button>
+          <button
+            @click="projectsViewMode = 'grid'"
+            :class="[
+              'px-3 py-1 text-sm rounded-md',
+              projectsViewMode === 'grid'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            ]"
+          >
+            <GridIcon class="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -202,7 +202,7 @@
 
 <script>
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
-import { FolderOpen } from 'lucide-vue-next'
+import { FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
 import { usePaginatedData } from '../composables/usePagination'
 import apiService from '../services/api'
 import Pagination from './Pagination.vue'
@@ -220,7 +220,10 @@ export default {
     FolderOpen,
     Pagination,
     Vue3Datagrid,
-    ProjectCard
+    ProjectCard,
+    ListIcon,
+    GridIcon,
+    SquareIcon,
   },
   setup() {
     const filters = ref({
@@ -228,7 +231,7 @@ export default {
       showInactive: false
     })
 
-    const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
+    const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
 
     // Grid columns for projects grid view
     const gridColumns = computed(() => [
