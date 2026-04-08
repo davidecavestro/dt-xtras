@@ -400,7 +400,7 @@
                   </span>
                 </div>
                 <div v-if="project.tags && project.tags.length > 0" class="text-sm text-gray-600 dark:text-gray-400">
-                  Tags: {{ project.tags.join(', ') }}
+                  🏷 {{ project.tags.map( tag => tag.name).join(', ') }}
                 </div>
               </div>
             </div>

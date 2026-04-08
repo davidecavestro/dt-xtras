@@ -19,6 +19,8 @@ from starlette.requests import Request
 from collections import defaultdict, Counter
 from fastapi.middleware.cors import CORSMiddleware
 import networkx as nx
+from logger_config import logger, get_logger
+from collections import defaultdict, Counter
 
 app = FastAPI(title="dt-xtras", version="1.0.0")
 
@@ -104,7 +106,7 @@ def decode_jwt_permissions(dt_token: str) -> List[str]:
 
         return list(set(permissions))  # Remove duplicates
     except Exception as e:
-        print(f"Error decoding DT JWT permissions: {e}")
+        logger.error(f"Error decoding DT JWT permissions: {e}")
         return ["VIEW_PORTFOLIO"]  # Default permission
 
 def has_permission(permissions: List[str], required_permission: str) -> bool:
@@ -163,7 +165,7 @@ class DTProject(BaseModel):
 class SecurityNode(BaseModel):
     id: str
     name: str
-    type: str  # i.e. customer, env, product, project
+    type: str  # i.e. brand, region, bundle, project
     parent_id: Optional[str] = None
     children: List['SecurityNode'] = []
     vulnerabilities: int = 0
@@ -177,8 +179,6 @@ class ProjectVersion(BaseModel):
     id: str
     name: str
     version: str
-    customer_id: Optional[str] = None
-    environment_id: Optional[str] = None
     project_uuid: str
     tags: List[str]
     metrics: Optional[Dict[str, Any]] = None
@@ -878,8 +878,6 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
             id=f"{project['uuid']}",
             name=project['name'],
             version=version_info.get('product_version_version', project.get('version', 'latest')),
-            customer_id=version_info.get('customer_id'),
-            environment_id=version_info.get('environment_id'),
             project_uuid=project['uuid'],
             tags=tags,
             metrics=project.get('metrics', {})

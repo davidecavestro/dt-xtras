@@ -182,7 +182,7 @@
               <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
               <div v-if="project.tags && project.tags.length > 0" class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">
-                🏷 {{ Array.isArray(project.tags) ? project.tags.join(', ') : 'No tags' }}
+                🏷 {{ Array.isArray(project.tags) ? project.tags.map( tag => tag.name ).join(', ') : 'No tags' }}
               </div>
             </div>
             <div class="text-right">
@@ -337,50 +337,6 @@
 
       <!-- Deck View -->
       <div v-else-if="projectsViewMode === 'deck'" class="overflow-y-auto">
-        <!-- Pagination Controls for Deck View -->
-        <div class="flex items-center justify-between mb-6 px-4">
-          <div class="flex items-center space-x-4">
-            <div class="text-sm text-gray-700 dark:text-gray-300">
-              Showing {{ data.length }} of {{ totalProjects }} projects
-            </div>
-            <div class="flex items-center space-x-2">
-              <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
-              <select
-                v-model="projectStore.pageSize"
-                @change="handlePageSizeChange(projectStore.pageSize)"
-                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
-              >
-                <option :value="6">6</option>
-                <option :value="12">12</option>
-                <option :value="24">24</option>
-                <option :value="48">48</option>
-              </select>
-            </div>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button
-              @click="handlePageChange(projectStore.currentPage - 1)"
-              :disabled="projectStore.currentPage <= 1"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              {{ projectStore.currentPage }} of {{ projectStore.totalPages }}
-            </span>
-            <button
-              @click="handlePageChange(projectStore.currentPage + 1)"
-              :disabled="projectStore.currentPage >= projectStore.totalPages"
-              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-4">
           <ProjectCard
@@ -448,8 +404,6 @@
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
-import apiService from '../services/api'
-import axios from 'axios'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import ProjectCard from './ProjectCard.vue'
 import NameCell from './grid-cells/NameCell.vue'
@@ -457,7 +411,6 @@ import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
-import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js'
 import { useProjectStore } from '../stores/projects'
 
 export default {

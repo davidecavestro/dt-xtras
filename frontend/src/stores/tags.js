@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { createLogger } from '../utils/logger'
 
 export const useTagStore = defineStore('tags', () => {
+  const logger = createLogger('tags-store')
+
   // State
   const tags = ref([])
   const isLoading = ref(false)
@@ -66,7 +69,8 @@ export const useTagStore = defineStore('tags', () => {
 
       // Load all tags (backend doesn't support pagination)
       const response = await axios.get('/api/tag')
-      tags.value = response.data.data || []
+      logger.info('Tags API response:', response.data);
+      tags.value = response.data || []
 
       // Update pagination info
       updatePaginationInfo()

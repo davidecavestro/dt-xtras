@@ -304,8 +304,8 @@
                       {{ project.version }}
                     </span>
                   </div>
-                  <div class="mt-1 text-sm italic text-gray-600 dark:text-gray-400">
-                    🏷 {{ project.tags ? project.tags.join(', ') : 'No tags' }}
+                  <div v-if="project.tags && project.tags.length > 0" class="mt-1 text-sm italic text-gray-600 dark:text-gray-400">
+                    🏷 {{ project.tags.map( tag => tag.name ).join(', ') }}
                   </div>
                   <div class="mt-2 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
                     <span class="flex items-center">
@@ -523,6 +523,7 @@
 
 <script>
 import { ref, onMounted, computed, watch } from 'vue'
+import { useProjectStore } from '../stores/projects'
 import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff } from 'lucide-vue-next'
 import axios from 'axios'
 
@@ -539,6 +540,7 @@ export default {
     PowerOff
   },
   setup() {
+    const projectStore = useProjectStore()
     const loading = ref(false)
     const projects = ref([])
     const searchQuery = ref('')

@@ -762,7 +762,7 @@
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 New Tag Name
                 <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                  (e.g., env:prod, cust:acme, myapp:1.0.0)
+                  (e.g., brand:qualcoz, region:eu, anybnd:2026.5)
                 </span>
               </label>
               <input
@@ -1156,14 +1156,15 @@ export default {
     const loadProjects = async () => {
       try {
         // Load projects from store instead of direct API call
-        await projectStore.loadProjects()
-        projects.value = projectStore.projects.map(project => ({
-          id: project.uuid, // Use uuid as id
-          uuid: project.uuid,
-          name: project.name,
-          version: project.version,
-          displayName: project.version ? `${project.name}:${project.version}` : `${project.name}`,
-          tags: project.tags || []
+        await tagStore.loadTags()
+        console.log('TagCenter - tags loaded:', tagStore.tags.length, tagStore.tags);
+        projects.value = tagStore.tags.map(tag => ({
+          id: tag.id, // Use tag id
+          uuid: tag.id,
+          name: tag.name,
+          version: '', // Tags don't have versions
+          displayName: tag.name,
+          tags: [] // Tags don't have child tags
         }))
       } catch (error) {
         console.error('Error loading projects:', error)

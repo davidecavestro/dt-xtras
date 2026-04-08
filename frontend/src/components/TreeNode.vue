@@ -24,10 +24,10 @@
 
         <!-- Node Icon -->
         <div class="mr-2">
-          <FolderIcon v-if="node.type === 'customer'" class="w-4 h-4 text-blue-500" />
-          <Server v-else-if="node.type === 'environment'" class="w-4 h-4 text-green-500" />
-          <Package v-else-if="node.type === 'project'" class="w-4 h-4 text-orange-500" />
-          <Tag v-else class="w-4 h-4 text-purple-500" />
+          <FolderIcon v-if="node.type === 'customer'" class="w-4 h-4" :style="{ color: getNodeIconColor(node) }" />
+          <Server v-else-if="node.type === 'environment'" class="w-4 h-4" :style="{ color: getNodeIconColor(node) }" />
+          <Package v-else-if="node.type === 'project'" class="w-4 h-4" :style="{ color: getNodeIconColor(node) }" />
+          <Tag v-else class="w-4 h-4" :style="{ color: getNodeIconColor(node) }" />
         </div>
 
         <!-- Node Name with Search Highlight -->
@@ -60,6 +60,7 @@
 
 <script>
 import { computed } from 'vue'
+import { useTaxonomyStore } from '../stores/taxonomies'
 import { ChevronRight, FolderOpen as FolderIcon, Server, Package, Tag } from 'lucide-vue-next'
 
 export default {
@@ -91,6 +92,9 @@ export default {
   },
   emits: ['select', 'toggle'],
   setup(props, { emit }) {
+    const taxonomyStore = useTaxonomyStore()
+    const { getTaxonomyBadgeStyle, getTagTaxonomy } = taxonomyStore
+
     const hasChildren = computed(() => {
       return props.node.children && props.node.children.length > 0
     })
@@ -126,6 +130,55 @@ export default {
       return 'bg-green-500 dark:bg-green-600'
     }
 
+    const getNodeIconColor = (node) => {
+      console.log('getNodeIconColor called for node:', node);
+
+      // For taxonomy nodes, use taxonomy color
+      if (node.type === 'taxonomy') {
+        // Try to find taxonomy by matching node name with taxonomy patterns
+        const { taxonomies } = taxonomyStore
+
+        // Find taxonomy that matches this node's pattern
+        const matchingTaxonomy = taxonomies.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+
+          // Create regex from pattern and test against node name
+          try {
+            const regex = new RegExp(taxonomy.regex_pattern)
+            return regex.test(node.name)
+          } catch (error) {
+            console.warn('Invalid regex pattern:', taxonomy.regex_pattern);
+            return false
+          }
+        })
+
+        console.log('Found matching taxonomy:', matchingTaxonomy);
+        if (matchingTaxonomy && matchingTaxonomy.color) {
+          console.log('Using taxonomy color:', matchingTaxonomy.color);
+          return matchingTaxonomy.color
+        }
+      }
+
+      // Default colors for different node types
+      let color;
+      switch (node.type) {
+        case 'customer':
+          color = '#3B82F6' // blue-500
+          break
+        case 'environment':
+          color = '#10B981' // green-500
+          break
+        case 'project':
+          color = '#F97316' // orange-500
+          break
+        default:
+          color = '#8B5CF6' // purple-500 (for tags)
+          break
+      }
+      console.log('Using default color for node type', node.type, ':', color);
+      return color
+    }
+
     const handleSelect = () => {
       emit('select', props.node)
     }
@@ -141,6 +194,7 @@ export default {
       filteredChildren,
       highlightedName,
       getVulnColor,
+      getNodeIconColor,
       handleSelect,
       handleToggle
     }

@@ -21,7 +21,8 @@ The project provides a set of features that complement Dependency-Track.
 The taxonomy system categorizes project tags and defines semantic relationships between them,
 enabling both direct categorization and inferred labeling through graph-based relationships.
 
-Bulk actions provide a way to activate/deactivate/delete multiple projects at once.
+Bulk actions provide a way to activate/deactivate/delete multiple projects at once, and to
+apply/remove/clone tags for multiple projects at once.
 
 ### Rationale
 
@@ -30,21 +31,29 @@ While Dependency-Track provides basic project tagging and properties, this exten
 
 - **Hierarchical Classification**: Create complex taxonomies with multiple levels of categorization
 - **Inferred Labeling**: Automatically classify projects based on tag patterns and relationships
-- **Bulk Operations**: Manage multiple projects efficiently through bulk actions
-- **Custom Views**: Create product, customer, or environment-centric views of your portfolio
+- **Bulk Operations**: Manage multiple projects and tags efficiently through bulk actions
+- **Custom Views**: Create brand, region, product, customer, environment or any other-centric views over your portfolio
+- **Mixed Hierarchies**: Combine multiple taxonomies for complex organizational views
 
 Should any feature implemented here be considered for inclusion in the main Dependency-Track project,
 it will probably be deprecated in favor of a more integrated approach.
 
-### Use Cases
-
-1. **Product-Centric View**: Create product version taxonomy to see `myapp:1.0.0` deployments
-2. **Customer-Centric View**: Create customer taxonomy to see all products per customer
-3. **Environment-Centric View**: Create environment taxonomy to see deployment distributions
-4. **Mixed Hierarchies**: Combine multiple taxonomies for complex organizational views
 
 #### Tag Patterns (Examples)
 
+Combine bundles on regions for brands:
+- `brand:qualcoz` → Brand classification: QUALCOZ Ltd
+- `region:eu` → Region classification: EU
+- `anybnd:2026.05` → Bundle version classification: ANYBND version 2026.05
+- `brand:qualcoz:eu:anybnd:2026.05` → Brand QUALCOZ Ltd, Region EU, Bundle ANYBND version 2026.05
+
+In the example above, the tag `brand:qualcoz:eu:anybnd:2026.05` provides all projects tagged as `anybnd:2026.05` with the following classifications:
+- Brand: QUALCOZ Ltd
+- Region: EU
+- Bundle: ANYBND
+- Version: 2026.05
+
+Combine environments, customers, and product versions:
 - `env:staging` → Environment classification: staging
 - `customer:acme` → Customer classification: ACME Inc
 - `myapp:1.0.0` → Product version classification: MYAPP version 1.0.0
@@ -61,7 +70,7 @@ In the example above, the tag `deploy:acmeinc:prod:myapp:1.0.0` provides all pro
 1. Projects are fetched from Dependency-Track API
 2. Taxonomies are applied in priority order (lower numbers first)
 3. Regex patterns extract values using named capture groups
-4. tag relationships are established based on capture group names and order
+4. Tag relationships are established based on capture group names and order
 5. Security metrics are rolled up from leaf nodes (projects) to root
 
 ### Security Metrics
