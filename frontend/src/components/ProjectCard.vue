@@ -62,7 +62,7 @@
             :key="tag"
             class="px-1 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs rounded truncate flex-shrink-0"
           >
-            {{ tag }}
+            {{ tag.name }}
           </span>
           <!-- Only show +X if there are more tags than can be displayed -->
           <span

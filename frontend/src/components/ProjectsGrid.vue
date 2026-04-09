@@ -307,12 +307,11 @@ export default {
           requestParams.active_only = filters.value.active === 'true'
         }
 
-        console.log('Loading projects with params:', requestParams)
-        const response = await axios.get('/api/projects', { params: requestParams })
-        console.log('Projects response:', response.data)
+        // Use store instead of direct API call
+        await projectStore.loadProjects()
+        let filteredProjects = projectStore.projects
 
         // Filter client-side for version and tags since backend might not support them
-        let filteredProjects = response.data || []
 
         if (filters.value.version) {
           filteredProjects = filteredProjects.filter(p =>
@@ -339,10 +338,8 @@ export default {
           if (filters.value.active !== '') {
             countParams.active_only = filters.value.active === 'true'
           }
-          const countResponse = await axios.get('/api/projects/count', {
-            params: countParams
-          })
-          totalProjects.value = countResponse.data.total || 0
+          // Use store for count instead of direct API call
+        totalProjects.value = projectStore.projects.length || 0
           console.log('Total projects:', totalProjects.value)
         } catch (countError) {
           console.warn('Could not get project count:', countError)
@@ -413,7 +410,7 @@ export default {
       loadingBulk.value = true
       try {
         const activatePromises = selectedRows.value.map(row =>
-          axios.patch(`/api/projects/${row.uuid}/activate`)
+          axios.patch(`/api/project/${row.uuid}/activate`)
         )
         await Promise.all(activatePromises)
 
@@ -433,7 +430,7 @@ export default {
       loadingBulk.value = true
       try {
         const deactivatePromises = selectedRows.value.map(row =>
-          axios.patch(`/api/projects/${row.uuid}/deactivate`)
+          axios.patch(`/api/project/${row.uuid}/deactivate`)
         )
         await Promise.all(deactivatePromises)
 
@@ -457,7 +454,7 @@ export default {
       loadingBulk.value = true
       try {
         const deletePromises = selectedRows.value.map(row =>
-          axios.delete(`/api/projects/${row.uuid}`)
+          axios.delete(`/api/project/${row.uuid}`)
         )
         await Promise.all(deletePromises)
 

@@ -81,19 +81,29 @@ export function usePagination(options = {}) {
   }
 
   const updatePaginationMetadata = (metadata) => {
+    console.log('updatePaginationMetadata - received metadata:', metadata)
+
     if (metadata.currentPage !== undefined) {
-      currentPage.value = metadata.currentPage
+      const currentPageValue = typeof metadata.currentPage === 'object' ? metadata.currentPage.page : metadata.currentPage
+      console.log('updatePaginationMetadata - setting currentPage to:', currentPageValue)
+      currentPage.value = currentPageValue
     }
     if (metadata.pageSize !== undefined) {
-      pageSize.value = metadata.pageSize
+      const pageSizeValue = typeof metadata.pageSize === 'object' ? metadata.pageSize.pageSize : metadata.pageSize
+      console.log('updatePaginationMetadata - setting pageSize to:', pageSizeValue)
+      pageSize.value = pageSizeValue
     }
     if (metadata.totalItems !== undefined) {
+      console.log('updatePaginationMetadata - setting totalItems to:', metadata.totalItems)
       totalItems.value = metadata.totalItems
     }
     if (metadata.totalPages !== undefined) {
+      console.log('updatePaginationMetadata - setting totalPages to:', metadata.totalPages)
       totalPages.value = metadata.totalPages
     } else if (metadata.totalItems !== undefined && metadata.pageSize !== undefined) {
-      totalPages.value = Math.ceil(metadata.totalItems / metadata.pageSize)
+      const pageSizeValue = typeof metadata.pageSize === 'object' ? metadata.pageSize.pageSize : metadata.pageSize
+      totalPages.value = Math.ceil(metadata.totalItems / pageSizeValue)
+      console.log('updatePaginationMetadata - calculated totalPages:', totalPages.value)
     }
   }
 
@@ -150,65 +160,75 @@ export function usePagination(options = {}) {
  * @returns {Object} - Data, pagination state, and fetch methods
  */
 export function usePaginatedData(fetchFunction, paginationOptions = {}) {
-  const pagination = usePagination(paginationOptions)
+  const {
+    initialPage = 1,
+    initialPageSize = 20,
+    pageSizeOptions = [10, 20, 50, 100]
+  } = paginationOptions
+
+  // State
+  const currentPage = ref(initialPage)
+  const pageSize = ref(initialPageSize)
+  const totalItems = ref(0)
+  const totalPages = ref(0)
+  const loading = ref(false)
+  const error = ref(null)
   const data = ref([])
-  const lastFetchParams = ref({})
 
   const fetchData = async (additionalParams = {}) => {
-    pagination.setLoading(true)
-    pagination.clearError()
+    loading.value = true
+    error.value = null
 
     try {
       const params = {
-        page: pagination.currentPage,
-        pageSize: pagination.pageSize,
+        page: currentPage.value,
+        pageSize: pageSize.value,
         ...additionalParams
       }
 
-      lastFetchParams.value = { ...params }
+      const response = await fetchFunction(params.page, params.pageSize)
 
-      const response = await fetchFunction(params)
+      // Handle DT API response: data array + X-Total-Count header
+      if (response.data && Array.isArray(response.data)) {
+        data.value = response.data
 
-      // Handle different response formats
-      if (response && typeof response === 'object') {
-        if (response.data && response.pagination) {
-          // Response has data and pagination metadata
-          data.value = response.data
-          pagination.updatePaginationMetadata(response.pagination)
-        } else if (Array.isArray(response)) {
-          // Response is just an array, update data
-          data.value = response
-          // Note: In this case, pagination metadata should be set separately
-        } else {
-          // Response is a single object
-          data.value = [response]
+        // Extract total from X-Total-Count header
+        if (response.headers && response.headers['x-total-count']) {
+          totalItems.value = parseInt(response.headers['x-total-count'])
+          totalPages.value = Math.ceil(totalItems.value / pageSize.value)
         }
       }
 
       return response
     } catch (err) {
-      pagination.setError(err.message || 'Failed to fetch data')
+      error.value = err.message || 'Failed to fetch data'
       throw err
     } finally {
-      pagination.setLoading(false)
+      loading.value = false
     }
   }
 
-  const refresh = () => {
-    return fetchData(lastFetchParams.value)
+  const setPage = (page) => {
+    currentPage.value = page
   }
 
-  const reset = () => {
-    pagination.reset()
-    data.value = []
-    lastFetchParams.value = {}
+  const setPageSize = (newPageSize) => {
+    pageSize.value = newPageSize
+    currentPage.value = 1
   }
 
   return {
     data,
-    pagination,
-    fetchData,
-    refresh,
-    reset
+    pagination: {
+      currentPage,
+      pageSize,
+      totalItems,
+      totalPages,
+      loading,
+      error,
+      setPage,
+      setPageSize
+    },
+    fetchData
   }
 }
