@@ -1,87 +1,190 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Project Center</h2>
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Project Center</h2>
+      <p class="text-gray-600 dark:text-gray-400 mb-6">
+        Browse and manage Dependency-Track projects
+      </p>
+    </div>
 
-        <!-- View Mode Controls -->
-        <div class="flex items-center space-x-2">
-          <button
-            @click="projectsViewMode = 'list'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'list'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            List
-          </button>
-          <button
-            @click="projectsViewMode = 'deck'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'deck'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            Deck
-          </button>
-          <button
-            @click="projectsViewMode = 'grid'"
-            :class="[
-              'px-3 py-1 text-sm rounded-md',
-              projectsViewMode === 'grid'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            ]"
-          >
-            <GridIcon class="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      <!-- Filters -->
-      <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Search projects
-          </label>
-          <input
-            v-model="filters.search"
-            @input="debouncedSearch"
-            type="text"
-            placeholder="Search projects..."
-            class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Inactive Projects
-          </label>
-          <div class="flex items-center">
-            <input
-              type="checkbox"
-              v-model="filters.showInactive"
-              @change="fetchProjects"
-              class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800"
-            />
-            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-              Show
-            </span>
+    <!-- Projects List -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Projects</h2>
+        <div class="flex items-center gap-2">
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            {{ totalProjects || 0 }} projects
+          </div>
+          <!-- View Mode Controls -->
+          <div class="flex items-center space-x-2">
+            <button
+              @click="projectsViewMode = 'list'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                projectsViewMode === 'list'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <ListIcon class="w-4 h-4" />
+            </button>
+            <button
+              @click="projectsViewMode = 'deck'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                projectsViewMode === 'deck'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <SquareIcon class="w-4 h-4" />
+            </button>
+            <!-- <button
+              @click="projectsViewMode = 'grid'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md',
+                projectsViewMode === 'grid'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+            >
+              <GridIcon class="w-4 h-4" />
+            </button> -->
           </div>
         </div>
       </div>
 
+      <!-- Search and Filters -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <!-- Search -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Search Projects
+            </label>
+            <input
+              v-model="filters.search"
+              @input="debouncedSearch"
+              type="text"
+              placeholder="Search by name or tags..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <!-- Activity Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Activity Status
+            </label>
+            <select
+              v-model="filters.activityFilter"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="all">All Projects</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+              <option value="recent">Recent (Last 7 days)</option>
+              <option value="old">Old (30+ days)</option>
+            </select>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="flex items-end space-x-2">
+            <label class="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                v-model="filters.showInactive"
+                class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-blue-600 focus:ring-blue-500"
+              />
+              <span>Show inactive</span>
+            </label>
+            <button
+              @click="clearFilters"
+              v-if="hasActiveFilters"
+              class="px-3 py-2 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalProjects > projectStore.pageSize" class="flex items-center justify-between mb-6 px-4">
+        <div class="flex items-center space-x-4">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
+            Showing {{ data.length }} of {{ totalProjects }} projects
+          </div>
+          <div class="flex items-center space-x-2">
+            <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+            <select
+              v-model="projectStore.pageSize"
+              @change="handlePageSizeChange(projectStore.pageSize)"
+              class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
+            >
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button
+            @click="handlePageChange(projectStore.currentPage - 1)"
+            :disabled="projectStore.currentPage <= 1"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <!-- Page Numbers -->
+          <div class="flex items-center space-x-1">
+            <button
+              v-for="page in Math.min(5, projectStore.totalPages)"
+              :key="page"
+              @click="handlePageChange(page)"
+              :class="[
+                'px-3 py-1 text-sm border rounded-md',
+                page === projectStore.currentPage
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ page }}
+            </button>
+            <span v-if="projectStore.totalPages > 5" class="px-2 text-gray-500">...</span>
+            <button
+              v-if="projectStore.totalPages > 5"
+              @click="handlePageChange(projectStore.totalPages)"
+              class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              {{ projectStore.totalPages }}
+            </button>
+          </div>
+
+          <button
+            @click="handlePageChange(projectStore.currentPage + 1)"
+            :disabled="projectStore.currentPage >= projectStore.totalPages"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <!-- Loading State -->
-      <div v-if="pagination.loading.value && data.length === 0" class="text-center py-8">
+      <div v-if="isLoading && data.length === 0" class="text-center py-8">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <p class="mt-2 text-gray-600 dark:text-gray-400">Loading project center...</p>
       </div>
 
       <!-- Projects Display -->
-      <div v-else-if="data.length === 0 && !pagination.loading.value" class="text-center py-8 text-gray-500 dark:text-gray-400">
+      <div v-else-if="data.length === 0 && !isLoading" class="text-center py-8 text-gray-500 dark:text-gray-400">
         <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
         <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -102,7 +205,7 @@
               <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
               <div v-if="project.tags && project.tags.length > 0" class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">
-                🏷 {{ project.tags.join(', ') }}
+                🏷 {{ Array.isArray(project.tags) ? project.tags.map( tag => tag.name ).join(', ') : 'No tags' }}
               </div>
             </div>
             <div class="text-right">
@@ -149,18 +252,13 @@
           :columns="gridColumns"
           :source="data"
           :row-height="50"
-          :virtual="true"
-          :page-size="pagination.pageSize.value"
-          :page="pagination.currentPage.value"
-          :total="pagination.totalItems.value"
+          :virtual="false"
           :theme="isDarkMode ? 'darkCompact' : 'compact'"
-          :filter="true"
+          :filter="false"
           :resize="true"
           :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
           :stretch="true"
-          @page-changed="onPageChanged"
-          @filter-changed="onFilterChanged"
-          @search="onSearch"
+          :pagination="false"
           @row-click="onRowClick"
           @row-select="onRowSelect"
           :show-selection="true"
@@ -185,27 +283,14 @@
         </div>
       </div>
 
-      <!-- Pagination (for List and Deck views) -->
-      <Pagination
-        v-if="pagination.totalItems.value > 0 && projectsViewMode !== 'grid'"
-        :current-page="pagination.currentPage.value"
-        :page-size="pagination.pageSize.value"
-        :total-items="pagination.totalItems.value"
-        :page-size-options="[10, 20, 50, 100]"
-        @page-change="handlePageChange"
-        @page-size-change="handlePageSizeChange"
-        class="mt-6"
-      />
     </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
-import { usePaginatedData } from '../composables/usePagination'
-import apiService from '../services/api'
-import Pagination from './Pagination.vue'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import ProjectCard from './ProjectCard.vue'
 import NameCell from './grid-cells/NameCell.vue'
@@ -213,63 +298,93 @@ import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
+import { useProjectStore } from '../stores/projects'
 
 export default {
   name: 'ProjectCenter',
   components: {
     FolderOpen,
-    Pagination,
-    Vue3Datagrid,
-    ProjectCard,
     ListIcon,
     GridIcon,
     SquareIcon,
+    Vue3Datagrid,
+    ProjectCard,
+    NameCell,
+    StatusCell,
+    TagsCell,
+    DateCell
   },
   setup() {
+    const projectStore = useProjectStore()
+    const { projects, isLoading, error, totalProjects } = storeToRefs(projectStore)
+
     const filters = ref({
       search: '',
-      showInactive: false
+      showInactive: false,
+      activityFilter: 'all'
     })
 
-    const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
+    const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
 
     // Grid columns for projects grid view
     const gridColumns = computed(() => [
       {
-        prop: 'name',
-        name: 'Project Name',
-        width: 200,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(NameCell)
+        field: 'name',
+        headerName: 'Project',
+        flexGrow: 4,
+        minWidth: 200,
+        cellRenderer: NameCell
       },
       {
-        prop: 'version',
-        name: 'Version',
-        width: 100,
-        sortable: true
-      },
-      {
-        prop: 'active',
-        name: 'Status',
-        width: 80,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(StatusCell)
-      },
-      {
-        prop: 'lastActivity',
-        name: 'Last Activity',
+        field: 'version',
+        headerName: 'Version',
         width: 120,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(DateCell)
+        cellRenderer: NameCell
       },
       {
-        prop: 'tags',
-        name: 'Tags',
-        width: 250,
-        sortable: false,
-        cellTemplate: VGridVueTemplate(TagsCell)
+        field: 'lastActivity',
+        headerName: 'Last Activity',
+        width: 150,
+        cellRenderer: DateCell
+      },
+      {
+        field: 'vulnerabilities.critical',
+        headerName: 'Critical',
+        width: 100,
+        cellRenderer: StatusCell
+      },
+      {
+        field: 'vulnerabilities.high',
+        headerName: 'High',
+        width: 80,
+        cellRenderer: StatusCell
+      },
+      {
+        field: 'vulnerabilities.medium',
+        headerName: 'Medium',
+        width: 100,
+        cellRenderer: StatusCell
+      },
+      {
+        field: 'vulnerabilities.low',
+        headerName: 'Low',
+        width: 80,
+        cellRenderer: StatusCell
+      },
+      {
+        field: 'vulnerabilities',
+        headerName: 'Total',
+        width: 100,
+        cellRenderer: StatusCell
       }
     ])
+
+    // Reactive data for grid and deck views
+    const data = computed(() => {
+      const startIndex = (projectStore.currentPage - 1) * projectStore.pageSize
+      const endIndex = startIndex + projectStore.pageSize
+      return projects.value.slice(startIndex, endIndex)
+    })
 
     // Dark mode detection for grid
     const isDarkMode = ref(document.documentElement.classList.contains('dark'))
@@ -296,55 +411,32 @@ export default {
       }, 500)
     }
 
-    const { data, pagination, fetchData } = usePaginatedData(
-      async (page, limit) => {
-        const params = {
-          pageNumber: page,
-          pageSize: limit
-        }
-
-        const queryParams = {}
-        if (filters.value.search) {
-          queryParams.search = filters.value.search
-        }
-        if (filters.value.showInactive) {
-          queryParams.excludeInactive = false  // Show inactive when checked
-        } else {
-          queryParams.excludeInactive = true   // Hide inactive when unchecked (default)
-        }
-
-        return apiService.getProjects(params, queryParams)
-      },
-      { initialPageSize: 20 }
-    )
-
-    const fetchProjects = () => {
-      return fetchData().catch(error => {
-        console.error('Error fetching projects:', error)
-        pagination.setError(error.message || 'Failed to fetch projects')
-        throw error
-      })
+    // Use store directly instead of composable
+    const fetchProjects = async () => {
+      await projectStore.loadProjects()
+      return projectStore.projects
     }
 
     const handlePageChange = (page) => {
-      pagination.setPage(page)
+      projectStore.currentPage = page
       fetchProjects().catch(() => {}) // Ignore errors for page changes
     }
 
     const handlePageSizeChange = (pageSize) => {
-      pagination.setPageSize(pageSize)
+      projectStore.pageSize = pageSize
       fetchProjects().catch(() => {}) // Ignore errors for page size changes
     }
 
-    // Grid event handlers
     const onPageChanged = (page) => {
-      pagination.setPage(page)
+      projectStore.currentPage = page
       fetchProjects().catch(() => {})
     }
 
+    // Grid event handlers
     const onFilterChanged = (filters) => {
-      // Handle grid filters
-      console.log('Grid filters changed:', filters)
+      // Use store filters instead
+      projectStore.searchQuery = filters.search
+      fetchProjects().catch(() => {})
     }
 
     const onSearch = (searchTerm) => {
@@ -381,21 +473,49 @@ export default {
       return (metrics.critical || 0) + (metrics.high || 0) + (metrics.medium || 0) + (metrics.low || 0)
     }
 
+    // Computed property to check if any filters are active
+    const hasActiveFilters = computed(() => {
+      return filters.value.search ||
+             filters.value.showInactive ||
+             filters.value.activityFilter !== 'all'
+    })
+
+    // Clear all filters
+    const clearFilters = () => {
+      filters.value = {
+        search: '',
+        showInactive: false,
+        activityFilter: 'all'
+      }
+    }
+
+    // Watch for filter changes and refetch data
+    watch(filters, async () => {
+      // Use store pagination instead
+      projectStore.currentPage = 1 // Reset to first page when filters change
+      await fetchProjects()
+    }, { deep: true })
+
     onMounted(() => {
       fetchProjects()
     })
 
     return {
       data,
-      pagination,
+      totalProjects,
+      isLoading,
+      error,
+      projectStore,
       filters,
       projectsViewMode,
       gridColumns,
       isDarkMode,
+      hasActiveFilters,
       fetchProjects,
       debouncedSearch,
       handlePageChange,
       handlePageSizeChange,
+      clearFilters,
       onPageChanged,
       onFilterChanged,
       onSearch,

@@ -63,7 +63,16 @@ class ApiService {
     try {
       const response = await axios.get(`/api/${endpoint}`, { params })
 
-      // Extract pagination metadata from response
+      // If the backend already returns {data, pagination}, use it directly
+      if (response.data && response.data.data && response.data.pagination) {
+        return {
+          data: response.data.data,
+          pagination: response.data.pagination,
+          headers: response.headers
+        }
+      }
+
+      // Extract pagination metadata from response headers (fallback)
       const paginationMetadata = this.extractPaginationMetadata(response, pagination)
 
       return {
@@ -213,7 +222,7 @@ class ApiService {
 
   /**
    * Get projects with pagination
-   * Endpoint: /projects
+   * Endpoint: /project
    * Operation: getProjects
    * @param {Object} pagination - Pagination configuration
    * @param {Object} filters - Additional filters
@@ -241,14 +250,14 @@ class ApiService {
 
   /**
    * Get tags with pagination
-   * Endpoint: /tags
+   * Endpoint: /tag
    * Operation: getTags
    * @param {Object} pagination - Pagination configuration
    * @param {Object} filters - Additional filters
    * @returns {Promise} - Paginated tags data
    */
   async getTags(pagination = {}, filters = {}) {
-    return this.getPaginated('/tags', pagination, filters)
+    return this.getPaginated('/tag', pagination, filters)
   }
 
   /**

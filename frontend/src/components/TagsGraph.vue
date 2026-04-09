@@ -45,7 +45,7 @@
             v-if="!loading"
             :disabled="!associativeMode"
           >
-            <option v-for="taxonomy in taxonomiesData" :key="taxonomy.id" :value="taxonomy.id">
+            <option v-for="taxonomy in taxonomies" :key="taxonomy.id" :value="taxonomy.id">
               {{ taxonomy.name || taxonomy.id }}
             </option>
           </select>
@@ -210,7 +210,9 @@
                   DT
                 </a>
               </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ project.tags.join(', ') }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                🏷 {{ project.tags && Array.isArray(project.tags) ? project.tags.map( tag => tag.name).join(', ') : 'No tags' }}
+              </div>
 
               <!-- Security Info -->
               <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
@@ -248,32 +250,41 @@
 
 <script>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js';
-import axios from 'axios';
 import { List, Grid3X3, Square } from 'lucide-vue-next';
 import cytoscape from 'cytoscape';
 import { buildDTProjectUrl } from '../config.js';
 import dagre from 'cytoscape-dagre';
+import { useTagStore } from '../stores/tags';
+import { useTaxonomyStore } from '../stores/taxonomies';
+import { useProjectStore } from '../stores/projects';
 
 // Register dagre extension
 cytoscape.use(dagre);
 
 export default {
-  name: 'TaxonomyVisualization',
+  name: 'TagsGraph',
   components: {
     List,
     Grid3X3,
     Square
   },
   setup() {
+    // Use stores
+    const tagStore = useTagStore();
+    const taxonomyStore = useTaxonomyStore();
+    const projectStore = useProjectStore();
+
+    // Store references
+    const { tags, isLoading: tagsLoading, error: tagsError } = storeToRefs(tagStore);
+    const { taxonomies, isLoading: taxonomiesLoading, error: taxonomiesError } = storeToRefs(taxonomyStore);
+    const { projects, isLoading: projectsLoading } = storeToRefs(projectStore);
+
     // Reactive variables
     const graphData = ref(null);
     const loading = ref(true);
     const error = ref(null);
-    const tags = ref(null);
-    const taxonomies = ref(null);
-    const taxonomiesData = ref(null);
-    const allTaxonomiesData = ref(null); // For color mapping
     const selectedTaxonomy = ref(null);
     const associativeMode = ref(true);
     const selectedNode = ref(null);
@@ -294,8 +305,8 @@ export default {
     // Taxonomy colors - now dynamic based on user choices
     const taxonomyColors = computed(() => {
       const colors = {};
-      if (allTaxonomiesData.value) {
-        allTaxonomiesData.value.forEach(taxonomy => {
+      if (taxonomies.value) {
+        taxonomies.value.forEach(taxonomy => {
           colors[taxonomy.id] = taxonomy.color || '#6b7280';
         });
       }
@@ -329,27 +340,24 @@ export default {
         loading.value = true;
         error.value = null;
 
-        const [tagsResponse, taxonomiesResponse] = await Promise.all([
-          axios.get('/api/tags'),
-          axios.get('/api/taxonomies')
+        // Load data using stores
+        await Promise.all([
+          tagStore.loadTags(),
+          taxonomyStore.loadTaxonomies()
         ]);
 
-        console.log('Tags response:', tagsResponse);
-        console.log('Taxonomies response:', taxonomiesResponse);
+        console.log('Tags loaded:', tags.value);
+        console.log('Taxonomies loaded:', taxonomies.value);
 
-        const tags = tagsResponse.data.tags || tagsResponse.data;
-        const taxonomies = taxonomiesResponse.data;
-
-        if (!tags || !taxonomies) {
+        if (!tags.value || !taxonomies.value) {
           throw new Error('Failed to fetch data');
         }
 
-        // Store taxonomies data filtering associative taxonomies for graph building, but keep all for colors
-        allTaxonomiesData.value = taxonomies; // Store all taxonomies for color mapping
-        taxonomiesData.value = associativeMode.value ? taxonomies.filter(taxonomy => taxonomy.relations !== undefined) : taxonomies;
+        // Store taxonomies data filtering associative taxonomies for graph building
+        const taxonomiesData = associativeMode.value ? taxonomies.value.filter(taxonomy => taxonomy.relations !== undefined) : taxonomies.value;
 
         // Build graph with current mode
-        const graph = graphBuilder.buildGraph(tags, taxonomiesData.value, selectedTaxonomy.value, associativeMode.value);
+        const graph = graphBuilder.buildGraph(tags.value, taxonomiesData, selectedTaxonomy.value, associativeMode.value);
         graphData.value = graph;
 
       } catch (err) {
@@ -365,8 +373,9 @@ export default {
     };
 
     const updateVisualization = () => {
-      if (taxonomiesData.value) {
-        // Rebuild graph with new mode
+      if (taxonomies.value) {
+        console.log('Updating visualization with selected taxonomy:', selectedTaxonomy.value);
+        // Rebuild graph with new mode and taxonomy selection
         rebuildGraph();
       }
     };
@@ -375,17 +384,18 @@ export default {
       try {
         loading.value = true;
 
-        // Get fresh tags data
-        const tagsResponse = await axios.get('/api/tags');
-        const tags = tagsResponse.data.tags || tagsResponse.data;
-
-        if (!tags) {
-          throw new Error('Failed to fetch tags');
-        }
+        console.log('Rebuilding graph with:', {
+          tagsCount: tags.value?.length,
+          selectedTaxonomy: selectedTaxonomy.value,
+          associativeMode: associativeMode.value
+        });
 
         // Rebuild graph with current mode
-        const graph = graphBuilder.buildGraph(tags, taxonomiesData.value, selectedTaxonomy.value, associativeMode.value);
+        const taxonomiesData = associativeMode.value ? taxonomies.value.filter(taxonomy => taxonomy.relations !== undefined) : taxonomies.value;
+        const graph = graphBuilder.buildGraph(tags.value, taxonomiesData, selectedTaxonomy.value, associativeMode.value);
         graphData.value = graph;
+
+        console.log('Graph rebuilt with nodes:', graph.nodes?.size, 'edges:', graph.edges?.length);
 
         // Re-render Cytoscape after graph is built
         nextTick(() => {
@@ -411,7 +421,7 @@ export default {
       // Convert graph data to Cytoscape format
       const nodes = Array.from(graphData.value.nodes.values()).map(node => {
         // Extract capture group from tag name if it matches taxonomy pattern
-        const taxonomy = taxonomiesData.value?.find(t => t.id === node.taxonomy);
+        const taxonomy = taxonomies.value?.find(t => t.id === node.taxonomy);
         let captureGroups = [];
         if (taxonomy && taxonomy.regex_pattern) {
           try {
@@ -551,7 +561,8 @@ export default {
         node.style({
           'width': function(ele) {
             return ele.data('associative') ? '250px' : '150px';
-          },          'height': '60px',
+          },
+          'height': '60px',
           'font-size': '14px',
           'z-index': 1
         });
@@ -560,7 +571,7 @@ export default {
       // Enable editing from graph
       cytoscapeInstance.value.on('dblclick', 'node', function(evt) {
         const node = evt.target;
-        const taxonomyData = taxonomiesData.value?.find(t => t.id === node.data('taxonomy'));
+        const taxonomyData = taxonomies.value?.find(t => t.id === node.data('taxonomy'));
         if (taxonomyData) {
           // Emit event to open TaxonomyCenter with this taxonomy
           const editEvent = new CustomEvent('editTaxonomyFromGraph', {
@@ -603,7 +614,7 @@ export default {
     };
 
     const getTaxonomyDisplayName = (taxonomyId) => {
-      const taxonomy = taxonomiesData.value.find(t => t.id === taxonomyId);
+      const taxonomy = taxonomies.value.find(t => t.id === taxonomyId);
       return taxonomy ? taxonomy.name || taxonomy.id : taxonomyId;
     };
 
@@ -649,37 +660,39 @@ export default {
       try {
         loadingRelatedProjects.value = true;
 
-        // Get projects with pagination support
-        const response = await axios.get('/api/projects', {
-          params: {
-            limit: pageSize.value,
-            offset: (page - 1) * pageSize.value
-          }
-        });
-        const allProjects = response.data;
+        // Convert Set to Array for easier handling
+        const tagArray = Array.from(tagIds);
+        console.log('🔍 Getting projects for tags:', tagArray);
+        console.log('📊 Available projects in store:', projects.value);
+        console.log('📊 Projects with tags:', projects.value.filter(p => p.tags && p.tags.length > 0));
 
-        // Filter projects that have any of the specified tags
-        const filteredProjects = allProjects.filter(project => {
-          const projectTags = project.tags || [];
-          return Array.from(tagIds).some(tagId => projectTags.includes(tagId));
-        });
-
-        // Get total count for pagination
-        try {
-          const countResponse = await axios.get('/api/projects/count');
-          relatedProjectsTotal.value = countResponse.data.total;
-          relatedProjectsTotalPages.value = Math.ceil(relatedProjectsTotal.value / pageSize.value);
-        } catch (countError) {
-          console.warn('Could not get project count:', countError);
-          relatedProjectsTotal.value = filteredProjects.length;
-          relatedProjectsTotalPages.value = 1;
+        // Ensure projects are loaded before filtering
+        if (projects.value.length === 0) {
+          console.log('⚠️ No projects loaded, attempting to load...');
+          await projectStore.loadProjects();
         }
 
-        relatedProjects.value = filteredProjects;
+        // Use project store to get projects by tags
+        const allProjects = projectStore.getProjectsByTags(tagArray);
+        console.log('📊 Filtered projects count:', allProjects.length);
+
+        // Apply pagination
+        const startIndex = (page - 1) * pageSize.value;
+        const endIndex = startIndex + pageSize.value;
+        const paginatedProjects = allProjects.slice(startIndex, endIndex);
+
+        relatedProjectsTotal.value = allProjects.length;
+        relatedProjectsTotalPages.value = Math.ceil(allProjects.length / pageSize.value);
+        relatedProjects.value = paginatedProjects;
         relatedProjectsPage.value = page;
-        return filteredProjects;
+
+        console.log(`📊 Total projects found: ${allProjects.length}, showing page ${page}`);
+        return paginatedProjects;
       } catch (error) {
         console.error('Error fetching projects for tags:', error);
+        relatedProjects.value = [];
+        relatedProjectsTotal.value = 0;
+        relatedProjectsTotalPages.value = 1;
         return [];
       } finally {
         loadingRelatedProjects.value = false;
@@ -772,7 +785,15 @@ export default {
 
     // Watch for mode changes to rebuild graph
     watch(associativeMode, () => {
-      if (taxonomiesData.value) {
+      if (taxonomies.value) {
+        rebuildGraph();
+      }
+    });
+
+    // Watch for taxonomy selection changes to rebuild graph
+    watch(selectedTaxonomy, (newTaxonomy) => {
+      console.log('Selected taxonomy changed to:', newTaxonomy);
+      if (taxonomies.value && newTaxonomy) {
         rebuildGraph();
       }
     });
@@ -784,7 +805,7 @@ export default {
       associativeMode,
       loading,
       error,
-      taxonomiesData,
+      taxonomies,
       layoutAlgorithm,
       nodeSpacing,
       selectedNode,

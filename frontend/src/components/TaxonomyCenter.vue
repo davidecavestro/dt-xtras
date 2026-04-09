@@ -864,14 +864,14 @@ const draggedIndex = ref(null)
     const showTaxonomyTags = async (taxonomy) => {
       selectedTaxonomy.value = taxonomy
       try {
-        const response = await axios.get(`/api/taxonomies/${taxonomy.id}/tags`)
+        const response = await axios.get(`/api/taxonomies/${taxonomy.id}/tag`)
         taxonomyTags.value = response.data || []  // Extract tags array from response
 
         // Load usage data for tags
         const usagePromises = taxonomyTags.value.map(async (tag) => {
           const tagName = tag.name
           try {
-            const usageResponse = await axios.get(`/api/tags/${tagName}/projects`)
+            const usageResponse = await axios.get(`/api/tag/${tagName}/project`)
             return { [tagName]: usageResponse.data.length }
           } catch (error) {
             return { [tagName]: 0 }
@@ -989,7 +989,7 @@ const draggedIndex = ref(null)
               console.log(`🎯 Getting tags from related taxonomy: ${targetTaxonomyId}`)
 
               // Get tags from the related taxonomy
-              const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tags`)
+              const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tag`)
               const relatedTags = response.data || []
 
               console.log(`📋 Related tags from ${targetTaxonomyId}:`, relatedTags)
@@ -1034,7 +1034,7 @@ const draggedIndex = ref(null)
       if (!canCreateTag.value || !generatedTag.value) return
 
       try {
-        const response = await axios.post('/api/tags', {
+        const response = await axios.post('/api/tag', {
           name: generatedTag.value,
           taxonomy_id: selectedTaxonomy.value.id
         })

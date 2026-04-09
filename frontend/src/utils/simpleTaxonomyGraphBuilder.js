@@ -49,7 +49,6 @@ export default class SimpleTaxonomyGraphBuilder {
 
   buildAssociativeRelations(taxonomies, tags, rootTaxonomy) {
     const associativeNodesToHide = new Set();
-    const existingEdges = new Set();
 
     tags.forEach(tag => { // get the taxonomy for the tag
       const taxonomy = this.findTaxonomyForTag(tag, taxonomies);
@@ -80,15 +79,11 @@ export default class SimpleTaxonomyGraphBuilder {
             const targetTag = tags.find(t => t.taxonomy === targetTaxonomy.id && this.getTagValue(t, targetTaxonomy) === captureGroups[key]);
             // Create edge between previous group and current group
             if (prev && targetTag) {
-              const edgeId = `${prev}-${targetTag.name}`;
-              if (!existingEdges.has(edgeId)) {
-                existingEdges.add(edgeId);
-                this.edges.push({
-                  id: edgeId,
-                  source: prev,
-                  target: targetTag.name
-                });
-              }
+              this.edges.push({
+                id: `${prev}-${targetTag.name}`,
+                source: prev,
+                target: targetTag.name
+              });
             }
             return targetTag?.name;
           }, null); //start with no previous value

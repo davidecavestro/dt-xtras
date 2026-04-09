@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import Dashboard from './components/Dashboard.vue'
 import TaxonomyCenter from './components/TaxonomyCenter.vue'
-import TaxonomyVisualization from './components/TaxonomyVisualization.vue'
+import TagsGraph from './components/TagsGraph.vue'
 import TagCenter from './components/TagCenter.vue'
 import TagBulkActions from './components/TagBulkActions.vue'
 import ProjectsList from './components/ProjectsList.vue'
@@ -30,7 +30,7 @@ const routes = [
   },
   {
     path: '/dependency-graph',
-    component: TaxonomyVisualization,
+    component: TagsGraph,
     meta: { requiresAuth: true }
   },
   {

@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { createLogger } from '../utils/logger'
 
 export const useTagStore = defineStore('tags', () => {
+  const logger = createLogger('tags-store')
+
   // State
   const tags = ref([])
   const isLoading = ref(false)
@@ -21,7 +24,7 @@ export const useTagStore = defineStore('tags', () => {
 
   // Computed properties
   const filteredTags = computed(() => {
-    let filtered = tags.value
+    let filtered = tags.value || []
 
     // Apply search filter
     if (searchQuery.value) {
@@ -65,8 +68,9 @@ export const useTagStore = defineStore('tags', () => {
       const { default: axios } = await import('axios')
 
       // Load all tags (backend doesn't support pagination)
-      const response = await axios.get('/api/tags')
-      tags.value = response.data
+      const response = await axios.get('/api/tag')
+      logger.info('Tags API response:', response.data);
+      tags.value = response.data || []
 
       // Update pagination info
       updatePaginationInfo()
@@ -104,7 +108,7 @@ export const useTagStore = defineStore('tags', () => {
     try {
       const { default: axios } = await import('axios')
 
-      const response = await axios.post('/api/tags', tagData)
+      const response = await axios.post('/api/tag', tagData)
 
       // Add new tag to local state
       tags.value.push(response.data)
@@ -131,7 +135,7 @@ export const useTagStore = defineStore('tags', () => {
     try {
       const { default: axios } = await import('axios')
 
-      const response = await axios.put(`/api/tags/${tagName}`, tagData)
+      const response = await axios.put(`/api/tag/${tagName}`, tagData)
 
       // Update tag in local state
       const index = tags.value.findIndex(tag => tag.name === tagName)
@@ -158,7 +162,7 @@ export const useTagStore = defineStore('tags', () => {
     try {
       const { default: axios } = await import('axios')
 
-      await axios.delete(`/api/tags/${tagName}`)
+      await axios.delete(`/api/tag/${tagName}`)
 
       // Remove tag from local state
       const index = tags.value.findIndex(tag => tag.name === tagName)

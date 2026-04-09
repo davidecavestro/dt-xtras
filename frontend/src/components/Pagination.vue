@@ -11,7 +11,7 @@
         results
       </span>
     </div>
-    
+
     <div class="flex items-center space-x-2">
       <!-- Page size selector -->
       <div class="flex items-center space-x-2">
@@ -36,7 +36,7 @@
         >
           <ChevronsLeft class="w-4 h-4" />
         </button>
-        
+
         <button
           @click="goToPreviousPage"
           :disabled="currentPage === 1"
@@ -69,7 +69,7 @@
         >
           <ChevronRight class="w-4 h-4" />
         </button>
-        
+
         <button
           @click="goToLastPage"
           :disabled="currentPage === totalPages"
@@ -84,11 +84,11 @@
 
 <script>
 import { computed } from 'vue'
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronsLeft, 
-  ChevronsRight 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-vue-next'
 
 export default {
@@ -144,7 +144,7 @@ export default {
       const total = totalPages.value
       const current = props.currentPage
       const maxVisible = props.maxVisiblePages
-      
+
       if (total <= maxVisible) {
         return Array.from({ length: total }, (_, i) => i + 1)
       }
