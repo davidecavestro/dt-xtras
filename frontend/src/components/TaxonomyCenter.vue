@@ -203,21 +203,27 @@
                   <div class="grid grid-cols-3 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Group Name</label>
-                      <input
+                      <select
                         v-model="relation.group"
-                        type="text"
                         class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white px-3 py-2"
-                        placeholder="e.g., customer"
-                      />
+                      >
+                        <option value="">Select a group...</option>
+                        <option v-for="group in availableCaptureGroups" :key="group" :value="group">
+                          {{ group }}
+                        </option>
+                      </select>
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Taxonomy</label>
-                      <input
+                      <select
                         v-model="relation.targets"
-                        type="text"
                         class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white px-3 py-2"
-                        placeholder="e.g., customer"
-                      />
+                      >
+                        <option value="">Select a target taxonomy...</option>
+                        <option v-for="taxonomy in availableTargetTaxonomies" :key="taxonomy.id" :value="taxonomy.id">
+                          {{ taxonomy.name || taxonomy.id }}
+                        </option>
+                      </select>
                     </div>
                     <div class="mt-2">
                       <button
@@ -477,6 +483,26 @@ const draggedIndex = ref(null)
     const isEditingExisting = computed(() => {
       return editingTaxonomy.value &&
              taxonomies.value.some(t => t.id === editingTaxonomy.value.id)
+    })
+
+    const availableTargetTaxonomies = computed(() => {
+      // Return all taxonomies except the one being edited
+      return taxonomies.value.filter(t => t.id !== editingTaxonomy.value?.id)
+    })
+
+    const availableCaptureGroups = computed(() => {
+      // Extract capture groups from current taxonomy's regex pattern
+      if (!editingTaxonomy.value?.regex_pattern) return []
+
+      const captureGroupRegex = /\(\?<([^>]+)>([^)]+)\)/g
+      const groups = new Set()
+      let match
+
+      while ((match = captureGroupRegex.exec(editingTaxonomy.value.regex_pattern)) !== null) {
+        groups.add(match[1])
+      }
+
+      return Array.from(groups).sort()
     })
 
     const loadTaxonomies = async () => {

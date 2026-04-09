@@ -10,7 +10,33 @@
               Manage multiple projects at once with bulk operations for cleanup, activation, and maintenance.
             </p>
           </div>
-          <div class="flex space-x-3">
+          <div class="flex items-center space-x-3">
+            <!-- View Mode Toggle -->
+            <div class="flex items-center space-x-1">
+              <button
+                @click="viewMode = 'list'"
+                :class="[
+                  'px-3 py-1 text-sm rounded-md',
+                  viewMode === 'list'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
+                ]"
+              >
+                <ListIcon class="w-4 h-4" />
+              </button>
+              <button
+                @click="viewMode = 'deck'"
+                :class="[
+                  'px-3 py-1 text-sm rounded-md',
+                  viewMode === 'deck'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
+                ]"
+              >
+                <SquareIcon class="w-4 h-4" />
+              </button>
+            </div>
+
             <button
               @click="refreshProjects"
               :disabled="loading"
@@ -281,7 +307,8 @@
           </p>
         </div>
 
-        <div v-else class="space-y-3">
+        <!-- List View -->
+        <div v-else-if="viewMode === 'list'" class="space-y-3">
           <div
             v-for="project in filteredProjects"
             :key="project.uuid"
@@ -346,6 +373,29 @@
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Deck View -->
+        <div v-else-if="viewMode === 'deck'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-4">
+          <div
+            v-for="project in filteredProjects"
+            :key="project.uuid"
+            class="relative"
+          >
+            <input
+              type="checkbox"
+              v-model="selectedProjects"
+              :value="project.uuid"
+              class="absolute top-2 left-2 z-10 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800"
+            />
+            <ProjectCard
+              :project="project"
+              @select="viewProject"
+              @view="viewProject"
+              @security-details="viewSecurityDetails"
+              @analyze="analyzeProject"
+            />
           </div>
         </div>
       </div>
@@ -524,8 +574,9 @@
 <script>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useProjectStore } from '../stores/projects'
-import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff } from 'lucide-vue-next'
+import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff, List as ListIcon, Square as SquareIcon } from 'lucide-vue-next'
 import axios from 'axios'
+import ProjectCard from './ProjectCard.vue'
 
 export default {
   name: 'ProjectBulkActions',
@@ -537,7 +588,10 @@ export default {
     AlertCircle,
     Trash2,
     Power,
-    PowerOff
+    PowerOff,
+    ListIcon,
+    SquareIcon,
+    ProjectCard
   },
   setup() {
     const projectStore = useProjectStore()
@@ -555,6 +609,7 @@ export default {
     const pageSize = ref(50)
     const totalProjects = ref(0)
     const totalPages = ref(1)
+    const viewMode = ref('list') // 'list' or 'deck'
 
     // Computed properties
     const filteredProjects = computed(() => {
@@ -896,6 +951,22 @@ export default {
       refreshProjects()
     }
 
+    // ProjectCard event handlers
+    const viewProject = (project) => {
+      console.log('View project:', project)
+      // TODO: Navigate to project details
+    }
+
+    const viewSecurityDetails = (project) => {
+      console.log('View security details:', project)
+      // TODO: Navigate to security details
+    }
+
+    const analyzeProject = (project) => {
+      console.log('Analyze project:', project)
+      // TODO: Navigate to project analysis
+    }
+
     // Watch for search changes and reset pagination
     watch(searchQuery, () => {
       currentPage.value = 1
@@ -921,6 +992,7 @@ export default {
       pageSize,
       totalProjects,
       totalPages,
+      viewMode,
       filteredProjects,
       refreshProjects,
       setQuickFilter,
@@ -943,7 +1015,10 @@ export default {
       goToPage,
       nextPage,
       prevPage,
-      handlePageSizeChange
+      handlePageSizeChange,
+      viewProject,
+      viewSecurityDetails,
+      analyzeProject
     }
   }
 }
