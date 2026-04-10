@@ -324,7 +324,7 @@ export default {
       activityFilter: 'all'
     })
 
-    const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
+    const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
 
     // Grid columns for projects grid view
     const gridColumns = computed(() => [

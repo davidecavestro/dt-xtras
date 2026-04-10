@@ -366,7 +366,7 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Build Tag
             </label>
-
+tagBuilderParts: {{ tagBuilderParts }}
             <div class="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <template v-for="(part, index) in tagBuilderParts" :key="index">
                 <!-- Static text part -->
@@ -437,7 +437,9 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { Plus, Trash2, Edit2, Folder } from 'lucide-vue-next'
 import axios from 'axios'
 import cytoscape from 'cytoscape'
+import { useToast } from '../composables/useToast'
 
+const { showSuccess, showError } = useToast()
 // Reactive data
 const taxonomies = ref([])
 const editingTaxonomy = ref(null)
@@ -1051,6 +1053,29 @@ const draggedIndex = ref(null)
                 part.options = tagNames.sort()
               }
             }
+          } else {
+            // For non-associative taxonomies or when no relation found, get existing tags from current taxonomy
+            try {
+              const response = await axios.get(`/api/taxonomies/${selectedTaxonomy.value.id}/tag`)
+              const existingTags = response.data || []
+
+              // Extract capture group values from existing tags
+              const captureGroupValues = new Set()
+              const regex = new RegExp(selectedTaxonomy.value.regex_pattern)
+
+              existingTags.forEach(tag => {
+                const match = tag.name.match(regex)
+                if (match && match.groups && match.groups[part.name]) {
+                  captureGroupValues.add(match.groups[part.name])
+                }
+              })
+
+              console.log(`Extracted capture group values for ${part.name}:`, Array.from(captureGroupValues))
+              part.options = Array.from(captureGroupValues).sort()
+            } catch (error) {
+              console.error('Error loading existing tags from current taxonomy:', error)
+              part.options = []
+            }
           }
         }
       }
@@ -1067,12 +1092,12 @@ const draggedIndex = ref(null)
 
         if (response.data) {
           // Show success message
-          alert(`Tag "${generatedTag.value}" created successfully!`)
+          showSuccess(`Tag "${generatedTag.value}" created successfully!`)
           closeCreateTagModal()
         }
       } catch (error) {
         console.error('Error creating tag:', error)
-        alert(`Error creating tag: ${error.response?.data?.detail || error.message}`)
+        showError(`Error creating tag: ${error.response?.data?.detail || error.message}`)
       }
     }
 

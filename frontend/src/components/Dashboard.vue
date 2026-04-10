@@ -476,7 +476,7 @@ export default {
     };
 
     const associativeMode = ref(true) // Default to associative mode like graph
-    const projectsViewMode = ref('list') // 'list', 'grid', or 'deck'
+    const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
 
     // Uniform pagination constants
     const DEFAULT_PAGE_SIZE = 20

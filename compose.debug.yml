@@ -1,13 +1,9 @@
 services:
   backend:
+    extends:
+      file: ./compose.build.yml
     build:
-      context: ./backend
       dockerfile: Dockerfile.debug
-#    ports:
-#      - "8001:8001"
-#      - "5678:5678"  # Debug port
-#    extra_hosts:
-#      - "host.docker.internal:host-gateway"
     network_mode: host
     environment:
       - DT_API_URL=${DT_API_URL}
@@ -28,15 +24,8 @@ services:
       start_period: 40s
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    image: ghcr.io/davidecavestro/dt-xtras/frontend:main
-#    ports:
-#      - "3001:3000"
-#    depends_on:
-#      backend:
-#        condition: service_healthy
+    extends:
+      file: ./compose.build.yml
     network_mode: host
     environment:
       - VITE_API_URL=http://localhost:8001
