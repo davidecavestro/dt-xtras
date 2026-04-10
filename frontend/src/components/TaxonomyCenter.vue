@@ -366,7 +366,7 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Build Tag
             </label>
-tagBuilderParts: {{ tagBuilderParts }}
+
             <div class="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <template v-for="(part, index) in tagBuilderParts" :key="index">
                 <!-- Static text part -->
@@ -381,8 +381,8 @@ tagBuilderParts: {{ tagBuilderParts }}
                   class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
                   <option value="">Select {{ part.name }}...</option>
-                  <option v-for="option in part.options" :key="option" :value="option">
-                    {{ option }}
+                  <option v-for="option in part.options" :key="option.value || option" :value="option.value || option">
+                    {{ option.text || option }}
                   </option>
                 </select>
 
@@ -434,12 +434,19 @@ tagBuilderParts: {{ tagBuilderParts }}
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useTaxonomyStore } from '../stores/taxonomies'
+import { useTagStore } from '../stores/tags'
 import { Plus, Trash2, Edit2, Folder } from 'lucide-vue-next'
 import axios from 'axios'
 import cytoscape from 'cytoscape'
 import { useToast } from '../composables/useToast'
 
 const { showSuccess, showError } = useToast()
+
+// Store instances
+const taxonomyStore = useTaxonomyStore()
+const tagStore = useTagStore()
+
 // Reactive data
 const taxonomies = ref([])
 const editingTaxonomy = ref(null)
@@ -929,10 +936,10 @@ const draggedIndex = ref(null)
 
       try {
         // Parse the regex pattern to extract static parts and capture groups
-        const parts = parseTaxonomyPattern(taxonomy.regex_pattern)
+        const parts = taxonomyStore.parseTaxonomyPattern(taxonomy.regex_pattern, taxonomy.relations)
 
         // Load existing tag values for dropdowns
-        await loadTagValuesForDropdowns(parts)
+        await taxonomyStore.loadDropdownValues(parts, taxonomy, tagStore.tags)
 
         tagBuilderParts.value = parts
         showCreateTagModal.value = true
@@ -947,138 +954,6 @@ const draggedIndex = ref(null)
       showCreateTagModal.value = false
       selectedTaxonomy.value = null
       tagBuilderParts.value = []
-    }
-
-    const parseTaxonomyPattern = (pattern) => {
-      const parts = []
-      let lastIndex = 0
-
-      // Remove regex anchors (^ and $) from pattern for display
-      const cleanPattern = pattern.replace(/^\^|\$$/g, '')
-      console.log(`🎯 Original pattern: ${pattern}, Clean pattern: ${cleanPattern}`)
-
-      // Find all capture groups: (?<name>pattern)
-      const captureGroupRegex = /\(\?<([^>]+)>([^)]+)\)/g
-      let match
-
-      while ((match = captureGroupRegex.exec(cleanPattern)) !== null) {
-        // Add static text before this capture group
-        if (match.index > lastIndex) {
-          const staticText = cleanPattern.substring(lastIndex, match.index)
-          if (staticText) {
-            parts.push({
-              type: 'static',
-              value: staticText
-            })
-          }
-        }
-
-        // Check if this capture group has a corresponding relation
-        const hasRelation = selectedTaxonomy.value?.relations?.some(rel => rel.group === match[1])
-
-        // Add capture group part
-        parts.push({
-          type: hasRelation ? 'dropdown' : 'text', // Use dropdown only if relation exists
-          name: match[1],
-          value: '',
-          options: [],
-          pattern: match[2]
-        })
-
-        lastIndex = captureGroupRegex.lastIndex
-      }
-
-      // Add any remaining static text
-      if (lastIndex < cleanPattern.length) {
-        const staticText = cleanPattern.substring(lastIndex)
-        if (staticText) {
-          parts.push({
-            type: 'static',
-            value: staticText
-          })
-        }
-      }
-
-      console.log(`✨ Parsed parts:`, parts)
-      return parts
-    }
-
-    const loadTagValuesForDropdowns = async (parts) => {
-      for (const part of parts) {
-        if (part.type === 'dropdown' && part.name) {
-          console.log(`🔍 Loading dropdown options for part: ${part.name}, taxonomy: ${selectedTaxonomy.value.id}`)
-
-          // For associative taxonomies get tags from related taxonomies
-          if (selectedTaxonomy.value.relations && selectedTaxonomy.value.relations.length > 0) {
-            // Find related taxonomy for this part
-            const relation = selectedTaxonomy.value.relations.find(rel => rel.group === part.name)
-            if (relation && relation.targets) {
-              const targetTaxonomyId = relation.targets
-              console.log(`🎯 Getting tags from related taxonomy: ${targetTaxonomyId}`)
-
-              // Get tags from the related taxonomy
-              const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tag`)
-              const relatedTags = response.data || []
-
-              console.log(`📋 Related tags from ${targetTaxonomyId}:`, relatedTags)
-
-              // Extract values from related tags using their own regex pattern
-              const targetTaxonomy = taxonomies.value.find(t => t.id === targetTaxonomyId)
-              if (targetTaxonomy && targetTaxonomy.regex_pattern) {
-                const uniqueValues = [...new Set(relatedTags.map(tag => {
-                  try {
-                    const regex = new RegExp(targetTaxonomy.regex_pattern)
-                    const tag_name = tag.name || tag // Handle both tag object and string
-                    const match = tag_name.match(regex)
-                    console.log(`🏷️ Related tag: ${tag_name}, Match:`, match)
-                    if (match){
-                      if (match.length > 2){ // multiple capture groups, try to rejoin them by convention to discard the prefix
-                        return match[1] + ':' + match[2]
-                      } else if (match.length === 2){ // single capture group, use the captured value
-                        return match[1]
-                      }
-                    }
-                    return tag_name
-                  } catch (e){
-                    console.error(`❌ Regex error for related tag ${tag.name}:`, e)
-                    return tag.name || tag // Fallback to tag name
-                  }
-                }).filter(Boolean))]
-
-                console.log(`✨ Extracted values for ${part.name}:`, uniqueValues)
-                part.options = uniqueValues.sort()
-              } else {
-                // If no regex pattern, use tag names as-is
-                const tagNames = relatedTags.map(tag => tag.name || tag).filter(Boolean)
-                part.options = tagNames.sort()
-              }
-            }
-          } else {
-            // For non-associative taxonomies or when no relation found, get existing tags from current taxonomy
-            try {
-              const response = await axios.get(`/api/taxonomies/${selectedTaxonomy.value.id}/tag`)
-              const existingTags = response.data || []
-
-              // Extract capture group values from existing tags
-              const captureGroupValues = new Set()
-              const regex = new RegExp(selectedTaxonomy.value.regex_pattern)
-
-              existingTags.forEach(tag => {
-                const match = tag.name.match(regex)
-                if (match && match.groups && match.groups[part.name]) {
-                  captureGroupValues.add(match.groups[part.name])
-                }
-              })
-
-              console.log(`Extracted capture group values for ${part.name}:`, Array.from(captureGroupValues))
-              part.options = Array.from(captureGroupValues).sort()
-            } catch (error) {
-              console.error('Error loading existing tags from current taxonomy:', error)
-              part.options = []
-            }
-          }
-        }
-      }
     }
 
     const createNewTag = async () => {

@@ -832,10 +832,10 @@ import { useTaxonomyStore } from '../stores/taxonomies'
 import { useToast } from '../composables/useToast'
 import { buildDTProjectUrl } from '../config.js'
 import { useRouter } from 'vue-router'
-import { useTagStore } from '../stores/tags.js'
 import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, Folder, Trash2, Edit2 } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
-import {parseRegExpLiteral} from 'regexpp'
+
+import { useTagStore } from '../stores/tags'
 import axios from 'axios'
 
 // URL encoding utility
@@ -1157,8 +1157,8 @@ export default {
               console.log('🔧 Found taxonomy by name instead:', taxonomyByName)
               // Use the found taxonomy and proceed with the same logic
               selectedTaxonomy.value = taxonomyByName // Set selectedTaxonomy for parseTaxonomyPattern
-              const parts = parseTaxonomyPattern(taxonomyByName.regex_pattern)
-              await loadTagValuesForDropdowns(parts)
+              const parts = taxonomyStore.parseTaxonomyPattern(taxonomyByName.regex_pattern, taxonomyByName.relations)
+              await taxonomyStore.loadDropdownValues(parts, taxonomyByName, tagStore.tags)
               const regex = new RegExp(taxonomyByName.regex_pattern)
               const match = tag.name.match(regex)
 
@@ -1187,10 +1187,10 @@ export default {
             // Set selectedTaxonomy for parseTaxonomyPattern to use
             selectedTaxonomy.value = taxonomy
             // Parse taxonomy pattern to extract parts
-            const parts = parseTaxonomyPattern(taxonomy.regex_pattern)
+            const parts = taxonomyStore.parseTaxonomyPattern(taxonomy.regex_pattern, taxonomy.relations)
 
             // Load dropdown options for parts
-            await loadTagValuesForDropdowns(parts)
+            await taxonomyStore.loadDropdownValues(parts, taxonomy, tagStore.tags)
 
             // Parse the original tag to pre-populate values
             const regex = new RegExp(taxonomy.regex_pattern)
@@ -1606,12 +1606,12 @@ export default {
 
         if (match) {
           // Parse taxonomy pattern to extract parts
-          const parts = parseTaxonomyPattern(matchingTaxonomy.regex_pattern)
+          const parts = taxonomyStore.parseTaxonomyPattern(matchingTaxonomy.regex_pattern, matchingTaxonomy.relations)
 
-          console.log('🔧 Parsed parts:', parts)
+          console.log('Parsed parts:', parts)
 
           // Load dropdown options for parts
-          await loadTagValuesForDropdowns(parts)
+          await taxonomyStore.loadDropdownValues(parts, matchingTaxonomy, tagStore.tags)
 
           // Pre-populate tag builder parts with existing tag values
           tagBuilderParts.value = parts.map((part) => {
@@ -1631,8 +1631,8 @@ export default {
           console.log('🔧 Final tagBuilderParts:', tagBuilderParts.value)
         } else {
           // If no match, just load empty parts with dropdown options
-          const parts = parseTaxonomyPattern(matchingTaxonomy.regex_pattern)
-          await loadTagValuesForDropdowns(parts)
+          const parts = taxonomyStore.parseTaxonomyPattern(matchingTaxonomy.regex_pattern, matchingTaxonomy.relations)
+          await taxonomyStore.loadDropdownValues(parts, matchingTaxonomy, tagStore.tags)
           tagBuilderParts.value = parts
         }
 
@@ -1641,136 +1641,6 @@ export default {
       } catch (error) {
         console.error('Error starting aided edit:', error)
         showError('Failed to open edit modal')
-      }
-    }
-
-    const parseTaxonomyPattern = (pattern) => {
-      const parts = []
-
-      // use regexpp to process the regex pattern in a semantic fashion so that the parts are properly extracted
-      // i.e. this pattern '/^(?!(?:notThis|notThat):)(?<grpA>[\\w-]+):(?<grpB>[\\d\\w\\.-]+)$/'
-      // becomes [{type: 'static'}, {type: 'text', value: ':'}, {type: 'group', name: 'grpA', ...}, {type: 'static', value: ':'}, {type: 'group', name: 'grpB', ...}]
-      const ast = parseRegExpLiteral(`/${pattern}/`);
-
-      // The 'alternatives' array contains the top-level branches of the regex
-      // We assume a single path for this specific use case
-      const elements = ast.pattern.alternatives[0].elements;
-
-      elements.forEach(node => {
-        // Process each node and build the parts array
-        switch (node.type) {
-            case "CapturingGroup":
-                parts.push({
-                    type: 'group',
-                    name: node.name // This is the 'grpA' or 'grpB'
-                });
-                // Check if this capture group has a corresponding relation
-                const hasRelation = selectedTaxonomy.value?.relations?.some(rel => rel.group === node.name)
-
-                // Add capture group part
-                parts.push({
-                  type: hasRelation ? 'dropdown' : 'text', // Use dropdown only if relation exists
-                  name: node.name,
-                  value: '',
-                  options: [],
-                  pattern: node.pattern
-                })
-                break;
-
-            case "Character":
-                // add a new static part if previous one wasn't static, otherwise append to the previous
-                if (parts.length > 0 && parts[parts.length - 1].type === 'static') {
-                    parts[parts.length - 1].value += String.fromCodePoint(node.value)
-                } else {
-                    parts.push({
-                        type: 'static',
-                        value: String.fromCodePoint(node.value)
-                    })
-                }
-                break;
-
-            case "CharacterClass":
-            case "CharacterSet":
-                // These represent things like [\w-] or \d
-                // For "generate" logic, you likely treat these as static placeholders
-                // or templates rather than literal strings.
-                parts.push({
-                    type: 'text',
-                    value: node.raw
-                });
-                break;
-
-            case "Assertion":
-                // Handles ^, $, lookaheads, etc.
-                // We mark them as static/meta or ignore them for generation logic.
-                if (node.kind === "lookahead" || node.kind === "lookbehind") {
-                    // You could recurse here if you need to find groups inside lookarounds
-                    parts.push({ type: 'assertion', kind: node.kind, raw: node.raw });
-                }
-                break;
-
-            default:
-                // Handle Quantifiers (+, *) or other types if necessary
-                break;
-        }
-      })
-
-
-      return parts
-    }
-
-    const loadTagValuesForDropdowns = async (parts) => {
-      for (const part of parts) {
-        if (part.type === 'dropdown' && part.name) {
-          // Get existing tags from current taxonomy to extract capture group values
-          try {
-            const response = await axios.get(`/api/taxonomies/${selectedTaxonomy.value.id}/tag`)
-            const existingTags = response.data || []
-
-            // Extract capture group values from existing tags
-            const captureGroupValues = new Set()
-            const regex = new RegExp(selectedTaxonomy.value.regex_pattern)
-
-            existingTags.forEach(tag => {
-              const match = tag.name.match(regex)
-              if (match && match.groups && match.groups[part.name]) {
-                captureGroupValues.add(match.groups[part.name])
-              }
-            })
-
-            // For associative taxonomies, also get values from related taxonomies
-            /* if (selectedTaxonomy.value.relations && selectedTaxonomy.value.relations.length > 0) {
-              const relation = selectedTaxonomy.value.relations.find(rel => rel.group === part.name)
-              if (relation && relation.targets) {
-                const targetTaxonomyId = relation.targets
-                try {
-                  const relatedResponse = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tag`)
-                  const relatedTags = relatedResponse.data || []
-
-                  // Add full tag names from related taxonomy as fallback
-                  relatedTags.forEach(tag => {
-                    captureGroupValues.add(tag.name)
-                  })
-                } catch (error) {
-                  console.warn(`Could not load tags from related taxonomy ${targetTaxonomyId}:`, error)
-                }
-              }
-            } */
-
-            // Convert to dropdown options
-            part.options = Array.from(captureGroupValues)
-              .sort()
-              .map(value => ({
-                value: value,
-                text: value
-              }))
-              .filter(Boolean)
-
-          } catch (error) {
-            console.error('Error loading tag values for dropdowns:', error)
-            part.options = []
-          }
-        }
       }
     }
 
@@ -1977,8 +1847,6 @@ export default {
       closeProjectsModal,
       closeCreateTagModal,
       createOrUpdateTag,
-      parseTaxonomyPattern,
-      loadTagValuesForDropdowns,
       buildDTProjectUrl,
 
       // Tag builder properties
