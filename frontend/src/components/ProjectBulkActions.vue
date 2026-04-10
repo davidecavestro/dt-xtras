@@ -609,7 +609,7 @@ export default {
     const pageSize = ref(50)
     const totalProjects = ref(0)
     const totalPages = ref(1)
-    const viewMode = ref('list') // 'list' or 'deck'
+    const viewMode = ref('deck') // 'list' or 'deck'
 
     // Computed properties
     const filteredProjects = computed(() => {

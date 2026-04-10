@@ -523,8 +523,8 @@
                   class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
                   <option value="">Select {{ part.name }}...</option>
-                  <option v-for="option in part.options" :key="option" :value="option">
-                    {{ option }}
+                  <option v-for="option in part.options" :key="option.value || option" :value="option.value || option">
+                    {{ option.text || option }}
                   </option>
                 </select>
 
@@ -669,8 +669,8 @@
                     class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   >
                     <option value="">Select {{ part.name }}...</option>
-                    <option v-for="option in part.options" :key="option" :value="option">
-                      {{ option }}
+                    <option v-for="option in part.options" :key="option.value || option" :value="option.value || option">
+                      {{ option.text || option }}
                     </option>
                   </select>
 
@@ -1559,7 +1559,7 @@ export default {
     })
 
     const canCreateTag = computed(() => {
-      const taxonomy = taxonomies.value.find(t => t.id === cloningTag.value?.taxonomy)
+      const taxonomy = taxonomies.value.find(t => t.id === selectedTaxonomy.value?.id)
       // check that generatedTag is compatible with the tag pattern
       return generatedTag.value.length > 0 && taxonomy && new RegExp(taxonomy.regex_pattern).test(generatedTag.value)
     })
@@ -1722,23 +1722,53 @@ export default {
     const loadTagValuesForDropdowns = async (parts) => {
       for (const part of parts) {
         if (part.type === 'dropdown' && part.name) {
-          // For associative taxonomies get tags from related taxonomies
-          if (selectedTaxonomy.value.relations && selectedTaxonomy.value.relations.length > 0) {
-            // Find related taxonomy for this part
-            const relation = selectedTaxonomy.value.relations.find(rel => rel.group === part.name)
-            if (relation && relation.targets) {
-              const targetTaxonomyId = relation.targets
+          // Get existing tags from current taxonomy to extract capture group values
+          try {
+            const response = await axios.get(`/api/taxonomies/${selectedTaxonomy.value.id}/tag`)
+            const existingTags = response.data || []
 
-              // Get tags from related taxonomy
-              const response = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tag`)
-              const relatedTags = response.data || []
+            // Extract capture group values from existing tags
+            const captureGroupValues = new Set()
+            const regex = new RegExp(selectedTaxonomy.value.regex_pattern)
 
-              // Add to dropdown options
-              part.options = relatedTags.map(tag => ({
-                value: tag.name,
-                text: tag.name
-              })).filter(Boolean)
-            }
+            existingTags.forEach(tag => {
+              const match = tag.name.match(regex)
+              if (match && match.groups && match.groups[part.name]) {
+                captureGroupValues.add(match.groups[part.name])
+              }
+            })
+
+            // For associative taxonomies, also get values from related taxonomies
+            /* if (selectedTaxonomy.value.relations && selectedTaxonomy.value.relations.length > 0) {
+              const relation = selectedTaxonomy.value.relations.find(rel => rel.group === part.name)
+              if (relation && relation.targets) {
+                const targetTaxonomyId = relation.targets
+                try {
+                  const relatedResponse = await axios.get(`/api/taxonomies/${targetTaxonomyId}/tag`)
+                  const relatedTags = relatedResponse.data || []
+
+                  // Add full tag names from related taxonomy as fallback
+                  relatedTags.forEach(tag => {
+                    captureGroupValues.add(tag.name)
+                  })
+                } catch (error) {
+                  console.warn(`Could not load tags from related taxonomy ${targetTaxonomyId}:`, error)
+                }
+              }
+            } */
+
+            // Convert to dropdown options
+            part.options = Array.from(captureGroupValues)
+              .sort()
+              .map(value => ({
+                value: value,
+                text: value
+              }))
+              .filter(Boolean)
+
+          } catch (error) {
+            console.error('Error loading tag values for dropdowns:', error)
+            part.options = []
           }
         }
       }
@@ -1945,10 +1975,16 @@ export default {
       refreshTags,
       formatDate,
       closeProjectsModal,
+      closeCreateTagModal,
       createOrUpdateTag,
       parseTaxonomyPattern,
       loadTagValuesForDropdowns,
-      buildDTProjectUrl
+      buildDTProjectUrl,
+
+      // Tag builder properties
+      tagBuilderParts,
+      generatedTag,
+      canCreateTag
     }
   }
 }
