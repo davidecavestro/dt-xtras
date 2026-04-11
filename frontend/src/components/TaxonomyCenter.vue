@@ -8,34 +8,52 @@
             Taxonomies define rules for tag patterns and create hierarchical relationships, forming tree structures that organize and categorize your tags
           </p>
         </div>
-        <button
-          @click="addTaxonomy"
-          class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-        >
-          <Plus class="inline w-4 h-4 mr-2" />
-          Add Taxonomy
-        </button>
       </div>
 
       <!-- Main Content - Always Visible -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Taxonomy Graph Visualization -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Taxonomy Relations Graph</h3>
+      <div class="flex flex-col lg:flex-row gap-6">
+          <!-- Taxonomy Graph Visualization -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex-1 lg:basis-1/2">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-white">Taxonomy Relations Graph</h3>
+            </div>
+            <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 resize overflow-hidden" style="height: 400px; position: relative; overflow: hidden;">
+              <div ref="cytoscapeContainer" class="w-full h-full"></div>
+            </div>
           </div>
-          <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 resize overflow-hidden" style="height: 400px; position: relative; overflow: hidden;">
-            <div ref="cytoscapeContainer" class="w-full h-full"></div>
-          </div>
-        </div>
 
-        <!-- Taxonomies List -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div class="px-4 py-5 sm:px-6">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Existing Taxonomies</h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              Taxonomies are processed in priority order (lower numbers first)
-            </p>
+          <!-- Vertical Splitter for Mobile Only -->
+          <div class="lg:hidden flex items-center justify-center py-2">
+            <div
+              class="w-full h-1 bg-gray-300 dark:bg-gray-600 rounded-full cursor-ns-resize hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
+              @mousedown="startResize"
+            ></div>
+          </div>
+
+          <!-- Horizontal Splitter for Desktop Only -->
+          <div
+            class="hidden lg:flex items-center justify-center px-2 cursor-ew-resize"
+            @mousedown="startHorizontalResize"
+          >
+            <div class="w-1 h-full bg-gray-300 dark:bg-gray-600 rounded-full hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"></div>
+          </div>
+
+          <!-- Taxonomies List -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex-1 lg:basis-1/2" :style="{ height: isMobile ? graphHeight + 'px' : 'auto' }">
+          <div class="px-1 py-5 sm:px-1 flex justify-between items-start">
+            <div>
+              <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Existing Taxonomies</h3>
+              <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                Taxonomies are processed in priority order (lower numbers first)
+              </p>
+            </div>
+            <button
+              @click="addTaxonomy"
+              class="px-1 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
+            >
+              <Plus class="inline w-4 h-4 mr-2" />
+              Add Taxonomy
+            </button>
           </div>
 
           <ul class="divide-y divide-gray-200 dark:border-gray-700">
@@ -53,15 +71,12 @@
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex items-center space-x-3 flex-1 min-w-0">
                     <div class="text-gray-400 dark:text-gray-500 flex-shrink-0">
-                      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
                       </svg>
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="font-medium text-gray-900 dark:text-white truncate">{{ taxonomy.name }}</div>
-                      <div class="mt-1">
-                        <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all max-w-xs inline-block hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" :title="taxonomy.regex_pattern">{{ taxonomy.regex_pattern }}</code>
-                      </div>
                     </div>
                   </div>
                   <div class="flex items-center gap-3 flex-shrink-0">
@@ -99,6 +114,9 @@
                       </button>
                     </div>
                   </div>
+                </div>
+                <div class="p-1">
+                  <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all inline-block hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" :title="taxonomy.regex_pattern">{{ taxonomy.regex_pattern }}</code>
                 </div>
               </div>
             </li>
@@ -433,33 +451,52 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useTaxonomyStore } from '../stores/taxonomies'
 import { useTagStore } from '../stores/tags'
 import { Plus, Trash2, Edit2, Folder } from 'lucide-vue-next'
-import axios from 'axios'
 import cytoscape from 'cytoscape'
 import { useToast } from '../composables/useToast'
+import { createLogger } from '../utils/logger'
 
 const { showSuccess, showError } = useToast()
+const logger = createLogger('tag-center')
 
 // Store instances
 const taxonomyStore = useTaxonomyStore()
 const tagStore = useTagStore()
 
 // Reactive data
-const taxonomies = ref([])
 const editingTaxonomy = ref(null)
+const isEditingExisting = ref(false)
+const generatedTag = ref('')
 const testTags = ref('')
 const regexTestResult = ref(null)
-
-// Modal state
 const showTagsModal = ref(false)
 const showCreateTagModal = ref(false)
 const selectedTaxonomy = ref(null)
 const taxonomyTags = ref([])
 const tagBuilderParts = ref([])
+const tagUsage = ref({})
 const tagUsageData = ref({})
+const taxonomies = ref([])
+const draggedIndex = ref(null)
+const cytoscapeContainer = ref(null)
+const cytoscapeInstance = ref(null)
+
+// Splitter state
+const graphHeight = ref(400)
+const isResizing = ref(false)
+const isHorizontalResizing = ref(false)
+const startY = ref(0)
+const startHeight = ref(0)
+const startX = ref(0)
+const startWidth = ref(0)
+
+// Mobile detection
+const isMobile = computed(() => {
+  return window.innerWidth < 1024 // lg breakpoint
+})
 
 // Dark mode detection
 const isDarkMode = computed(() => {
@@ -478,20 +515,12 @@ const isPanning = ref(false)
 const panStart = ref({ x: 0, y: 0 })
 const graphSvg = ref(null)
 const graphGroup = ref(null)
-const cytoscapeContainer = ref(null)
-const cytoscapeInstance = ref(null)
-const draggedIndex = ref(null)
 
     const isFormValid = computed(() => {
       return editingTaxonomy.value &&
              editingTaxonomy.value.id &&
              editingTaxonomy.value.name &&
              editingTaxonomy.value.regex_pattern !== undefined
-    })
-
-    const isEditingExisting = computed(() => {
-      return editingTaxonomy.value &&
-             taxonomies.value.some(t => t.id === editingTaxonomy.value.id)
     })
 
     const availableTargetTaxonomies = computed(() => {
@@ -513,15 +542,6 @@ const draggedIndex = ref(null)
 
       return Array.from(groups).sort()
     })
-
-    const loadTaxonomies = async () => {
-      try {
-        const response = await axios.get('/api/taxonomies')
-        taxonomies.value = response.data
-      } catch (error) {
-        console.error('Error loading taxonomies:', error)
-      }
-    }
 
     const addTaxonomy = () => {
       editingTaxonomy.value = {
@@ -570,17 +590,18 @@ const draggedIndex = ref(null)
       try {
         if (editingTaxonomy.value.id && taxonomies.value.some(t => t.id === editingTaxonomy.value.id && t !== editingTaxonomy.value)) {
           // Update existing
-          await axios.put(`/api/taxonomies/${editingTaxonomy.value.id}`, editingTaxonomy.value)
+          await taxonomyStore.updateTaxonomy(editingTaxonomy.value.id, editingTaxonomy.value)
         } else {
           // Create new
-          await axios.post('/api/taxonomies', editingTaxonomy.value)
+          await taxonomyStore.createTaxonomy(editingTaxonomy.value)
         }
 
         await loadTaxonomies()
-        cancelEdit()
+        showSuccess('Taxonomy saved successfully!')
+        editingTaxonomy.value = null
       } catch (error) {
-        console.error('Error saving taxonomy:', error)
-        alert('Error saving taxonomy: ' + (error.response?.data?.detail || error.message))
+        logger.error('Error saving taxonomy:', error)
+        showError('Error saving taxonomy: ' + (error.response?.data?.detail || error.message))
       }
     }
 
@@ -590,11 +611,11 @@ const draggedIndex = ref(null)
       }
 
       try {
-        await axios.delete(`/api/taxonomies/${id}`)
+        await taxonomyStore.deleteTaxonomy(id)
         await loadTaxonomies()
       } catch (error) {
-        console.error('Error deleting taxonomy:', error)
-        alert('Error deleting taxonomy: ' + (error.response?.data?.detail || error.message))
+        logger.error('Error deleting taxonomy:', error)
+        showError('Error deleting taxonomy: ' + (error.response?.data?.detail || error.message))
       }
     }
 
@@ -606,20 +627,19 @@ const draggedIndex = ref(null)
       try {
         const regex = new RegExp(editingTaxonomy.value.regex_pattern)
         const match = testTags.value.match(regex)
-
         if (match) {
           regexTestResult.value = {
             success: true,
             match: match[0],
             groups: match.slice(1),
-            message: '✅ Pattern matches!'
+            message: 'Pattern matches!'
           }
         } else {
           regexTestResult.value = {
             success: false,
             match: null,
             groups: [],
-            message: '❌ Pattern does not match test string'
+            message: 'Pattern does not match test string'
           }
         }
       } catch (error) {
@@ -627,12 +647,11 @@ const draggedIndex = ref(null)
           success: false,
           match: null,
           groups: [],
-          message: `❌ Invalid regex: ${error.message}`
+          message: `Invalid regex: ${error.message}`
         }
       }
     }
 
-    // Graph visualization methods
     const renderCytoscapeGraph = () => {
       if (!taxonomies.value || !cytoscapeContainer.value) return;
 
@@ -672,7 +691,7 @@ const draggedIndex = ref(null)
         }
       });
 
-      console.log('🎨 Rendering TaxonomyEditor Cytoscape graph:', { nodes, edges });
+      logger.info('🎨 Rendering TaxonomyEditor Cytoscape graph:', { nodes, edges });
 
       // Initialize Cytoscape
       cytoscapeInstance.value = cytoscape({
@@ -831,12 +850,10 @@ const draggedIndex = ref(null)
           priority: index + 1
         }));
 
-        await axios.put('/api/taxonomies/reorder', taxonomiesWithPriority);
-        console.log('Taxonomy order saved successfully');
+        await taxonomyStore.reorderTaxonomies(taxonomiesWithPriority);
+        logger.info('Taxonomy order saved successfully');
       } catch (error) {
-        console.error('Error saving taxonomy order:', error);
-        // Optionally revert the order if save fails
-        await loadTaxonomies();
+        logger.error('Error saving taxonomy order:', error);
       }
     };
 
@@ -880,15 +897,6 @@ const draggedIndex = ref(null)
     }, { deep: true })
 
     // Computed properties for tag creation
-    const generatedTag = computed(() => {
-      if (!tagBuilderParts.value.length) return ''
-
-      return tagBuilderParts.value.map(part => {
-        if (part.type === 'static') return part.value
-        return part.value || ''
-      }).join('')
-    })
-
     const canCreateTag = computed(() => {
       return tagBuilderParts.value.every(part =>
         part.type === 'static' || (part.value && part.value.trim())
@@ -896,31 +904,38 @@ const draggedIndex = ref(null)
     })
 
     // Methods for tag management
+    const loadTaxonomies = async () => {
+      try {
+        await taxonomyStore.loadTaxonomies()
+        taxonomies.value = taxonomyStore.taxonomies
+      } catch (error) {
+        logger.error('Error loading taxonomies:', error)
+      }
+    }
+
     const showTaxonomyTags = async (taxonomy) => {
       selectedTaxonomy.value = taxonomy
       try {
-        const response = await axios.get(`/api/taxonomies/${taxonomy.id}/tag`)
-        taxonomyTags.value = response.data || []  // Extract tags array from response
+        taxonomyTags.value = await taxonomyStore.getTaxonomyTags(taxonomy.id)
 
         // Load usage data for tags
         const usagePromises = taxonomyTags.value.map(async (tag) => {
           const tagName = tag.name
           try {
-            const usageResponse = await axios.get(`/api/tag/${tagName}/project`)
-            return { [tagName]: usageResponse.data.length }
+            const usageData = await taxonomyStore.getTagUsage(tagName)
+            return { [tagName]: usageData.length }
           } catch (error) {
             return { [tagName]: 0 }
           }
         })
 
         const usageResults = await Promise.all(usagePromises)
-        tagUsageData.value = Object.assign({}, ...usageResults)
+        tagUsage.value = usageResults.reduce((acc, result) => ({ ...acc, ...result }), {})
 
-        showTagsModal.value = true
+        showTaxonomyTagsModal.value = true
       } catch (error) {
-        console.error('Error loading taxonomy tags:', error)
-        taxonomyTags.value = []
-        showTagsModal.value = true
+        logger.error('Error loading taxonomy tags:', error)
+        showError('Error loading taxonomy tags: ' + (error.response?.data?.detail || error.message))
       }
     }
 
@@ -944,7 +959,7 @@ const draggedIndex = ref(null)
         tagBuilderParts.value = parts
         showCreateTagModal.value = true
       } catch (error) {
-        console.error('Error parsing taxonomy pattern:', error)
+        logger.error('Error parsing taxonomy pattern:', error)
         tagBuilderParts.value = []
         showCreateTagModal.value = true
       }
@@ -956,27 +971,135 @@ const draggedIndex = ref(null)
       tagBuilderParts.value = []
     }
 
+    const getTagUsageCount = (tag) => {
+      return tagUsageData.value[tag] || 0
+    }
+
     const createNewTag = async () => {
       if (!canCreateTag.value || !generatedTag.value) return
 
       try {
-        const response = await axios.post('/api/tag', {
-          name: generatedTag.value,
-          taxonomy_id: selectedTaxonomy.value.id
+        await taxonomyStore.createTaxonomyTag(generatedTag.value, selectedTaxonomy.value.id)
+
+        // Refresh the tags list
+        await showTaxonomyTags(selectedTaxonomy.value)
+
+        // Clear the tag builder
+        tagBuilderParts.value.forEach(part => {
+          if (part.type !== 'static') {
+            part.value = ''
+          }
         })
 
-        if (response.data) {
-          // Show success message
-          showSuccess(`Tag "${generatedTag.value}" created successfully!`)
-          closeCreateTagModal()
-        }
+        showSuccess('Tag created successfully!')
+        closeCreateTagModal()
       } catch (error) {
-        console.error('Error creating tag:', error)
-        showError(`Error creating tag: ${error.response?.data?.detail || error.message}`)
+        logger.error('Error creating tag:', error)
+        showError('Error creating tag: ' + (error.response?.data?.detail || error.message))
       }
     }
 
-    const getTagUsageCount = (tag) => {
-      return tagUsageData.value[tag] || 0
+    // Splitter resize methods
+    const startResize = (event) => {
+      if (isMobile.value) {
+        isResizing.value = true
+        startY.value = event.clientY
+        startHeight.value = graphHeight.value
+
+        // Add global event listeners
+        document.addEventListener('mousemove', handleResize)
+        document.addEventListener('mouseup', stopResize)
+
+        // Prevent text selection during resize
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'ns-resize'
+      }
     }
+
+    const startHorizontalResize = (event) => {
+      if (!isMobile.value) {
+        isHorizontalResizing.value = true
+        startX.value = event.clientX
+        startWidth.value = event.target.parentElement.offsetWidth
+
+        // Add global event listeners
+        document.addEventListener('mousemove', handleHorizontalResize)
+        document.addEventListener('mouseup', stopHorizontalResize)
+
+        // Prevent text selection during resize
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'ew-resize'
+      }
+    }
+
+    const handleResize = (event) => {
+      if (!isResizing.value) return
+
+      const deltaY = event.clientY - startY.value
+      const newHeight = startHeight.value + deltaY
+
+      // Set minimum and maximum height constraints
+      const minHeight = 200
+      const maxHeight = window.innerHeight - 200
+
+      if (newHeight >= minHeight && newHeight <= maxHeight) {
+        graphHeight.value = newHeight
+      }
+    }
+
+    const handleHorizontalResize = (event) => {
+      if (!isHorizontalResizing.value) return
+
+      const deltaX = event.clientX - startX.value
+      const containerWidth = window.innerWidth - 100 // Account for padding
+      const newWidth = startWidth.value + deltaX
+
+      // Set minimum and maximum width constraints
+      const minWidth = 300
+      const maxWidth = containerWidth - 300
+
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
+        // Update flex basis for both panels
+        const leftPanel = document.querySelector('.lg\\:basis-1\\/2')
+        const rightPanel = document.querySelectorAll('.lg\\:basis-1\\/2')[1]
+
+        if (leftPanel && rightPanel) {
+          const leftPercentage = (newWidth / containerWidth) * 100
+          const rightPercentage = 100 - leftPercentage
+
+          leftPanel.style.flexBasis = `${leftPercentage}%`
+          rightPanel.style.flexBasis = `${rightPercentage}%`
+        }
+      }
+    }
+
+    const stopResize = () => {
+      isResizing.value = false
+
+      // Remove global event listeners
+      document.removeEventListener('mousemove', handleResize)
+      document.removeEventListener('mouseup', stopResize)
+
+      // Restore default cursor and selection
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+
+    const stopHorizontalResize = () => {
+      isHorizontalResizing.value = false
+
+      // Remove global event listeners
+      document.removeEventListener('mousemove', handleHorizontalResize)
+      document.removeEventListener('mouseup', stopHorizontalResize)
+
+      // Restore default cursor and selection
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+
+    // Cleanup on component unmount
+    onUnmounted(() => {
+      stopResize()
+      stopHorizontalResize()
+    })
 </script>

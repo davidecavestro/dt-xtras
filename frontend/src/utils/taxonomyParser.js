@@ -111,7 +111,7 @@ export const loadTagValuesForDropdowns = async (parts, selectedTaxonomy) => {
     await taxonomyStore.loadDropdownValues(parts, selectedTaxonomy, tagStore.tags)
 
   } catch (error) {
-    console.error('Error loading dropdown values using store:', error)
+    logger.error('Error loading dropdown values using store:', error)
     // Fallback: set empty options for all dropdown parts
     parts.forEach(part => {
       if (part.type === 'dropdown') {

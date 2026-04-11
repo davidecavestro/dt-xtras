@@ -39,7 +39,7 @@ export const useGraphStore = defineStore('graph', () => {
   })
 
   // Find associative nodes
-  const associativeNodes = computed(() => 
+  const associativeNodes = computed(() =>
     nodes.value.filter(node => node.associative)
   )
 
@@ -47,7 +47,7 @@ export const useGraphStore = defineStore('graph', () => {
   const rootNodes = computed(() => {
     const targetIds = new Set(edges.value.map(edge => edge.target))
     const sourceIds = new Set(edges.value.map(edge => edge.source))
-    return nodes.value.filter(node => 
+    return nodes.value.filter(node =>
       !targetIds.has(node.id) && sourceIds.has(node.id)
     )
   })
@@ -70,23 +70,23 @@ export const useGraphStore = defineStore('graph', () => {
       }
 
       const response = await axios.get('/api/graph', { params: queryParams })
-      
+
       // Update state
       nodes.value = response.data.nodes || []
       edges.value = response.data.edges || []
-      
+
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
 
       return response.data
     } catch (err) {
       error.value = err.response?.data?.detail || err.message || 'Failed to load graph data'
-      console.error('Error loading graph:', err)
-      
+      logger.error('Error loading graph:', err)
+
       // Reset state on error
       nodes.value = []
       edges.value = []
-      
+
       throw err
     } finally {
       loading.value = false
@@ -133,7 +133,7 @@ export const useGraphStore = defineStore('graph', () => {
   // Find connected nodes
   const getConnectedNodes = (nodeId, direction = 'both') => {
     const connectedEdges = getEdgesForNode(nodeId, direction)
-    const connectedNodeIds = connectedEdges.map(edge => 
+    const connectedNodeIds = connectedEdges.map(edge =>
       edge.source === nodeId ? edge.target : edge.source
     )
     return nodes.value.filter(node => connectedNodeIds.includes(node.id))
@@ -176,18 +176,18 @@ export const useGraphStore = defineStore('graph', () => {
 
     while (queue.length > 0) {
       const { node: currentId, path } = queue.shift()
-      
+
       if (visited.has(currentId)) continue
       visited.add(currentId)
 
       const connectedNodes = getConnectedNodes(currentId)
       for (const connectedNode of connectedNodes) {
         const newPath = [...path, connectedNode.id]
-        
+
         if (connectedNode.id === endNodeId) {
           return newPath
         }
-        
+
         if (!visited.has(connectedNode.id)) {
           queue.push({ node: connectedNode.id, path: newPath })
         }

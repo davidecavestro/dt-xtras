@@ -470,7 +470,6 @@ import { useProjectStore } from '../stores/projects'
 import { useToast } from '../composables/useToast'
 import { X, Link, Unlink, RefreshCw, Folder } from 'lucide-vue-next'
 import { buildDTProjectUrl } from '../config.js'
-import axios from 'axios'
 
 export default {
   name: 'TagBulkActions',
@@ -515,7 +514,9 @@ export default {
       nextPage: nextTagPage,
       previousPage: previousTagPage,
       clearFilters: clearTagFilters,
-      setPageSize: setTagPageSize
+      setPageSize: setTagPageSize,
+      linkTagsToProjects,
+      unlinkTagsFromProjects
     } = tagStore
 
     // Use project store
@@ -611,7 +612,7 @@ export default {
       loading.value = true
 
       try {
-        const response = await axios.post(`/api/v1/tag/${encodeURIComponent(selectedTags.value[0])}/project`, selectedProjects.value)
+        await linkTagsToProjects(selectedTags.value[0], selectedProjects.value)
 
         statusMessage.value = `Successfully linked ${selectedTags.value.length} tags to ${selectedProjects.value.length} projects`
         statusMessageClass.value = 'text-green-600 dark:text-green-400'
@@ -619,7 +620,7 @@ export default {
         // Reload data to reflect changes
         await refreshData()
       } catch (error) {
-        console.error('Error linking tags to projects:', error)
+        logger.error('Error linking tags to projects:', error)
         statusMessage.value = 'Error linking tags to projects'
         statusMessageClass.value = 'text-red-600 dark:text-red-400'
       } finally {
@@ -634,9 +635,7 @@ export default {
       loading.value = true
 
       try {
-        const response = await axios.delete(`/api/v1/tag/${encodeURIComponent(selectedTags.value[0])}/project`, {
-          projects: selectedProjects.value
-        })
+        await unlinkTagsFromProjects(selectedTags.value[0], selectedProjects.value)
 
         statusMessage.value = `Successfully unlinked ${selectedTags.value.length} tags from ${selectedProjects.value.length} projects`
         statusMessageClass.value = 'text-green-600 dark:text-green-400'
@@ -644,7 +643,7 @@ export default {
         // Reload data to reflect changes
         await refreshData()
       } catch (error) {
-        console.error('Error unlinking tags from projects:', error)
+        logger.error('Error unlinking tags from projects:', error)
         statusMessage.value = 'Error unlinking tags from projects'
         statusMessageClass.value = 'text-red-600 dark:text-red-400'
       } finally {

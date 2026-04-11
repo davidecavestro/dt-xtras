@@ -39,10 +39,10 @@
 
             <button
               @click="refreshProjects"
-              :disabled="loading"
+              :disabled="isLoading"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              <RefreshCw class="mr-2 h-4 w-4" :class="{ 'animate-spin': loading }" />
+              <RefreshCw class="mr-2 h-4 w-4" :class="{ 'animate-spin': isLoading }" />
               Refresh
             </button>
           </div>
@@ -215,7 +215,7 @@
                 class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
               <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                Select All ({{ selectedProjects.length }}/{{ filteredProjects.length }})
+                Select All ({{ selectedProjects.length }}/{{ data.length }})
               </span>
             </label>
           </div>
@@ -265,12 +265,12 @@
 
       <!-- Projects List -->
       <div class="px-4 py-4 sm:px-6">
-        <div v-if="loading" class="text-center py-8">
+        <div v-if="isLoading && data.length === 0" class="text-center py-8">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading projects...</p>
         </div>
 
-        <div v-else-if="projects.length === 0" class="text-center py-8">
+        <div v-else-if="data.length === 0 && !isLoading" class="text-center py-8">
           <Package class="mx-auto h-12 w-12 text-gray-400" />
           <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -299,18 +299,10 @@
           </div>
         </div>
 
-        <div v-else-if="filteredProjects.length === 0" class="text-center py-8">
-          <FolderOpen class="mx-auto h-12 w-12 text-gray-400" />
-          <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No projects found</h3>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Try adjusting your filters or search criteria.
-          </p>
-        </div>
-
         <!-- List View -->
         <div v-else-if="viewMode === 'list'" class="space-y-3">
           <div
-            v-for="project in filteredProjects"
+            v-for="project in data"
             :key="project.uuid"
             class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
@@ -379,7 +371,7 @@
         <!-- Deck View -->
         <div v-else-if="viewMode === 'deck'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-4">
           <div
-            v-for="project in filteredProjects"
+            v-for="project in data"
             :key="project.uuid"
             class="relative"
           >
@@ -573,9 +565,11 @@
 
 <script>
 import { ref, onMounted, computed, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useProjectStore } from '../stores/projects'
+import { useToast } from '../composables/useToast'
+import { createLogger } from '../utils/logger'
 import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff, List as ListIcon, Square as SquareIcon } from 'lucide-vue-next'
-import axios from 'axios'
 import ProjectCard from './ProjectCard.vue'
 
 export default {
@@ -595,9 +589,9 @@ export default {
   },
   setup() {
     const projectStore = useProjectStore()
-    const loading = ref(false)
-    const projects = ref([])
-    const searchQuery = ref('')
+    const { projects, isLoading, currentPage, pageSize, totalProjects, totalPages, searchQuery, paginatedProjects } = storeToRefs(projectStore)
+    const { showSuccess, showError } = useToast()
+    const logger = createLogger('ProjectBulkActions')
     const activityFilter = ref('all')
     const sbomFilter = ref('all')
     const selectedProjects = ref([])
@@ -605,22 +599,22 @@ export default {
     const showDeleteConfirmation = ref(false)
     const showActivateConfirmation = ref(false)
     const showDeactivateConfirmation = ref(false)
-    const currentPage = ref(1)
-    const pageSize = ref(50)
-    const totalProjects = ref(0)
-    const totalPages = ref(1)
     const viewMode = ref('deck') // 'list' or 'deck'
 
     // Computed properties
     const filteredProjects = computed(() => {
-      let filtered = projects.value
+      let filtered = projects.value || []
+      logger.debug('Raw projects count:', projects.value?.length)
+      logger.debug('Search query:', searchQuery.value)
+      logger.debug('Activity filter:', activityFilter.value)
+      logger.debug('SBOM filter:', sbomFilter.value)
 
       // Search filter
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         filtered = filtered.filter(project =>
-          project.name.toLowerCase().includes(query) ||
-          project.tags.some(tag => tag.toLowerCase().includes(query))
+          (project.name && project.name.toLowerCase().includes(query)) ||
+          (project.tags && project.tags.some(tag => tag && tag.toLowerCase && tag.toLowerCase().includes(query)))
         )
       }
 
@@ -676,45 +670,84 @@ export default {
         )
       }
 
+      logger.debug('Final filtered projects count:', filtered.length)
       return filtered
+    })
+
+    // Use store's paginatedProjects but apply additional filters
+    const data = computed(() => {
+      let projectsToShow = paginatedProjects.value || []
+
+      // Apply additional filters that aren't in the store
+      const now = new Date()
+
+      // Activity filter
+      if (activityFilter.value === 'active-dt') {
+        projectsToShow = projectsToShow.filter(project => project.active === true)
+      } else if (activityFilter.value === 'inactive-dt') {
+        projectsToShow = projectsToShow.filter(project => project.active === false)
+      } else if (activityFilter.value === 'recent') {
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        projectsToShow = projectsToShow.filter(project =>
+          project.lastActivity && new Date(project.lastActivity) > thirtyDaysAgo
+        )
+      } else if (activityFilter.value === 'stale') {
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+        projectsToShow = projectsToShow.filter(project =>
+          project.lastActivity &&
+          new Date(project.lastActivity) > ninetyDaysAgo &&
+          new Date(project.lastActivity) <= thirtyDaysAgo
+        )
+      } else if (activityFilter.value === 'old') {
+        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+        projectsToShow = projectsToShow.filter(project =>
+          !project.lastActivity || new Date(project.lastActivity) <= ninetyDaysAgo
+        )
+      }
+
+      // SBOM filter
+      if (sbomFilter.value === 'recent') {
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        projectsToShow = projectsToShow.filter(project =>
+          project.lastSbomUpload && new Date(project.lastSbomUpload) > sevenDaysAgo
+        )
+      } else if (sbomFilter.value === 'normal') {
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        projectsToShow = projectsToShow.filter(project =>
+          project.lastSbomUpload &&
+          new Date(project.lastSbomUpload) > thirtyDaysAgo &&
+          new Date(project.lastSbomUpload) <= sevenDaysAgo
+        )
+      } else if (sbomFilter.value === 'old') {
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        projectsToShow = projectsToShow.filter(project =>
+          !project.lastSbomUpload || new Date(project.lastSbomUpload) <= thirtyDaysAgo
+        )
+      } else if (sbomFilter.value === 'very-old') {
+        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+        projectsToShow = projectsToShow.filter(project =>
+          !project.lastSbomUpload || new Date(project.lastSbomUpload) <= ninetyDaysAgo
+        )
+      }
+
+      return projectsToShow
     })
 
     // Methods
     const refreshProjects = async () => {
-      loading.value = true
       try {
-        const params = {
-          page: currentPage.value,
-          limit: pageSize.value
-        }
-
-        // Add search parameter if exists
-        if (searchQuery.value) {
-          params.search = searchQuery.value
-        }
-
-        // Use store instead of direct API call
         await projectStore.loadProjects()
-        projects.value = projectStore.projects
-
-        // Get total count for pagination
-        try {
-          totalProjects.value = projectStore.projects.length
-          totalPages.value = Math.ceil(totalProjects.value / pageSize.value)
-        } catch (countError) {
-          console.warn('Could not get project count:', countError)
-          // Fallback: assume current page has full results
-          totalProjects.value = projects.value.length
-          totalPages.value = 1
-        }
+        logger.debug('Projects after loading:', projects.value)
+        logger.debug('Projects length:', projects.value?.length)
 
         // Clear selection when refreshing
         selectedProjects.value = []
         selectAll.value = false
       } catch (error) {
-        console.error('Failed to load projects:', error)
-      } finally {
-        loading.value = false
+        logger.error('Failed to load projects:', error)
+        showError('Failed to load projects')
       }
     }
 
@@ -725,15 +758,14 @@ export default {
         sbomFilter.value = 'old'
       } else if (type === 'cleanup-candidates') {
         activityFilter.value = 'inactive-dt'
-        sbomFilter.value = 'none'
+        sbomFilter.value = 'very-old'
       } else if (type === 'cleanup-candidates-with-sbom') {
         activityFilter.value = 'inactive-dt'
-        sbomFilter.value = 'yes'
+        sbomFilter.value = 'recent'
       }
 
       // Reset to first page when filters change
       currentPage.value = 1
-      refreshProjects()
     }
 
     const clearFilters = () => {
@@ -748,7 +780,7 @@ export default {
 
     const toggleSelectAll = () => {
       if (selectAll.value) {
-        selectedProjects.value = filteredProjects.value.map(p => p.uuid)
+        selectedProjects.value = data.value.map(p => p.uuid)
       } else {
         selectedProjects.value = []
       }
@@ -834,39 +866,32 @@ export default {
     const deleteProject = async (project) => {
       if (confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
         try {
-          await axios.delete(`/api/project/${project.uuid}`)
-          projects.value = projects.value.filter(p => p.uuid !== project.uuid)
+          await projectStore.deleteProject(project.uuid)
           selectedProjects.value = selectedProjects.value.filter(uuid => uuid !== project.uuid)
         } catch (error) {
-          console.error('Failed to delete project:', error)
-          alert('Failed to delete project. Please try again.')
+          logger.error('Failed to delete project:', error)
+          showError('Failed to delete project. Please try again.')
         }
       }
     }
 
     const confirmDelete = async () => {
       try {
-        const deletePromises = selectedProjects.value.map(uuid =>
-          axios.delete(`/api/project/${uuid}`)
-        )
-        await Promise.all(deletePromises)
+        await projectStore.bulkDeleteProjects(selectedProjects.value)
 
-        projects.value = projects.value.filter(p => !selectedProjects.value.includes(p.uuid))
+        // Store handles state updates, just clear local selection
         selectedProjects.value = []
         selectAll.value = false
         showDeleteConfirmation.value = false
       } catch (error) {
-        console.error('Failed to delete projects:', error)
-        alert('Failed to delete some projects. Please try again.')
+        logger.error('Failed to delete projects:', error)
+        showError('Failed to delete some projects. Please try again.')
       }
     }
 
     const confirmActivate = async () => {
       try {
-        const activatePromises = selectedProjects.value.map(uuid =>
-          axios.patch(`/api/project/${uuid}/activate`)
-        )
-        await Promise.all(activatePromises)
+        await projectStore.bulkActivateProjects(selectedProjects.value)
 
         // Update local project data
         selectedProjects.value.forEach(uuid => {
@@ -880,17 +905,14 @@ export default {
         selectAll.value = false
         showActivateConfirmation.value = false
       } catch (error) {
-        console.error('Failed to activate projects:', error)
-        alert('Failed to activate some projects. Please try again.')
+        logger.error('Failed to activate projects:', error)
+        showError('Failed to activate some projects. Please try again.')
       }
     }
 
     const confirmDeactivate = async () => {
       try {
-        const deactivatePromises = selectedProjects.value.map(uuid =>
-          axios.patch(`/api/project/${uuid}/deactivate`)
-        )
-        await Promise.all(deactivatePromises)
+        await projectStore.bulkDeactivateProjects(selectedProjects.value)
 
         // Update local project data
         selectedProjects.value.forEach(uuid => {
@@ -904,73 +926,64 @@ export default {
         selectAll.value = false
         showDeactivateConfirmation.value = false
       } catch (error) {
-        console.error('Failed to deactivate projects:', error)
-        alert('Failed to deactivate some projects. Please try again.')
+        logger.error('Failed to deactivate projects:', error)
+        showError('Failed to deactivate some projects. Please try again.')
       }
     }
 
     const refreshSelectedProjects = async () => {
       try {
-        const refreshPromises = selectedProjects.value.map(uuid =>
-          axios.put(`/api/project/${uuid}/refresh`)
-        )
-        await Promise.all(refreshPromises)
+        await projectStore.bulkRefreshProjects(selectedProjects.value)
 
-        // Refresh the full project list
+        // Refresh full project list
         await refreshProjects()
       } catch (error) {
-        console.error('Failed to refresh projects:', error)
-        alert('Failed to refresh some projects. Please try again.')
+        logger.error('Failed to refresh projects:', error)
+        showError('Failed to refresh some projects. Please try again.')
       }
     }
 
     const goToPage = (page) => {
-      if (page >= 1 && page <= totalPages.value) {
-        currentPage.value = page
-        refreshProjects()
-      }
+      projectStore.goToPage(page)
     }
 
     const nextPage = () => {
-      if (currentPage.value < totalPages.value) {
-        currentPage.value++
-        refreshProjects()
-      }
+      projectStore.nextPage()
     }
 
     const prevPage = () => {
-      if (currentPage.value > 1) {
-        currentPage.value--
-        refreshProjects()
-      }
+      projectStore.previousPage()
     }
 
     const handlePageSizeChange = (newPageSize) => {
-      pageSize.value = newPageSize
-      currentPage.value = 1 // Reset to first page when changing page size
-      refreshProjects()
+      projectStore.setPageSize(newPageSize)
     }
 
     // ProjectCard event handlers
     const viewProject = (project) => {
-      console.log('View project:', project)
+      logger.info('View project:', project)
       // TODO: Navigate to project details
     }
 
     const viewSecurityDetails = (project) => {
-      console.log('View security details:', project)
+      logger.info('View security details:', project)
       // TODO: Navigate to security details
     }
 
     const analyzeProject = (project) => {
-      console.log('Analyze project:', project)
+      logger.info('Analyze project:', project)
       // TODO: Navigate to project analysis
     }
 
-    // Watch for search changes and reset pagination
-    watch(searchQuery, () => {
+    // Watch for filter changes and reset to first page
+    watch([activityFilter, sbomFilter], () => {
+      // Reset to first page when filters change
       currentPage.value = 1
-      refreshProjects()
+    }, { deep: true })
+
+    // Watch for search changes and update store
+    watch(() => searchQuery.value, (newValue) => {
+      projectStore.setSearchQuery(newValue)
     })
 
     onMounted(() => {
@@ -978,7 +991,7 @@ export default {
     })
 
     return {
-      loading,
+      isLoading,
       projects,
       searchQuery,
       activityFilter,
@@ -994,6 +1007,8 @@ export default {
       totalPages,
       viewMode,
       filteredProjects,
+      paginatedProjects,
+      data,
       refreshProjects,
       setQuickFilter,
       clearFilters,

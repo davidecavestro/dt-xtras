@@ -156,7 +156,7 @@ export default {
 
     const fetchProjects = () => {
       return fetchData().catch(error => {
-        console.error('Error fetching projects:', error)
+        logger.error('Error fetching projects:', error)
         pagination.setError(error.message || 'Failed to fetch projects')
         throw error
       })
@@ -184,20 +184,20 @@ export default {
     const viewProject = (project) => {
       // Navigate to project details
       if (!project) return
-      console.log('View project:', project)
+      logger.info('View project:', project)
     }
 
     const viewSecurityDetails = (project) => {
       // Fetch and display security details from aggregate endpoint
       if (!project) return
-      console.log('View security details for project:', project)
+      logger.info('View security details for project:', project)
       // TODO: Navigate to security details or show modal
     }
 
     const analyzeProject = (project) => {
       // Trigger project analysis
       if (!project) return
-      console.log('Analyze project:', project)
+      logger.info('Analyze project:', project)
     }
 
     onMounted(() => {
@@ -208,7 +208,7 @@ export default {
     watch(
       () => tagStore.lastUpdate,
       () => {
-        console.log('Tag store updated, refreshing projects...')
+        logger.info('Tag store updated, refreshing projects...')
         fetchProjects()
       }
     )

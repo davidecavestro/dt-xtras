@@ -194,10 +194,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { AlertCircle, RefreshCw, Shield } from 'lucide-vue-next'
-import axios from 'axios'
 import apiService from '../services/api'
-import auth from '../services/auth.js'
-import { useRouter } from 'vue-router'
 import Pagination from './Pagination.vue'
 import { usePaginatedData } from '../composables/usePagination'
 
@@ -250,7 +247,7 @@ export default {
 
     const fetchVulnerabilities = () => {
       return fetchData().catch(error => {
-        console.error('Error fetching vulnerabilities:', error)
+        logger.error('Error fetching vulnerabilities:', error)
         pagination.setError(error.message || 'Failed to fetch vulnerabilities')
         throw error
       })
@@ -280,7 +277,7 @@ export default {
       try {
         return new Date(dateString).toLocaleDateString()
       } catch (error) {
-        console.error('Date parsing error:', error)
+        logger.error('Date parsing error:', error)
         return 'Invalid Date'
       }
     }
@@ -288,13 +285,13 @@ export default {
     const viewVulnerability = (vulnerability) => {
       // Navigate to vulnerability details
       if (!vulnerability) return
-      console.log('View vulnerability:', vulnerability)
+      logger.info('View vulnerability:', vulnerability)
     }
 
     const analyzeVulnerability = (vulnerability) => {
       // Trigger vulnerability analysis
       if (!vulnerability) return
-      console.log('Analyze vulnerability:', vulnerability)
+      logger.info('Analyze vulnerability:', vulnerability)
     }
 
     onMounted(() => {

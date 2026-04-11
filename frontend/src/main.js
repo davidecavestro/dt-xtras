@@ -77,15 +77,18 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication
-router.beforeEach((to, from, next) => {
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+router.beforeEach((to, from) => {
+  try {
+    const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 
-  if (requiresAuth && !authService.isAuthenticated()) {
-    next('/login')
-  } else if (to.path === '/login' && authService.isAuthenticated()) {
-    next('/')
-  } else {
-    next()
+    if (requiresAuth && !authService.isAuthenticated()) {
+      return '/login'
+    } else {
+      return true
+    }
+  } catch (error) {
+    logger.error('Navigation guard error:', error)
+    return false
   }
 })
 

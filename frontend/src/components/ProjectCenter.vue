@@ -441,7 +441,7 @@ export default {
 
     const onSearch = (searchTerm) => {
       // Handle grid search
-      console.log('Grid search:', searchTerm)
+      logger.info('Grid search:', searchTerm)
     }
 
     const onRowClick = (row, event) => {
@@ -449,7 +449,7 @@ export default {
     }
 
     const onRowSelect = (selectedRows) => {
-      console.log('Selected rows:', selectedRows)
+      logger.info('Selected rows:', selectedRows)
     }
 
     // Project action handlers

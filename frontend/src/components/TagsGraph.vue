@@ -259,9 +259,11 @@ import dagre from 'cytoscape-dagre';
 import { useTagStore } from '../stores/tags';
 import { useTaxonomyStore } from '../stores/taxonomies';
 import { useProjectStore } from '../stores/projects';
+import { createLogger } from '../utils/logger';
 
 // Register dagre extension
 cytoscape.use(dagre);
+const logger = createLogger('tags-graph')
 
 export default {
   name: 'TagsGraph',
@@ -346,8 +348,8 @@ export default {
           taxonomyStore.loadTaxonomies()
         ]);
 
-        console.log('Tags loaded:', tags.value);
-        console.log('Taxonomies loaded:', taxonomies.value);
+        logger.info('Tags loaded:', tags.value);
+        logger.info('Taxonomies loaded:', taxonomies.value);
 
         if (!tags.value || !taxonomies.value) {
           throw new Error('Failed to fetch data');
@@ -361,7 +363,7 @@ export default {
         graphData.value = graph;
 
       } catch (err) {
-        console.error('Error loading data:', err);
+        logger.error('Error loading data:', err);
         error.value = err.response?.data?.detail || err.message;
 
         if (err.response?.status === 403) {
@@ -374,7 +376,7 @@ export default {
 
     const updateVisualization = () => {
       if (taxonomies.value) {
-        console.log('Updating visualization with selected taxonomy:', selectedTaxonomy.value);
+        logger.info('Updating visualization with selected taxonomy:', selectedTaxonomy.value);
         // Rebuild graph with new mode and taxonomy selection
         rebuildGraph();
       }
@@ -384,7 +386,7 @@ export default {
       try {
         loading.value = true;
 
-        console.log('Rebuilding graph with:', {
+        logger.info('Rebuilding graph with:', {
           tagsCount: tags.value?.length,
           selectedTaxonomy: selectedTaxonomy.value,
           associativeMode: associativeMode.value
@@ -395,7 +397,7 @@ export default {
         const graph = graphBuilder.buildGraph(tags.value, taxonomiesData, selectedTaxonomy.value, associativeMode.value);
         graphData.value = graph;
 
-        console.log('Graph rebuilt with nodes:', graph.nodes?.size, 'edges:', graph.edges?.length);
+        logger.info('Graph rebuilt with nodes:', graph.nodes?.size, 'edges:', graph.edges?.length);
 
         // Re-render Cytoscape after graph is built
         nextTick(() => {
@@ -403,7 +405,7 @@ export default {
         });
 
       } catch (err) {
-        console.error('Error rebuilding graph:', err);
+        logger.error('Error rebuilding graph:', err);
         error.value = err.response?.data?.detail || err.message;
       } finally {
         loading.value = false;
@@ -431,7 +433,7 @@ export default {
               captureGroups = Object.values(match.groups).filter(g => g); // Get all non-empty capture groups
             }
           } catch (e) {
-            console.warn('Invalid regex pattern:', taxonomy.regex_pattern);
+            logger.warn('Invalid regex pattern:', taxonomy.regex_pattern);
           }
         }
 
@@ -610,7 +612,7 @@ export default {
     const selectNode = (node) => {
       selectedNode.value = node;
       updateRelatedProjects(node);
-      console.log('Selected node:', node);
+      logger.info('Selected node:', node);
     };
 
     const getTaxonomyDisplayName = (taxonomyId) => {
@@ -662,19 +664,19 @@ export default {
 
         // Convert Set to Array for easier handling
         const tagArray = Array.from(tagIds);
-        console.log('🔍 Getting projects for tags:', tagArray);
-        console.log('📊 Available projects in store:', projects.value);
-        console.log('📊 Projects with tags:', projects.value.filter(p => p.tags && p.tags.length > 0));
+        logger.info('🔍 Getting projects for tags:', tagArray);
+        logger.info('📊 Available projects in store:', projects.value);
+        logger.info('📊 Projects with tags:', projects.value.filter(p => p.tags && p.tags.length > 0));
 
         // Ensure projects are loaded before filtering
         if (projects.value.length === 0) {
-          console.log('⚠️ No projects loaded, attempting to load...');
+          logger.info('⚠️ No projects loaded, attempting to load...');
           await projectStore.loadProjects();
         }
 
         // Use project store to get projects by tags
         const allProjects = projectStore.getProjectsByTags(tagArray);
-        console.log('📊 Filtered projects count:', allProjects.length);
+        logger.info('📊 Filtered projects count:', allProjects.length);
 
         // Apply pagination
         const startIndex = (page - 1) * pageSize.value;
@@ -686,10 +688,10 @@ export default {
         relatedProjects.value = paginatedProjects;
         relatedProjectsPage.value = page;
 
-        console.log(`📊 Total projects found: ${allProjects.length}, showing page ${page}`);
+        logger.info(`📊 Total projects found: ${allProjects.length}, showing page ${page}`);
         return paginatedProjects;
       } catch (error) {
-        console.error('Error fetching projects for tags:', error);
+        logger.error('Error fetching projects for tags:', error);
         relatedProjects.value = [];
         relatedProjectsTotal.value = 0;
         relatedProjectsTotalPages.value = 1;
@@ -792,7 +794,7 @@ export default {
 
     // Watch for taxonomy selection changes to rebuild graph
     watch(selectedTaxonomy, (newTaxonomy) => {
-      console.log('Selected taxonomy changed to:', newTaxonomy);
+      logger.info('Selected taxonomy changed to:', newTaxonomy);
       if (taxonomies.value && newTaxonomy) {
         rebuildGraph();
       }

@@ -185,6 +185,50 @@ export const useTagStore = defineStore('tags', () => {
     }
   }
 
+  const linkTagsToProjects = async (tagName, projectUuids) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const response = await axios.post(`/api/v1/tag/${encodeURIComponent(tagName)}/project`, projectUuids)
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to link tags to projects'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const unlinkTagsFromProjects = async (tagName, projectUuids) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const response = await axios.delete(`/api/v1/tag/${encodeURIComponent(tagName)}/project`, {
+        projects: projectUuids
+      })
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to unlink tags from projects'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const getTagByName = (name) => {
     return tags.value.find(tag => tag.name === name)
   }
@@ -195,6 +239,24 @@ export const useTagStore = defineStore('tags', () => {
 
   const getCustomTags = () => {
     return tags.value.filter(tag => tag.custom === true)
+  }
+
+  const getTagProjects = async (tagName) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const response = await axios.get(`/api/tag/${encodeURIComponent(tagName)}/project`)
+
+      return response.data || []
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to get tag projects'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
   }
 
   // Pagination methods
@@ -298,6 +360,9 @@ export const useTagStore = defineStore('tags', () => {
     createTag,
     updateTag,
     deleteTag,
+    linkTagsToProjects,
+    unlinkTagsFromProjects,
+    getTagProjects,
     getTagByName,
     getTagsByTaxonomy,
     getCustomTags,

@@ -61,6 +61,7 @@
 <script>
 import { computed } from 'vue'
 import { useTaxonomyStore } from '../stores/taxonomies'
+import { createLogger } from '../utils/logger'
 import { ChevronRight, FolderOpen as FolderIcon, Server, Package, Tag } from 'lucide-vue-next'
 
 export default {
@@ -94,6 +95,7 @@ export default {
   setup(props, { emit }) {
     const taxonomyStore = useTaxonomyStore()
     const { getTaxonomyBadgeStyle, getTagTaxonomy } = taxonomyStore
+    const logger = createLogger('TreeNode')
 
     const hasChildren = computed(() => {
       return props.node.children && props.node.children.length > 0
@@ -131,7 +133,7 @@ export default {
     }
 
     const getNodeIconColor = (node) => {
-      console.log('getNodeIconColor called for node:', node);
+      logger.debug('getNodeIconColor called for node:', node);
 
       // For taxonomy nodes, use taxonomy color
       if (node.type === 'taxonomy') {
@@ -147,14 +149,14 @@ export default {
             const regex = new RegExp(taxonomy.regex_pattern)
             return regex.test(node.name)
           } catch (error) {
-            console.warn('Invalid regex pattern:', taxonomy.regex_pattern);
+            logger.warn('Invalid regex pattern:', taxonomy.regex_pattern);
             return false
           }
         })
 
-        console.log('Found matching taxonomy:', matchingTaxonomy);
+        logger.debug('Found matching taxonomy:', matchingTaxonomy);
         if (matchingTaxonomy && matchingTaxonomy.color) {
-          console.log('Using taxonomy color:', matchingTaxonomy.color);
+          logger.debug('Using taxonomy color:', matchingTaxonomy.color);
           return matchingTaxonomy.color
         }
       }
@@ -162,20 +164,11 @@ export default {
       // Default colors for different node types
       let color;
       switch (node.type) {
-        case 'customer':
-          color = '#3B82F6' // blue-500
-          break
-        case 'environment':
-          color = '#10B981' // green-500
-          break
-        case 'project':
-          color = '#F97316' // orange-500
-          break
         default:
           color = '#8B5CF6' // purple-500 (for tags)
           break
       }
-      console.log('Using default color for node type', node.type, ':', color);
+      logger.debug('Using default color for node type', node.type, ':', color);
       return color
     }
 
