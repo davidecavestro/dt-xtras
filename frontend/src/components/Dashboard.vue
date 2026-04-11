@@ -5,9 +5,16 @@
       <div class="flex justify-between items-center mb-4 p-4">
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Security Dashboard</h2>
-          <p v-if="selectedTreeNode" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Filtered by: {{ selectedTreeNode.name }} ({{ selectedTreeNode.type }})
-          </p>
+          <div v-if="selectedTreeNode" class="flex items-center gap-2 mt-1">
+            <span class="text-sm text-gray-600 dark:text-gray-400">Selected:</span>
+            <span class="font-mono text-sm text-gray-900 dark:text-white">{{ selectedTreeNode.name }}</span>
+            <span
+              class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+              :style="getTaxonomyBadgeStyleForNode(selectedTreeNode)"
+            >
+              {{ getTaxonomyNameForNode(selectedTreeNode) }}
+            </span>
+          </div>
           <p v-else class="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Showing all projects reachable from any root taxonomy
           </p>
@@ -437,6 +444,7 @@ export default {
     const { isLoading: projectLoading, error, projects } = storeToRefs(projectStore)
     const { tags, isLoading: tagLoading } = storeToRefs(tagStore)
     const { taxonomies, loading: taxonomiesLoading } = storeToRefs(taxonomyStore)
+    const { getTaxonomyBadgeStyle, getTaxonomyByName } = taxonomyStore
 
     // Coordinated loading state - wait for all stores to be ready
     const isDataReady = computed(() => {
@@ -457,6 +465,60 @@ export default {
     })
 
     const shouldShowLoading = computed(() => !isDataReady.value)
+
+    // Helper function to get taxonomy name for tree nodes
+    const getTaxonomyNameForNode = (node) => {
+      if (!node) return 'unknown'
+
+      // Try to find taxonomy by matching node name with taxonomy name or ID
+      let taxonomy = null
+
+      // First try exact name match
+      taxonomy = taxonomies.value.find(t => t.name === node.name || t.id === node.name)
+
+      // If not found, try partial match or other logic
+      if (!taxonomy && node.name) {
+        // Try to find taxonomy that might contain this node
+        taxonomy = taxonomies.value.find(t =>
+          node.name.toLowerCase().includes(t.id.toLowerCase()) ||
+          t.id.toLowerCase().includes(node.name.toLowerCase())
+        )
+      }
+
+      // If still not found, return 'unknown'
+      return taxonomy ? taxonomy.name : 'unknown'
+    }
+
+    // Helper function to get taxonomy badge style for tree nodes
+    const getTaxonomyBadgeStyleForNode = (node) => {
+      if (!node) return {}
+
+      // Try to find taxonomy by matching node name with taxonomy name or ID
+      let taxonomy = null
+
+      // First try exact name match
+      taxonomy = taxonomies.value.find(t => t.name === node.name || t.id === node.name)
+
+      // If not found, try partial match or other logic
+      if (!taxonomy && node.name) {
+        // Try to find taxonomy that might contain this node
+        taxonomy = taxonomies.value.find(t =>
+          node.name.toLowerCase().includes(t.id.toLowerCase()) ||
+          t.id.toLowerCase().includes(node.name.toLowerCase())
+        )
+      }
+
+      // If still not found, use a default color
+      if (!taxonomy) {
+        return {
+          backgroundColor: '#6b728020',
+          color: '#6b7280',
+          borderColor: '#6b728040'
+        }
+      }
+
+      return getTaxonomyBadgeStyle(taxonomy)
+    }
 
     // Local state
     const expandedNodes = ref(new Set())
@@ -764,13 +826,16 @@ export default {
     // Tree building function using graph builder data
     const buildTreeFromGraph = (graph) => {
       if (!graph || !nodes.value || !edges.value) {
+        console.log('buildTreeFromGraph: missing data', { graph: !!graph, nodes: nodes.value?.length, edges: edges.value?.length });
         return [];
       }
+
+      console.log('buildTreeFromGraph: building tree from', nodes.value.length, 'nodes and', edges.value.length, 'edges');
 
       const nodeMap = new Map()
       const rootNodesArray = []
 
-      // Create map of all nodes from graph data (excluding associative tag nodes and nodes with no edges)
+      // Create map of all nodes from graph data (excluding associative tag nodes)
       const allTargetIds = new Set(edges.value.map(edge => edge?.target).filter(Boolean))
       const allSourceIds = new Set(edges.value.map(edge => edge?.source).filter(Boolean))
 
@@ -780,53 +845,65 @@ export default {
           return; // Skip this node
         }
 
-        // Skip nodes with no edges (neither incoming nor outgoing)
-        if (!allTargetIds.has(node.id) && !allSourceIds.has(node.id)) {
-          return; // Skip this node - no connections
-        }
-
+        // Include all non-associative nodes, even those without edges
         nodeMap.set(node.id, {
           id: node.id,
           name: node.name,
-          type: 'taxonomy', // All included nodes are taxonomy nodes
+          type: 'taxonomy',
           children: [],
-          vulnerabilities: 0, // Will be calculated from security data
+          vulnerabilities: 0,
           projectsCount: node.projectsCount || 0,
         })
       })
 
-      // Build tree structure from edges (only between non-filtered nodes)
+      // Build tree structure from edges
       edges.value.forEach(edge => {
         const parentNode = nodeMap.get(edge.source)
         const childNode = nodeMap.get(edge.target)
 
-        // Only add edge if both nodes exist (i.e., neither was filtered out)
+        // Only add edge if both nodes exist
         if (parentNode && childNode) {
           parentNode.children.push(childNode)
+          console.log('Added edge:', edge.source, '->', edge.target)
         }
       })
 
-      // Find root nodes (nodes without incoming edges) - only from nodeMap
-      // Only consider nodes that are in nodeMap (not filtered out)
+      // Find root nodes (nodes without incoming edges)
       nodeMap.forEach((nodeData, nodeId) => {
-        // Root node: has no incoming edges
-        if (!allTargetIds.has(nodeId)) {
+        const hasIncomingEdge = allTargetIds.has(nodeId)
+        if (!hasIncomingEdge) {
           rootNodesArray.push(nodeId)
+          console.log('Found root node:', nodeId, nodeData.name)
         }
       })
 
       // If no root nodes found, use all available nodes as root (fallback)
       if (rootNodesArray.length === 0) {
+        console.log('No root nodes found, using all nodes as roots');
         nodeMap.forEach((nodeData, nodeId) => {
           rootNodesArray.push(nodeId)
         })
       }
 
-      // Return sorted tree nodes
+      // Return sorted tree nodes - nodes with children first, then leaves
       const result = rootNodesArray.map(nodeId => nodeMap.get(nodeId)).filter(Boolean).sort((a, b) => {
-        // Sort by name (all nodes are taxonomy nodes)
+        // First sort by whether node has children (nodes with children first)
+        const aHasChildren = a.children && a.children.length > 0
+        const bHasChildren = b.children && b.children.length > 0
+
+        if (aHasChildren && !bHasChildren) {
+          return -1 // a comes first (has children)
+        }
+        if (!aHasChildren && bHasChildren) {
+          return 1 // b comes first (has children)
+        }
+
+        // If both have children or both are leaves, sort by name as usual
         return a.name.localeCompare(b.name)
       });
+
+      console.log('buildTreeFromGraph: returning', result.length, 'root nodes with children:',
+        result.map(n => ({ name: n.name, children: n.children.length })));
 
       return result;
     }
@@ -930,13 +1007,13 @@ export default {
           console.warn('Some data loading operations failed:', failures);
         }
 
-        // Use graph data directly - no need for complex tree building
+        // Build proper hierarchical tree structure from graph data
         if (nodes.value && nodes.value.length > 0 &&
             edges.value && edges.value.length > 0) {
 
           try {
-            // Use graph nodes directly as tree data
-            treeData.value = nodes.value.filter(node => !node.associative);
+            // Build hierarchical tree from graph data
+            treeData.value = buildTreeFromGraph(graphData.value);
 
             // Update all reachable nodes for computed property
             await updateAllReachableNodes();
@@ -945,7 +1022,7 @@ export default {
               expandAll(treeData.value);
             }
           } catch (treeErr) {
-            console.error('Error setting up tree data:', treeErr);
+            console.error('Error building tree:', treeErr);
             treeData.value = [];
           }
         } else {
@@ -1096,6 +1173,9 @@ export default {
       updateAllReachableNodes,
       expandAll,
       onPageChanged,
+      getTaxonomyBadgeStyle,
+      getTaxonomyBadgeStyleForNode,
+      getTaxonomyNameForNode,
       onPageSizeChanged,
 
       // Project action handlers
