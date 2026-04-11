@@ -63,7 +63,7 @@ export const useGraphStore = defineStore('graph', () => {
       // Import here to avoid circular dependency
       const { default: axios } = await import('axios')
 
-      // Build query parameters
+      // Build query parameters - backend already supports all needed features
       const queryParams = {
         root_taxonomy: params.rootTaxonomy || rootTaxonomy.value,
         associative_mode: params.associativeMode !== undefined ? params.associativeMode : associativeMode.value
@@ -91,6 +91,11 @@ export const useGraphStore = defineStore('graph', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  // Method for loading tag-based graphs (uses same backend endpoint)
+  const loadTagGraph = async (params = {}) => {
+    return await loadGraph(params)
   }
 
   const refreshGraph = async (params = {}) => {
@@ -207,7 +212,7 @@ export const useGraphStore = defineStore('graph', () => {
     rootTaxonomy,
     associativeMode,
 
-    // Computed
+    // Computed properties
     graphData,
     nodeCount,
     edgeCount,
@@ -219,6 +224,7 @@ export const useGraphStore = defineStore('graph', () => {
 
     // Methods
     loadGraph,
+    loadTagGraph,
     refreshGraph,
     clearGraph,
     setRootTaxonomy,

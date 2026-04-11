@@ -470,43 +470,27 @@ export default {
     const getTaxonomyNameForNode = (node) => {
       if (!node) return 'unknown'
 
-      // Try to find taxonomy by matching node name with taxonomy name or ID
-      let taxonomy = null
-
-      // First try exact name match
-      taxonomy = taxonomies.value.find(t => t.name === node.name || t.id === node.name)
-
-      // If not found, try partial match or other logic
-      if (!taxonomy && node.name) {
-        // Try to find taxonomy that might contain this node
-        taxonomy = taxonomies.value.find(t =>
-          node.name.toLowerCase().includes(t.id.toLowerCase()) ||
-          t.id.toLowerCase().includes(node.name.toLowerCase())
-        )
-      }
+      let taxonomy = getTaxonomyByNode(node)
 
       // If still not found, return 'unknown'
       return taxonomy ? taxonomy.name : 'unknown'
+    }
+
+    const getTaxonomyByNode = (node) => {
+      if (!node) return {}
+
+      // Try to find taxonomy sorted by priority by matching regex pattern
+      return taxonomies.value
+        .filter(t => node.name.match(new RegExp(t.regex_pattern)))
+        .sort((a, b) => a.priority - b.priority)[0]
     }
 
     // Helper function to get taxonomy badge style for tree nodes
     const getTaxonomyBadgeStyleForNode = (node) => {
       if (!node) return {}
 
-      // Try to find taxonomy by matching node name with taxonomy name or ID
-      let taxonomy = null
-
-      // First try exact name match
-      taxonomy = taxonomies.value.find(t => t.name === node.name || t.id === node.name)
-
-      // If not found, try partial match or other logic
-      if (!taxonomy && node.name) {
-        // Try to find taxonomy that might contain this node
-        taxonomy = taxonomies.value.find(t =>
-          node.name.toLowerCase().includes(t.id.toLowerCase()) ||
-          t.id.toLowerCase().includes(node.name.toLowerCase())
-        )
-      }
+      // Try to find taxonomy sorted by priority by matching regex pattern
+      let taxonomy = getTaxonomyByNode(node)
 
       // If still not found, use a default color
       if (!taxonomy) {

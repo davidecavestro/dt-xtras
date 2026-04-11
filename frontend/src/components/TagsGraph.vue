@@ -251,7 +251,6 @@
 <script>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import SimpleTaxonomyGraphBuilder from '../utils/simpleTaxonomyGraphBuilder.js';
 import { List, Grid3X3, Square } from 'lucide-vue-next';
 import cytoscape from 'cytoscape';
 import { buildDTProjectUrl } from '../config.js';
@@ -259,6 +258,7 @@ import dagre from 'cytoscape-dagre';
 import { useTagStore } from '../stores/tags';
 import { useTaxonomyStore } from '../stores/taxonomies';
 import { useProjectStore } from '../stores/projects';
+import { useGraphStore } from '../stores/graph';
 import { createLogger } from '../utils/logger';
 
 // Register dagre extension
@@ -302,7 +302,8 @@ export default {
     const loadingRelatedProjects = ref(false);
     const viewMode = ref('graph'); // 'graph', 'list', 'grid', or 'deck'
 
-    const graphBuilder = new SimpleTaxonomyGraphBuilder();
+    // Use graph store reactive references
+    const { nodes, edges, loading: graphLoading, error: graphError } = storeToRefs(graphStore);
 
     // Taxonomy colors - now dynamic based on user choices
     const taxonomyColors = computed(() => {
@@ -342,32 +343,35 @@ export default {
         loading.value = true;
         error.value = null;
 
-        // Load data using stores
-        await Promise.all([
-          tagStore.loadTags(),
-          taxonomyStore.loadTaxonomies()
-        ]);
+        // Load tag-based graph using enhanced graph store
+        await graphStore.loadTagGraph({
+          rootTaxonomy: selectedTaxonomy.value,
+          associativeMode: associativeMode.value,
+          selectedTaxonomy: selectedTaxonomy.value
+        });
 
-        logger.info('Tags loaded:', tags.value);
-        logger.info('Taxonomies loaded:', taxonomies.value);
+        logger.info('Graph loaded:', nodes.value?.length, 'nodes,', edges.value?.length, 'edges');
 
-        if (!tags.value || !taxonomies.value) {
-          throw new Error('Failed to fetch data');
+        if (!nodes.value || !edges.value) {
+          throw new Error('Failed to load graph data');
         }
 
-        // Store taxonomies data filtering associative taxonomies for graph building
-        const taxonomiesData = associativeMode.value ? taxonomies.value.filter(taxonomy => taxonomy.relations !== undefined) : taxonomies.value;
-
-        // Build graph with current mode
-        const graph = graphBuilder.buildGraph(tags.value, taxonomiesData, selectedTaxonomy.value, associativeMode.value);
-        graphData.value = graph;
+        // Convert graph store data to expected format
+        graphData.value = {
+          nodes: nodes.value,
+          edges: edges.value
+        };
 
       } catch (err) {
         logger.error('Error loading data:', err);
         error.value = err.response?.data?.detail || err.message;
 
         if (err.response?.status === 403) {
-          error.value = 'Authentication required. Please log in first.';
+          error.value = 'Authentication required. Please check your API credentials.';
+        } else if (err.response?.status === 404) {
+          error.value = 'API endpoint not found. Please check the server configuration.';
+        } else if (err.code === 'ECONNABORTED') {
+          error.value = 'Request timeout. Please check your network connection and try again.';
         }
       } finally {
         loading.value = false;
@@ -392,12 +396,20 @@ export default {
           associativeMode: associativeMode.value
         });
 
-        // Rebuild graph with current mode
-        const taxonomiesData = associativeMode.value ? taxonomies.value.filter(taxonomy => taxonomy.relations !== undefined) : taxonomies.value;
-        const graph = graphBuilder.buildGraph(tags.value, taxonomiesData, selectedTaxonomy.value, associativeMode.value);
-        graphData.value = graph;
+        // Rebuild graph with current mode using graph store
+        await graphStore.loadTagGraph({
+          rootTaxonomy: selectedTaxonomy.value,
+          associativeMode: associativeMode.value,
+          selectedTaxonomy: selectedTaxonomy.value
+        });
 
-        logger.info('Graph rebuilt with nodes:', graph.nodes?.size, 'edges:', graph.edges?.length);
+        // Convert graph store data to expected format
+        graphData.value = {
+          nodes: nodes.value,
+          edges: edges.value
+        };
+
+        logger.info('Graph rebuilt with nodes:', nodes.value?.length, 'edges:', edges.value?.length);
 
         // Re-render Cytoscape after graph is built
         nextTick(() => {
