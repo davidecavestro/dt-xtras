@@ -81,7 +81,7 @@ class ApiService {
         headers: response.headers
       }
     } catch (error) {
-      console.error(`Error fetching paginated data from ${endpoint}:`, error)
+      logger.error(`Error fetching paginated data from ${endpoint}:`, error)
       throw error
     }
   }
@@ -164,7 +164,7 @@ class ApiService {
       })
       return response.data
     } catch (error) {
-      console.error(`Error fetching data from ${endpoint}:`, error)
+      logger.error(`Error fetching data from ${endpoint}:`, error)
       throw error
     }
   }
@@ -180,7 +180,7 @@ class ApiService {
       const response = await axios.post(`/api/v1${endpoint}`, data)
       return response.data
     } catch (error) {
-      console.error(`Error posting data to ${endpoint}:`, error)
+      logger.error(`Error posting data to ${endpoint}:`, error)
       throw error
     }
   }
@@ -196,7 +196,7 @@ class ApiService {
       const response = await axios.put(`/api/v1${endpoint}`, data)
       return response.data
     } catch (error) {
-      console.error(`Error updating data at ${endpoint}:`, error)
+      logger.error(`Error updating data at ${endpoint}:`, error)
       throw error
     }
   }
@@ -211,7 +211,7 @@ class ApiService {
       const response = await axios.delete(`/api/v1${endpoint}`)
       return response.data
     } catch (error) {
-      console.error(`Error deleting data at ${endpoint}:`, error)
+      logger.error(`Error deleting data at ${endpoint}:`, error)
       throw error
     }
   }

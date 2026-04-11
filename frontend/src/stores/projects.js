@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { createLogger } from '../utils/logger'
 
 export const useProjectStore = defineStore('projects', () => {
+  const logger = createLogger('projects')
+
   // State
   const projects = ref([])
   const isLoading = ref(false)
@@ -27,10 +30,10 @@ export const useProjectStore = defineStore('projects', () => {
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase()
       filtered = filtered.filter(project =>
-        project.name.toLowerCase().includes(query) ||
-        project.displayName.toLowerCase().includes(query) ||
-        project.version.toLowerCase().includes(query) ||
-        (project.tags && project.tags.some(tag => tag.toLowerCase().includes(query)))
+        (project.name && project.name.toLowerCase().includes(query)) ||
+        (project.displayName && project.displayName.toLowerCase().includes(query)) ||
+        (project.version && project.version.toLowerCase().includes(query)) ||
+        (project.tags && project.tags.some(tag => tag && tag.toLowerCase && tag.toLowerCase().includes(query)))
       )
     }
 
@@ -114,7 +117,8 @@ export const useProjectStore = defineStore('projects', () => {
       const { default: axios } = await import('axios')
 
       const response = await axios.get('/api/project')
-      projects.value = response.data.data || []
+      logger.debug('Projects API response:', response.data)
+      projects.value = response.data.data || response.data || []
 
       // Update pagination info
       updatePaginationInfo()
@@ -193,6 +197,164 @@ export const useProjectStore = defineStore('projects', () => {
 
   const getInactiveProjectCount = () => {
     return projects.value.filter(project => project.active === false).length
+  }
+
+  const bulkActivateProjects = async (projectUuids) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const activatePromises = projectUuids.map(uuid =>
+        axios.patch(`/api/project/${uuid}/activate`)
+      )
+      await Promise.all(activatePromises)
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return true
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to activate projects'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const bulkDeactivateProjects = async (projectUuids) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const deactivatePromises = projectUuids.map(uuid =>
+        axios.patch(`/api/project/${uuid}/deactivate`)
+      )
+      await Promise.all(deactivatePromises)
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return true
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to deactivate projects'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const bulkDeleteProjects = async (projectUuids) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const deletePromises = projectUuids.map(uuid =>
+        axios.delete(`/api/project/${uuid}`)
+      )
+      await Promise.all(deletePromises)
+
+      // Remove deleted projects from local state
+      projectUuids.forEach(uuid => {
+        const index = projects.value.findIndex(project => project.uuid === uuid)
+        if (index > -1) {
+          projects.value.splice(index, 1)
+        }
+      })
+
+      // Update pagination info
+      updatePaginationInfo()
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return true
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to delete projects'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const deleteProject = async (projectUuid) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      await axios.delete(`/api/project/${projectUuid}`)
+
+      // Remove project from local state
+      const index = projects.value.findIndex(project => project.uuid === projectUuid)
+      if (index > -1) {
+        projects.value.splice(index, 1)
+      }
+
+      // Update pagination info
+      updatePaginationInfo()
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return true
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to delete project'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const refreshProject = async (projectUuid) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      await axios.put(`/api/project/${projectUuid}/refresh`)
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return true
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to refresh project'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const bulkRefreshProjects = async (projectUuids) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const refreshPromises = projectUuids.map(uuid =>
+        axios.put(`/api/project/${uuid}/refresh`)
+      )
+      await Promise.all(refreshPromises)
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return true
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to refresh projects'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
   }
 
   // Pagination methods
@@ -337,6 +499,12 @@ export const useProjectStore = defineStore('projects', () => {
     getProjectCount,
     getActiveProjectCount,
     getInactiveProjectCount,
+    bulkActivateProjects,
+    bulkDeactivateProjects,
+    bulkDeleteProjects,
+    deleteProject,
+    refreshProject,
+    bulkRefreshProjects,
     getActivityStatus,
     getActivityStatusClass,
 

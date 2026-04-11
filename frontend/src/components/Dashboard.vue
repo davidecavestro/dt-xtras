@@ -646,8 +646,8 @@ export default {
 
     // Helper function to find reachable tags using tree structure
     const findReachableTags = (startNodeId) => {
-      console.log('findReachableTags called with startNodeId:', startNodeId);
-      console.log('treeData available:', !!treeData.value, 'length:', treeData.value?.length);
+      logger.info('findReachableTags called with startNodeId:', startNodeId);
+      logger.info('treeData available:', !!treeData.value, 'length:', treeData.value?.length);
 
       if (!startNodeId || !treeData.value || treeData.value.length === 0) return new Set()
 
@@ -703,7 +703,7 @@ export default {
         }
       }
 
-      console.log('findReachableTags returning:', Array.from(reachableTags));
+      logger.info('findReachableTags returning:', Array.from(reachableTags));
       return reachableTags
     }
 

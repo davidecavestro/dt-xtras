@@ -81,29 +81,29 @@ export function usePagination(options = {}) {
   }
 
   const updatePaginationMetadata = (metadata) => {
-    console.log('updatePaginationMetadata - received metadata:', metadata)
+    logger.info('updatePaginationMetadata - received metadata:', metadata)
 
     if (metadata.currentPage !== undefined) {
       const currentPageValue = typeof metadata.currentPage === 'object' ? metadata.currentPage.page : metadata.currentPage
-      console.log('updatePaginationMetadata - setting currentPage to:', currentPageValue)
+      logger.info('updatePaginationMetadata - setting currentPage to:', currentPageValue)
       currentPage.value = currentPageValue
     }
     if (metadata.pageSize !== undefined) {
       const pageSizeValue = typeof metadata.pageSize === 'object' ? metadata.pageSize.pageSize : metadata.pageSize
-      console.log('updatePaginationMetadata - setting pageSize to:', pageSizeValue)
+      logger.info('updatePaginationMetadata - setting pageSize to:', pageSizeValue)
       pageSize.value = pageSizeValue
     }
     if (metadata.totalItems !== undefined) {
-      console.log('updatePaginationMetadata - setting totalItems to:', metadata.totalItems)
+      logger.info('updatePaginationMetadata - setting totalItems to:', metadata.totalItems)
       totalItems.value = metadata.totalItems
     }
     if (metadata.totalPages !== undefined) {
-      console.log('updatePaginationMetadata - setting totalPages to:', metadata.totalPages)
+      logger.info('updatePaginationMetadata - setting totalPages to:', metadata.totalPages)
       totalPages.value = metadata.totalPages
     } else if (metadata.totalItems !== undefined && metadata.pageSize !== undefined) {
       const pageSizeValue = typeof metadata.pageSize === 'object' ? metadata.pageSize.pageSize : metadata.pageSize
       totalPages.value = Math.ceil(metadata.totalItems / pageSizeValue)
-      console.log('updatePaginationMetadata - calculated totalPages:', totalPages.value)
+      logger.info('updatePaginationMetadata - calculated totalPages:', totalPages.value)
     }
   }
 

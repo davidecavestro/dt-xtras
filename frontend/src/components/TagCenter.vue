@@ -836,7 +836,7 @@ import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, Folder, Trash
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 
 import { useTagStore } from '../stores/tags'
-import axios from 'axios'
+import { createLogger } from '../utils/logger'
 
 // URL encoding utility
 const encodeTagName = (tagName) => {
@@ -856,6 +856,7 @@ export default {
     Edit2
   },
   setup() {
+    const logger = createLogger('tag-center')
     const router = useRouter()
     const tagStore = useTagStore()
     const taxonomyStore = useTaxonomyStore()
@@ -971,13 +972,13 @@ export default {
           methods: {
             viewProjects: () => {
               // Emit event to parent or call directly
-              console.log('View projects for tag:', props.model.name)
+              logger.info('View projects for tag:', props.model.name)
             },
             edit: () => {
-              console.log('Edit tag:', props.model.name)
+              logger.info('Edit tag:', props.model.name)
             },
             removeTag: () => {
-              console.log('Delete tag:', props.model.name)
+              logger.info('Delete tag:', props.model.name)
             }
           }
         }
@@ -989,7 +990,7 @@ export default {
       try {
         // Load projects from store instead of direct API call
         await tagStore.loadTags()
-        console.log('TagCenter - tags loaded:', tagStore.tags.length, tagStore.tags);
+        logger.info('TagCenter - tags loaded:', tagStore.tags.length, tagStore.tags);
         projects.value = tagStore.tags.map(tag => ({
           id: tag.id, // Use tag id
           uuid: tag.id,
@@ -999,7 +1000,7 @@ export default {
           tags: [] // Tags don't have child tags
         }))
       } catch (error) {
-        console.error('Error loading projects:', error)
+        logger.error('Error loading projects:', error)
         projects.value = []
       }
     }
@@ -1029,7 +1030,7 @@ export default {
           const matches = regex.test(tag)
           return matches
         } catch (error) {
-          console.error('Invalid regex regex_pattern:', taxonomy.regex_pattern, error)
+          logger.error('Invalid regex regex_pattern:', taxonomy.regex_pattern, error)
           return false
         }
       })
@@ -1069,7 +1070,7 @@ export default {
           showCreateTagModal.value = false
         }
       } catch (error) {
-        console.error('Error creating tag:', error)
+        logger.error('Error creating tag:', error)
         tagValidation.value = {
           valid: false,
           message: `❌ Error: ${tagStore.error || error.message}`
@@ -1082,16 +1083,11 @@ export default {
       if (!confirm(`Are you sure you want to delete tag "${tag.name}"?`)) return
 
       try {
-        await axios.delete(`/api/tag/${encodeTagName(tag.name)}`)
+        await tagStore.deleteTag(tag.name)
 
-        // Remove the tag from our list
-        const index = tags.value.findIndex(t => t.name === tag.name)
-        if (index > -1) {
-          tags.value.splice(index, 1)
-          showSuccess('Tag deleted successfully')
-        }
+        showSuccess(`Tag "${tag.name}" deleted successfully`)
       } catch (error) {
-        console.error('Error deleting tag:', error)
+        logger.error('Error deleting tag:', error)
         showError('Failed to delete tag', 'Please try again.')
       }
     }
@@ -1101,10 +1097,9 @@ export default {
       showProjectsModal.value = true
 
       try {
-        const response = await axios.get(`/api/tag/${encodeTagName(tag.name)}/project`)
-        tagProjects.value = response.data
+        tagProjects.value = await tagStore.getProjectsByTag(tag.name)
       } catch (error) {
-        console.error('Error loading tag projects:', error)
+        logger.error('Error loading tag projects:', error)
         tagProjects.value = []
       }
     }
@@ -1132,7 +1127,7 @@ export default {
 
     // Clone Tag functionality
     const startCloneTag = async (tag) => {
-      console.log('🔧 Clone Tag clicked for tag:', tag)
+      logger.info('🔧 Clone Tag clicked for tag:', tag)
       cloningTag.value = tag
       cloneTagName.value = ''
       cloneTagValidation.value = { valid: false, message: '' }
@@ -1141,20 +1136,20 @@ export default {
       // Initialize tag builder if tag has taxonomy
       if (tag.taxonomy) {
         try {
-          console.log('🔧 Available taxonomies:', taxonomies.value.map(t => ({ name: t.name, id: t.id })))
-          console.log('🔧 Available taxonomy names:', taxonomies.value.map(t => `'${t.name}'`).join(', '))
-          console.log('🔧 Looking for taxonomy:', `'${tag.taxonomy}'`)
-          console.log('🔧 Tag taxonomy type:', typeof tag.taxonomy)
-          console.log('🔧 Tag taxonomy length:', tag.taxonomy.length)
+          logger.info('🔧 Available taxonomies:', taxonomies.value.map(t => ({ name: t.name, id: t.id })))
+          logger.info('🔧 Available taxonomy names:', taxonomies.value.map(t => `'${t.name}'`).join(', '))
+          logger.info('🔧 Looking for taxonomy:', `'${tag.taxonomy}'`)
+          logger.info('🔧 Tag taxonomy type:', typeof tag.taxonomy)
+          logger.info('🔧 Tag taxonomy length:', tag.taxonomy.length)
 
           // Find the taxonomy object by ID (since tag.taxonomy contains the ID, not the name)
           const taxonomy = taxonomies.value.find(t => t.id === tag.taxonomy)
           if (!taxonomy) {
-            console.error('Taxonomy not found by ID:', tag.taxonomy)
+            logger.error('Taxonomy not found by ID:', tag.taxonomy)
             // Try finding by name as fallback
             const taxonomyByName = taxonomies.value.find(t => t.name === tag.taxonomy)
             if (taxonomyByName) {
-              console.log('🔧 Found taxonomy by name instead:', taxonomyByName)
+              logger.info('🔧 Found taxonomy by name instead:', taxonomyByName)
               // Use the found taxonomy and proceed with the same logic
               selectedTaxonomy.value = taxonomyByName // Set selectedTaxonomy for parseTaxonomyPattern
               const parts = taxonomyStore.parseTaxonomyPattern(taxonomyByName.regex_pattern, taxonomyByName.relations)
@@ -1178,12 +1173,12 @@ export default {
               } else {
                 tagBuilderParts.value = parts
               }
-              console.log('🔧 Clone tag builder initialized (fallback):', tagBuilderParts.value)
+              logger.info('🔧 Clone tag builder initialized (fallback):', tagBuilderParts.value)
             } else {
               tagBuilderParts.value = []
             }
           } else {
-            console.log('🔧 Found taxonomy by ID:', taxonomy)
+            logger.info('🔧 Found taxonomy by ID:', taxonomy)
             // Set selectedTaxonomy for parseTaxonomyPattern to use
             selectedTaxonomy.value = taxonomy
             // Parse taxonomy pattern to extract parts
@@ -1194,14 +1189,14 @@ export default {
 
             // Parse the original tag to pre-populate values
             const regex = new RegExp(taxonomy.regex_pattern)
-            console.log('🔧 Regex pattern:', taxonomy.regex_pattern)
-            console.log('🔧 Testing against tag:', tag.name)
+            logger.info('🔧 Regex pattern:', taxonomy.regex_pattern)
+            logger.info('🔧 Testing against tag:', tag.name)
             const match = tag.name.match(regex)
-            console.log('🔧 Regex match result:', match)
+            logger.info('🔧 Regex match result:', match)
 
             if (match) {
-              console.log('🔧 Match groups:', match.groups)
-              console.log('🔧 Parts before mapping:', parts)
+              logger.info('🔧 Match groups:', match.groups)
+              logger.info('🔧 Parts before mapping:', parts)
               // Pre-populate tag builder parts with original tag values
               tagBuilderParts.value = parts.map((part) => {
                 if (part.type === 'static') {
@@ -1209,7 +1204,7 @@ export default {
                 } else if (part.type === 'dropdown' || part.type === 'text') {
                   // Use named capture group value from match.groups
                   const currentValue = match.groups?.[part.name] || ''
-                  console.log(`🔧 Setting ${part.name} to: "${currentValue}"`)
+                  logger.info(`🔧 Setting ${part.name} to: "${currentValue}"`)
                   return {
                     ...part,
                     value: currentValue
@@ -1217,18 +1212,18 @@ export default {
                 }
                 return part
               })
-              console.log('🔧 Tag builder parts after mapping:', tagBuilderParts.value)
+              logger.info('🔧 Tag builder parts after mapping:', tagBuilderParts.value)
             } else {
               // If no match, just load empty parts with dropdown options
               tagBuilderParts.value = parts
             }
 
-            console.log('🔧 Clone tag builder initialized:', tagBuilderParts.value)
+            logger.info('🔧 Clone tag builder initialized:', tagBuilderParts.value)
           }
 
-          console.log('🔧 Clone tag builder initialized:', tagBuilderParts.value)
+          logger.info('🔧 Clone tag builder initialized:', tagBuilderParts.value)
         } catch (error) {
-          console.error('Error initializing clone tag builder:', error)
+          logger.error('Error initializing clone tag builder:', error)
           tagBuilderParts.value = []
         }
       } else {
@@ -1317,7 +1312,7 @@ export default {
     }
 
     const startCopyProjectsToTag = (tag) => {
-      console.log('🔗 Starting copy projects to tag for:', tag)
+      logger.info('🔗 Starting copy projects to tag for:', tag)
       // Handle both reactive proxy and regular objects
       const tagObj = tag.name ? tag : { name: tag, taxonomy: tag.taxonomy, projectsCount: tag.projectsCount }
       sourceTag.value = tagObj
@@ -1346,9 +1341,9 @@ export default {
       }
 
       try {
-        // Get all projects that have the source tag
-        const sourceTagProjects = await axios.get(`/api/tag/${encodeURIComponent(sourceTagName)}/project`)
-        const projectsToCopy = sourceTagProjects.data || []
+        // Get all projects that have source tag
+        const sourceTagProjects = await tagStore.getTagProjects(sourceTagName)
+        const projectsToCopy = sourceTagProjects || []
 
         if (projectsToCopy.length === 0) {
           copyProjectsValidation.value = { valid: false, message: 'No projects found to copy' }
@@ -1356,13 +1351,13 @@ export default {
         }
 
         // Use the generic proxy endpoint to add target tag to all projects
-        await axios.post(`/api/v1/tag/${encodeURIComponent(targetTagName)}/project`, projectsToCopy.map(project => project.uuid))
+        await tagStore.linkTagsToProjects(targetTagName, projectsToCopy.map(project => project.uuid))
 
         showSuccess(`Successfully copied ${projectsToCopy.length} projects from "${sourceTagName}" to "${targetTagName}"`)
         closeCopyProjectsModal()
         await loadTags() // Refresh tags to update project counts
       } catch (error) {
-        console.error('Error copying projects:', error)
+        logger.error('Error copying projects:', error)
         copyProjectsValidation.value = {
           valid: false,
           message: `❌ Error: ${error.response?.data?.message || error.message || 'Unknown error'}`
@@ -1399,20 +1394,19 @@ export default {
           // If linking projects is enabled, get projects from original tag and link them
           if (linkProjects.value && cloningTag.value && cloningTag.value.projectsCount > 0) {
             try {
-              const projectsResponse = await axios.get(`/api/tag/${encodeTagName(cloningTag.value.name)}/project`)
-              const projects = projectsResponse.data
+              const projects = await tagStore.getTagProjects(cloningTag.value.name)
 
               if (projects && projects.length > 0) {
                 // Link each project to new tag using the correct DT API endpoint
                 const projectUuids = projects.map(p => p.uuid)
-                await axios.post(`/api/v1/tag/${encodeTagName(newTagName)}/project`, projectUuids)
+                await tagStore.linkTagsToProjects(newTagName, projectUuids)
 
                 showSuccess(`Tag "${newTagName}" created and linked to ${projects.length} projects`)
               } else {
                 showSuccess(`Tag "${newTagName}" created successfully`)
               }
             } catch (error) {
-              console.error('Error linking projects:', error)
+              logger.error('Error linking projects:', error)
               showSuccess(`Tag "${newTagName}" created but failed to link some projects`)
             }
           } else {
@@ -1424,7 +1418,7 @@ export default {
           await loadTags()
         }
       } catch (error) {
-        console.error('Error cloning tag:', error)
+        logger.error('Error cloning tag:', error)
         showError('Failed to clone tag', 'Please try again.')
       }
     }
@@ -1449,20 +1443,19 @@ export default {
           // If linking projects is enabled, get projects from original tag and link them
           if (linkProjects.value && cloningTag.value && cloningTag.value.projectsCount > 0) {
             try {
-              const projectsResponse = await axios.get(`/api/tag/${encodeTagName(cloningTag.value.name)}/project`)
-              const projects = projectsResponse.data
+              const projects = await tagStore.getTagProjects(cloningTag.value.name)
 
               if (projects && projects.length > 0) {
                 // Link each project to new tag using the correct DT API endpoint
                 const projectUuids = projects.map(p => p.uuid)
-                await axios.post(`/api/v1/tag/${encodeTagName(newTagName)}/project`, projectUuids)
+                await tagStore.linkTagsToProjects(newTagName, projectUuids)
 
                 showSuccess(`Tag "${newTagName}" created and linked to ${projects.length} projects`)
               } else {
                 showSuccess(`Tag "${newTagName}" created successfully`)
               }
             } catch (error) {
-              console.error('Error linking projects:', error)
+              logger.error('Error linking projects:', error)
               showSuccess(`Tag "${newTagName}" created but failed to link some projects`)
             }
           } else {
@@ -1474,7 +1467,7 @@ export default {
           await loadTags()
         }
       } catch (error) {
-        console.error('Error cloning tag:', error)
+        logger.error('Error cloning tag:', error)
         cloneTagValidation.value = {
           valid: false,
           message: `❌ Error: ${tagStore.error || error.message}`
@@ -1484,7 +1477,7 @@ export default {
 
     // Edit tag functionality
     const startEditTag = (tag) => {
-      console.log('🔧 Starting edit for tag:', tag)
+      logger.info('🔧 Starting edit for tag:', tag)
 
       editingTag.value = tag
       editingTagName.value = tag.name
@@ -1507,7 +1500,7 @@ export default {
           }
         }
 
-        console.log('🔧 Input not found, trying alternative approach')
+        logger.info('🔧 Input not found, trying alternative approach')
       })
     }
 
@@ -1522,7 +1515,7 @@ export default {
       }
 
       try {
-        await axios.put(`/api/tag/${encodeTagName(editingTag.value.name)}`, {
+        await tagStore.updateTag(editingTag.value.name, {
           name: editingTagName.value.trim()
         })
 
@@ -1537,7 +1530,7 @@ export default {
         editingTagName.value = ''
         showSuccess('Tag updated successfully')
       } catch (error) {
-        console.error('Error updating tag:', error)
+        logger.error('Error updating tag:', error)
         showError('Failed to update tag', 'Please try again.')
       }
     }
@@ -1577,8 +1570,8 @@ export default {
     }
 
     const startAidedEditTag = async (tag) => {
-      console.log('🔧 Aided Edit clicked for tag:', tag)
-      console.log('🔧 Current tagBuilderParts before Aided Edit:', tagBuilderParts.value)
+      logger.info('🔧 Aided Edit clicked for tag:', tag)
+      logger.info('🔧 Current tagBuilderParts before Aided Edit:', tagBuilderParts.value)
       try {
         // Find taxonomy that matches this tag pattern
         const matchingTaxonomy = taxonomies.value.find(taxonomy => {
@@ -1586,7 +1579,7 @@ export default {
           return regex.test(tag.name)
         })
 
-        console.log('🔧 Matching taxonomy:', matchingTaxonomy)
+        logger.info('🔧 Matching taxonomy:', matchingTaxonomy)
 
         if (!matchingTaxonomy) {
           showError('No matching taxonomy found for this tag')
@@ -1596,19 +1589,19 @@ export default {
         selectedTaxonomy.value = matchingTaxonomy
         editingTag.value = tag
 
-        console.log('🔧 Set selectedTaxonomy and editingTag')
+        logger.info('🔧 Set selectedTaxonomy and editingTag')
 
         // Parse the tag using the taxonomy pattern to pre-populate fields
         const regex = new RegExp(matchingTaxonomy.regex_pattern)
         const match = tag.name.match(regex)
 
-        console.log('🔧 Regex match result:', match)
+        logger.info('🔧 Regex match result:', match)
 
         if (match) {
           // Parse taxonomy pattern to extract parts
           const parts = taxonomyStore.parseTaxonomyPattern(matchingTaxonomy.regex_pattern, matchingTaxonomy.relations)
 
-          console.log('Parsed parts:', parts)
+          logger.info('Parsed parts:', parts)
 
           // Load dropdown options for parts
           await taxonomyStore.loadDropdownValues(parts, matchingTaxonomy, tagStore.tags)
@@ -1628,7 +1621,7 @@ export default {
             return part
           })
 
-          console.log('🔧 Final tagBuilderParts:', tagBuilderParts.value)
+          logger.info('🔧 Final tagBuilderParts:', tagBuilderParts.value)
         } else {
           // If no match, just load empty parts with dropdown options
           const parts = taxonomyStore.parseTaxonomyPattern(matchingTaxonomy.regex_pattern, matchingTaxonomy.relations)
@@ -1637,9 +1630,9 @@ export default {
         }
 
         showCreateTagModal.value = true
-        console.log('🔧 Modal should be open now')
+        logger.info('🔧 Modal should be open now')
       } catch (error) {
-        console.error('Error starting aided edit:', error)
+        logger.error('Error starting aided edit:', error)
         showError('Failed to open edit modal')
       }
     }
@@ -1662,7 +1655,7 @@ export default {
             return
           }
 
-          await axios.put(`/api/tag/${encodeTagName(editingTag.value.name)}`, {
+          await tagStore.updateTag(editingTag.value.name, {
             name: generatedTag.value,
             taxonomy_id: selectedTaxonomy.value.id
           })
@@ -1684,7 +1677,7 @@ export default {
         // Close modal after successful operation
         closeCreateTagModal()
       } catch (error) {
-        console.error('Error creating/updating tag:', error)
+        logger.error('Error creating/updating tag:', error)
         showError('Failed to save tag')
       }
     }

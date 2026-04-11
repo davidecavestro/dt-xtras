@@ -281,6 +281,7 @@ import authService from './services/auth'
 import { getConfig } from './config.js'
 import LogoWithText from './components/LogoWithText.vue'
 import ToastContainer from './components/ToastContainer.vue'
+import { createLogger } from './utils/logger'
 
 export default {
   name: 'App',
@@ -289,6 +290,7 @@ export default {
     ToastContainer
   },
   setup() {
+    const logger = createLogger('app')
     const router = useRouter()
     const isDark = ref(false)
     const isAuthenticated = ref(false)
@@ -327,7 +329,7 @@ export default {
         // Call backend logout endpoint to invalidate token
         await authService.logout()
       } catch (error) {
-        console.error('Logout error:', error)
+        logger.error('Logout error:', error)
       } finally {
         // Always clear local auth state
         authService.logout()
@@ -373,7 +375,7 @@ export default {
 
     onMounted(() => {
       // Configuration is now loaded synchronously from script tag
-      console.log('Configuration loaded:', getConfig())
+      logger.info('Configuration loaded:', getConfig())
 
       // Check for saved theme preference or default to light mode
       const savedTheme = localStorage.getItem('theme')

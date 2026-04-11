@@ -196,8 +196,8 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
-import axios from 'axios'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useProjectStore } from '../stores/projects'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { buildDTProjectUrl } from '../config.js'
 import NameCell from './grid-cells/NameCell.vue'
@@ -211,8 +211,10 @@ export default {
     Vue3Datagrid
   },
   setup() {
-    const projects = ref([])
-    const loading = ref(false)
+    // Use project store
+    const projectStore = useProjectStore()
+    const { projects, isLoading, error } = projectStore
+
     const loadingBulk = ref(false)
     const selectedRows = ref([])
     const searchQuery = ref('')
@@ -340,13 +342,13 @@ export default {
           }
           // Use store for count instead of direct API call
         totalProjects.value = projectStore.projects.length || 0
-          console.log('Total projects:', totalProjects.value)
+          logger.info('Total projects:', totalProjects.value)
         } catch (countError) {
-          console.warn('Could not get project count:', countError)
+          logger.warn('Could not get project count:', countError)
           totalProjects.value = projects.value.length
         }
       } catch (error) {
-        console.error('Failed to load projects:', error)
+        logger.error('Failed to load projects:', error)
         projects.value = []
       } finally {
         loading.value = false
@@ -384,7 +386,7 @@ export default {
     }
 
     const onFilterChanged = (filters) => {
-      console.log('Filters changed:', filters)
+      logger.info('Filters changed:', filters)
       // Apply filters to API call
       loadProjects(filters)
     }
@@ -396,7 +398,7 @@ export default {
     }
 
     const onRowClick = (row) => {
-      console.log('Row clicked:', row)
+      logger.info('Row clicked:', row)
     }
 
     const onRowSelect = (selected) => {
@@ -409,16 +411,14 @@ export default {
 
       loadingBulk.value = true
       try {
-        const activatePromises = selectedRows.value.map(row =>
-          axios.patch(`/api/project/${row.uuid}/activate`)
-        )
-        await Promise.all(activatePromises)
+        const projectUuids = selectedRows.value.map(row => row.uuid)
+        await projectStore.bulkActivateProjects(projectUuids)
 
         // Reload projects to update status
-        await loadProjects()
+        await projectStore.loadProjects()
         selectedRows.value = []
       } catch (error) {
-        console.error('Failed to activate projects:', error)
+        logger.error('Failed to activate projects:', error)
       } finally {
         loadingBulk.value = false
       }
@@ -429,16 +429,14 @@ export default {
 
       loadingBulk.value = true
       try {
-        const deactivatePromises = selectedRows.value.map(row =>
-          axios.patch(`/api/project/${row.uuid}/deactivate`)
-        )
-        await Promise.all(deactivatePromises)
+        const projectUuids = selectedRows.value.map(row => row.uuid)
+        await projectStore.bulkDeactivateProjects(projectUuids)
 
         // Reload projects to update status
-        await loadProjects()
+        await projectStore.loadProjects()
         selectedRows.value = []
       } catch (error) {
-        console.error('Failed to deactivate projects:', error)
+        logger.error('Failed to deactivate projects:', error)
       } finally {
         loadingBulk.value = false
       }
@@ -453,16 +451,14 @@ export default {
 
       loadingBulk.value = true
       try {
-        const deletePromises = selectedRows.value.map(row =>
-          axios.delete(`/api/project/${row.uuid}`)
-        )
-        await Promise.all(deletePromises)
+        const projectUuids = selectedRows.value.map(row => row.uuid)
+        await projectStore.bulkDeleteProjects(projectUuids)
 
         // Reload projects
-        await loadProjects()
+        await projectStore.loadProjects()
         selectedRows.value = []
       } catch (error) {
-        console.error('Failed to delete projects:', error)
+        logger.error('Failed to delete projects:', error)
       } finally {
         loadingBulk.value = false
       }

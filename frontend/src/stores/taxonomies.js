@@ -167,7 +167,7 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
           const relation = selectedTaxonomy.relations?.find(rel => rel.group === part.name)
 
           if (!relation || !relation.targets) {
-            console.warn(`No relation found for part ${part.name} or relation has no targets`)
+            logger.warn(`No relation found for part ${part.name} or relation has no targets`)
             part.options = []
             results.push({ part: part.name, options: [] })
             continue
@@ -179,7 +179,7 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
           )
 
           if (!targetTaxonomy) {
-            console.warn(`Could not find taxonomy with group ${relation.targets}`)
+            logger.warn(`Could not find taxonomy with group ${relation.targets}`)
             part.options = []
             results.push({ part: part.name, options: [] })
             continue
@@ -199,7 +199,7 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
             }
           })
 
-          console.log(`Extracted ${captureGroupValues.size} values for ${part.name} from ${targetTaxonomy.name}:`, Array.from(captureGroupValues))
+          logger.info(`Extracted ${captureGroupValues.size} values for ${part.name} from ${targetTaxonomy.name}:`, Array.from(captureGroupValues))
 
           // Convert to dropdown options
           const options = Array.from(captureGroupValues)
@@ -214,7 +214,7 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
           results.push({ part: part.name, options })
 
         } catch (error) {
-          console.error(`Error loading dropdown values for part ${part.name}:`, error)
+          logger.error(`Error loading dropdown values for part ${part.name}:`, error)
           part.options = []
           results.push({ part: part.name, options: [] })
         }
@@ -222,6 +222,114 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     }
 
     return results
+  }
+
+  // CRUD operations for taxonomies
+  const createTaxonomy = async (taxonomyData) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+      const response = await axios.post('/api/taxonomies', taxonomyData)
+      await loadTaxonomies() // Refresh the list
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to create taxonomy'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const updateTaxonomy = async (id, taxonomyData) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+      const response = await axios.put(`/api/taxonomies/${id}`, taxonomyData)
+      await loadTaxonomies() // Refresh the list
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to update taxonomy'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteTaxonomy = async (id) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+      const response = await axios.delete(`/api/taxonomies/${id}`)
+      await loadTaxonomies() // Refresh the list
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to delete taxonomy'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const reorderTaxonomies = async (taxonomyOrder) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+      const response = await axios.put('/api/taxonomies/reorder', taxonomyOrder)
+      await loadTaxonomies() // Refresh the list
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to reorder taxonomies'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Get tags for a specific taxonomy
+  const getTaxonomyTags = async (taxonomyId) => {
+    try {
+      const { default: axios } = await import('axios')
+      const response = await axios.get(`/api/taxonomies/${taxonomyId}/tag`)
+      return response.data || []
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to load taxonomy tags'
+      throw err
+    }
+  }
+
+  // Get tag usage data
+  const getTagUsage = async (tagName) => {
+    try {
+      const { default: axios } = await import('axios')
+      const response = await axios.get(`/api/tag/${tagName}/project`)
+      return response.data || []
+    } catch (err) {
+      // Return empty array on error for usage data (non-critical)
+      return []
+    }
+  }
+
+  // Create a tag for a specific taxonomy
+  const createTaxonomyTag = async (tagName, taxonomyId) => {
+    try {
+      const { default: axios } = await import('axios')
+      const response = await axios.post('/api/tag', {
+        name: tagName,
+        taxonomy_id: taxonomyId
+      })
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to create tag'
+      throw err
+    }
   }
 
   // Clear error
@@ -249,6 +357,13 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     refreshTaxonomies,
     parseTaxonomyPattern,
     loadDropdownValues,
-    clearError
+    clearError,
+    createTaxonomy,
+    updateTaxonomy,
+    deleteTaxonomy,
+    reorderTaxonomies,
+    getTaxonomyTags,
+    getTagUsage,
+    createTaxonomyTag
   }
 })

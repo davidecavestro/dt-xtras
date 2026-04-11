@@ -1,15 +1,17 @@
+import { createLogger } from './logger'
 
 export default class SimpleTaxonomyGraphBuilder {
   constructor() {
     this.nodes = new Map();
     this.tagTaxonomies = new Map();
     this.edges = [];
+    this.logger = createLogger('taxonomy-graph-builder')
   }
 
   buildGraph(tags, taxonomies, rootTaxonomy, associativeMode = false) {
-    console.log('Building graph with', tags.length, 'tags and', taxonomies.length, 'taxonomies');
-    console.log('Associative mode:', associativeMode);
-    console.log('Root taxonomy:', rootTaxonomy);
+    this.logger.info('Building graph with', tags.length, 'tags and', taxonomies.length, 'taxonomies');
+    this.logger.info('Associative mode:', associativeMode);
+    this.logger.info('Root taxonomy:', rootTaxonomy);
 
     // Clear previous data
     this.nodes.clear();
@@ -30,7 +32,7 @@ export default class SimpleTaxonomyGraphBuilder {
       }
     });
 
-    console.log('Created', this.nodes.size, 'nodes');
+    this.logger.info('Created', this.nodes.size, 'nodes');
 
     // Build edges based on mode
     if (associativeMode) {
@@ -39,7 +41,7 @@ export default class SimpleTaxonomyGraphBuilder {
       this.buildNormalRelations(taxonomies, tags, rootTaxonomy);
     }
 
-    console.log('Created', this.edges.length, 'edges');
+    this.logger.info('Created', this.edges.length, 'edges');
 
     return {
       nodes: this.nodes,
@@ -63,7 +65,7 @@ export default class SimpleTaxonomyGraphBuilder {
           if (rootTaxonomy) {
             // check if any group in groupRelations is the root taxonomy and get its position
             const rootGroupPosition = groupRelations.findIndex(relation => relation.group === rootTaxonomy);
-            console.log('Root group position:', rootGroupPosition);
+            this.logger.info('Root group position:', rootGroupPosition);
             if (rootGroupPosition > 0) { // the root group is not in the first position
               // reorder the groupRelations array so that the root group is first
               const rootGroup = groupRelations[rootGroupPosition];

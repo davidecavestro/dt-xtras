@@ -65,7 +65,7 @@ class AuthService {
         }
       }
     } catch (error) {
-      console.error('Login failed:', error)
+      logger.error('Login failed:', error)
       return {
         success: false,
         error: error.response?.data?.detail || 'Login failed'
@@ -78,7 +78,7 @@ class AuthService {
       // Call logout endpoint for consistency (though JWT is stateless)
       await axios.post(`${getConfig().BACKEND_API_URL}/auth/logout`)
     } catch (error) {
-      console.error('Logout failed:', error)
+      logger.error('Logout failed:', error)
     } finally {
       this.token = null
       this.username = null

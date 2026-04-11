@@ -80,34 +80,30 @@ def decode_jwt_token(token: str) -> dict:
 
 def decode_jwt_permissions(dt_token: str) -> List[str]:
     """Decode DT JWT token and extract permissions"""
-    try:
-        # DT JWT tokens don't need secret key for decoding permissions
-        payload = jwt.decode(dt_token, options={"verify_signature": False})
+    # DT JWT tokens don't need secret key for decoding permissions
+    payload = jwt.decode(dt_token, options={"verify_signature": False})
 
-        # Extract permissions from DT JWT - check common permission fields
-        permissions = []
+    # Extract permissions from DT JWT - check common permission fields
+    permissions = []
 
-        # Check various possible permission fields in DT JWT
-        if "permissions" in payload:
-            if isinstance(payload["permissions"], list):
-                permissions = payload["permissions"]
-            elif isinstance(payload["permissions"], str):
-                permissions = [p.strip() for p in payload["permissions"].split(",") if p.strip()]
+    # Check various possible permission fields in DT JWT
+    if "permissions" in payload:
+        if isinstance(payload["permissions"], list):
+            permissions = payload["permissions"]
+        elif isinstance(payload["permissions"], str):
+            permissions = [p.strip() for p in payload["permissions"].split(",") if p.strip()]
 
-        # Check for team/role based permissions
-        if "teams" in payload:
-            teams = payload["teams"]
-            if isinstance(teams, list) and any(team in ["administrators", "managers"] for team in teams):
-                permissions.extend(["PORTFOLIO_MANAGEMENT", "TAG_MANAGEMENT"])
+    # Check for team/role based permissions
+    if "teams" in payload:
+        teams = payload["teams"]
+        if isinstance(teams, list) and any(team in ["administrators", "managers"] for team in teams):
+            permissions.extend(["PORTFOLIO_MANAGEMENT", "TAG_MANAGEMENT"])
 
-        # Ensure basic view permission for authenticated users
-        if not permissions:
-            permissions = ["VIEW_PORTFOLIO"]
+    # Ensure basic view permission for authenticated users
+    if not permissions:
+        permissions = ["VIEW_PORTFOLIO"]
 
-        return list(set(permissions))  # Remove duplicates
-    except Exception as e:
-        logger.error(f"Error decoding DT JWT permissions: {e}")
-        return ["VIEW_PORTFOLIO"]  # Default permission
+    return list(set(permissions))  # Remove duplicates
 
 def has_permission(permissions: List[str], required_permission: str) -> bool:
     """Check if user has a specific permission"""
@@ -200,7 +196,7 @@ def load_taxonomies() -> List[Taxonomy]:
         # Check if example file exists to copy as template
         example_file = os.path.join(os.path.dirname(TAXONOMIES_FILE), "taxonomies.example.yaml")
         if os.path.exists(example_file):
-            print(f"No taxonomies file found at {TAXONOMIES_FILE}, copying from example template")
+            logger.info(f"No taxonomies file found at {TAXONOMIES_FILE}, copying from example template")
             import shutil
             shutil.copy2(example_file, TAXONOMIES_FILE)
             return []
@@ -209,15 +205,15 @@ def load_taxonomies() -> List[Taxonomy]:
             os.makedirs(os.path.dirname(TAXONOMIES_FILE), exist_ok=True)
             with open(TAXONOMIES_FILE, 'w') as f:
                 yaml.dump({"taxonomies": []}, f)
-            print(f"Created empty taxonomies file at {TAXONOMIES_FILE}")
+            logger.info(f"Created empty taxonomies file at {TAXONOMIES_FILE}")
             return []
 
     with open(TAXONOMIES_FILE, 'r') as f:
         data = yaml.safe_load(f)
-        print(f"Loaded YAML data: {data}")
+        logger.info(f"Loaded YAML data: {data}")
 
         if isinstance(data, dict) and "taxonomies" in data:
-            print(f"Loading {len(data['taxonomies'])} taxonomies from new format")
+            logger.info(f"Loading {len(data['taxonomies'])} taxonomies from new format")
             taxonomies = []
             for item in data["taxonomies"]:
                 item_data = item.copy()
@@ -226,7 +222,7 @@ def load_taxonomies() -> List[Taxonomy]:
                 taxonomies.append(Taxonomy(**item_data))
             return taxonomies
         else:
-            print(f"Unknown taxonomy format in file: {type(data)}")
+            logger.info(f"Unknown taxonomy format in file: {type(data)}")
             return []
 
 def save_taxonomies(taxonomies: List[Taxonomy]):
@@ -348,18 +344,14 @@ async def get_project_tags(project_uuid: str, dt_token: str) -> List[str]:
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
 
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{DT_API_URL}/api/v1/project/{project_uuid}/tag", headers=headers, timeout=10.0)
-            response.raise_for_status()
-            tags_data = response.json()
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{DT_API_URL}/api/v1/project/{project_uuid}/tag", headers=headers, timeout=10.0)
+        response.raise_for_status()
+        tags_data = response.json()
 
-            # Extract tag names from the response
-            if isinstance(tags_data, list):
-                return [tag.get('name', str(tag)) if isinstance(tag, dict) else str(tag) for tag in tags_data]
-            return []
-    except Exception as e:
-        print(f"Error fetching tags for project {project_uuid}: {e}")
+        # Extract tag names from the response
+        if isinstance(tags_data, list):
+            return [tag.get('name', str(tag)) if isinstance(tag, dict) else str(tag) for tag in tags_data]
         return []
 
 async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search: Optional[str] = None, excludeInactive: Optional[str] = "false") -> List[Dict]:
@@ -367,12 +359,12 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
-        print(f"Using DT token for authentication")
+        logger.info(f"Using DT token for authentication")
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
-        print(f"Using API key for authentication")
+        logger.info(f"Using API key for authentication")
     else:
-        print(f"No authentication available")
+        logger.info(f"No authentication available")
 
     # Build query parameters for DT API pagination
     params = {
@@ -389,28 +381,28 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
     if search:
         params["name"] = search  # DT uses 'name' parameter, not 'searchText'
 
-    print(f"Making request to: {DT_API_URL}/api/v1/project")
-    print(f"Headers: {headers}")
-    print(f"Params: {params}")
+    logger.info(f"Making request to: {DT_API_URL}/api/v1/project")
+    logger.info(f"Headers: {headers}")
+    logger.info(f"Params: {params}")
 
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)
-        print(f"DT API response status: {response.status_code}")
-        print(f"DT API response headers: {dict(response.headers)}")
-        print(f"DT API response: {response.text[:200]}...")
+        logger.info(f"DT API response status: {response.status_code}")
+        logger.info(f"DT API response headers: {dict(response.headers)}")
+        logger.info(f"DT API response: {response.text[:200]}...")
 
         response.raise_for_status()
 
         # DT API returns plain dicts, not objects
         projects_data = response.json()
-        print(f"Successfully parsed {len(projects_data)} projects")
+        logger.info(f"Successfully parsed {len(projects_data)} projects")
 
         # Debug: Print first project to see structure
         if projects_data:
-            print(f"First project structure: {projects_data[0]}")
-            print(f"First project keys: {list(projects_data[0].keys())}")
-            print(f"Name field: {projects_data[0].get('name', 'MISSING')}")
-            print(f"Version field: {projects_data[0].get('version', 'MISSING')}")
+            logger.info(f"First project structure: {projects_data[0]}")
+            logger.info(f"First project keys: {list(projects_data[0].keys())}")
+            logger.info(f"Name field: {projects_data[0].get('name', 'MISSING')}")
+            logger.info(f"Version field: {projects_data[0].get('version', 'MISSING')}")
 
     # Enrich projects with additional fields
     enriched_projects = []
@@ -492,12 +484,12 @@ async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
-        print(f"Using DT token for authentication")
+        logger.info(f"Using DT token for authentication")
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
-        print(f"Using API key for authentication")
+        logger.info(f"Using API key for authentication")
     else:
-        print(f"No authentication available")
+        logger.info(f"No authentication available")
 
     # Build query parameters for DT API pagination
     params = {
@@ -508,15 +500,15 @@ async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
     # Get all tags from /v1/tag - we need to pass a valid token and honours paging
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers, params=params, timeout=30.0)
-        print(f"DT API response status: {response.status_code}")
-        print(f"DT API response headers: {dict(response.headers)}")
-        print(f"DT API response: {response.text[:200]}...")
+        logger.info(f"DT API response status: {response.status_code}")
+        logger.info(f"DT API response headers: {dict(response.headers)}")
+        logger.info(f"DT API response: {response.text[:200]}...")
 
         response.raise_for_status()
 
         # DT API returns plain dicts, not objects
         tags = response.json()
-        print(f"Successfully parsed {len(tags)} tags")
+        logger.info(f"Successfully parsed {len(tags)} tags")
 
     return tags
 
@@ -527,14 +519,14 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
     if not new_name:
         raise HTTPException(status_code=400, detail="New tag name is required")
 
-    print(f"DEBUG: Renaming tag '{tag_name}' to '{new_name}'")
+    logger.info(f"DEBUG: Renaming tag '{tag_name}' to '{new_name}'")
 
     # Extract DT API key from our wrapper JWT
     dt_token = get_dt_token_from_request(credentials)
 
     if new_name == tag_name:
         # No change needed
-        print(f"DEBUG: No change needed, returning existing tag")
+        logger.info(f"DEBUG: No change needed, returning existing tag")
         existing_tag = await get_tag_by_name(tag_name, dt_token)
         if existing_tag:
             return existing_tag
@@ -542,7 +534,7 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
             raise HTTPException(status_code=404, detail="Tag not found")
 
     # Step 1: Create new tag
-    print(f"Creating new tag: {new_name}")
+    logger.info(f"Creating new tag: {new_name}")
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
@@ -552,23 +544,23 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
     async with httpx.AsyncClient() as client:
         response = await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[new_name], timeout=30.0)
         response.raise_for_status()
-        print(f"Successfully created tag: {new_name}")
+        logger.info(f"Successfully created tag: {new_name}")
 
     # Step 2: Get all projects currently tagged with old tag
-    print(f"Finding projects with tag: {tag_name}")
+    logger.info(f"Finding projects with tag: {tag_name}")
     projects_with_old_tag = await get_projects_with_tag(dt_token, tag_name)
-    print(f"Found {len(projects_with_old_tag)} projects with old tag")
+    logger.info(f"Found {len(projects_with_old_tag)} projects with old tag")
 
     # Step 3: Add new tag to all those projects
     if projects_with_old_tag:
-        print(f"Adding new tag to {len(projects_with_old_tag)} projects")
+        logger.info(f"Adding new tag to {len(projects_with_old_tag)} projects")
         for project in projects_with_old_tag:
             await add_tag_to_project(dt_token, project['uuid'], new_name)
             # Remove old tag from this project
             await remove_tag_from_project(dt_token, project['uuid'], tag_name)
 
     # Step 4: Delete old tag
-    print(f"Deleting old tag: {tag_name}")
+    logger.info(f"Deleting old tag: {tag_name}")
     try:
         await delete_tag_from_dt(dt_token, tag_name)
     except ValueError as e:
@@ -576,14 +568,14 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
         raise HTTPException(status_code=400, detail=str(e))
 
     # Step 5: Return the updated tag
-    print(f"Getting updated tag: {new_name}")
+    logger.info(f"Getting updated tag: {new_name}")
     updated_tag = await get_tag_by_name(new_name, dt_token)
     if updated_tag:
-        print(f"Returning updated tag: {updated_tag}")
+        logger.info(f"Returning updated tag: {updated_tag}")
         return updated_tag
     else:
         # Fallback: return a basic tag structure
-        print(f"Using fallback tag structure")
+        logger.info(f"Using fallback tag structure")
         return {
             "name": new_name,
             "projectCount": len(projects_with_old_tag),
@@ -682,7 +674,7 @@ async def add_tag_to_project(dt_token: str, project_uuid: str, tag_name: str):
         update_data = {"tags": tag_names}
         response = await client.put(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, json=update_data, timeout=30.0)
         response.raise_for_status()
-        print(f"Successfully added tag {tag_name} to project {project_uuid}")
+        logger.info(f"Successfully added tag {tag_name} to project {project_uuid}")
 
 async def remove_tag_from_project(dt_token: str, project_uuid: str, tag_name: str):
     """Remove a tag from a project"""
@@ -712,7 +704,7 @@ async def remove_tag_from_project(dt_token: str, project_uuid: str, tag_name: st
         update_data = {"tags": tag_names}
         response = await client.put(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, json=update_data, timeout=30.0)
         response.raise_for_status()
-        print(f"Successfully removed tag {tag_name} from project {project_uuid}")
+        logger.info(f"Successfully removed tag {tag_name} from project {project_uuid}")
 
 async def delete_tag_from_dt(dt_token: str, tag_name: str):
     """Delete a tag from DT API after removing it from all related objects"""
@@ -724,68 +716,68 @@ async def delete_tag_from_dt(dt_token: str, tag_name: str):
 
     async with httpx.AsyncClient() as client:
         # Step 1: Get and remove from notification rules
-        print(f"Getting notification rules for tag: {tag_name}")
+        logger.info(f"Getting notification rules for tag: {tag_name}")
         encoded_tag_name = urlencode(tag_name)
         notification_rules_response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/notificationRule", headers=headers)
         if notification_rules_response.status_code == 200:
             notification_rules = notification_rules_response.json()
             if notification_rules:
                 rule_uuids = [rule['uuid'] for rule in notification_rules]
-                print(f"Removing tag from {len(rule_uuids)} notification rules")
+                logger.info(f"Removing tag from {len(rule_uuids)} notification rules")
                 await client.request(
                     method="DELETE",
                     url=f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/notificationRule",
                     headers={**headers, "Content-Type": "application/json"},
                     content=json.dumps(rule_uuids)
                 )
-                print(f"Successfully removed tag from notification rules")
+                logger.info(f"Successfully removed tag from notification rules")
 
         # Step 2: Get and remove from policies
-        print(f"Getting policies for tag: {tag_name}")
+        logger.info(f"Getting policies for tag: {tag_name}")
         policies_response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/policy", headers=headers)
         if policies_response.status_code == 200:
             policies = policies_response.json()
             if policies:
                 policy_uuids = [policy['uuid'] for policy in policies]
-                print(f"Removing tag from {len(policy_uuids)} policies")
+                logger.info(f"Removing tag from {len(policy_uuids)} policies")
                 await client.request(
                     method="DELETE",
                     url=f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/policy",
                     headers={**headers, "Content-Type": "application/json"},
                     content=json.dumps(policy_uuids)
                 )
-                print(f"Successfully removed tag from policies")
+                logger.info(f"Successfully removed tag from policies")
 
         # Step 3: Get and remove from projects
-        print(f"Getting projects for tag: {tag_name}")
+        logger.info(f"Getting projects for tag: {tag_name}")
         projects_response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project", headers=headers)
         if projects_response.status_code == 200:
             projects = projects_response.json()
             if projects:
                 project_uuids = [project['uuid'] for project in projects]
-                print(f"Removing tag from {len(project_uuids)} projects")
+                logger.info(f"Removing tag from {len(project_uuids)} projects")
                 await client.request(
                     method="DELETE",
                     url=f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project",
                     headers={**headers, "Content-Type": "application/json"},
                     content=json.dumps(project_uuids)
                 )
-                print(f"Successfully removed tag from projects")
+                logger.info(f"Successfully removed tag from projects")
 
         # Step 4: Get and remove from collection projects
-        print(f"Getting collection projects for tag: {tag_name}")
+        logger.info(f"Getting collection projects for tag: {tag_name}")
         collection_projects_response = await client.get(f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/collectionProject", headers=headers)
         if collection_projects_response.status_code == 200:
             collection_projects = collection_projects_response.json()
             if collection_projects:
                 collection_project_uuids = [project['uuid'] for project in collection_projects]
-                print(f"Removing tag from {len(collection_project_uuids)} collection projects")
+                logger.info(f"Removing tag from {len(collection_project_uuids)} collection projects")
                 # Note: DT API doesn't seem to have a DELETE endpoint for collection projects
                 # Collection projects use the tag for collection logic, so they might need to be updated differently
-                print(f"Warning: Cannot automatically remove tag from collection projects - manual update may be required")
+                logger.info(f"Warning: Cannot automatically remove tag from collection projects - manual update may be required")
 
         # Step 5: Delete the tag
-        print(f"Deleting tag: {tag_name}")
+        logger.info(f"Deleting tag: {tag_name}")
         response = await client.request(
             method="DELETE",
             url=f"{DT_API_URL}/api/v1/tag",
@@ -793,7 +785,7 @@ async def delete_tag_from_dt(dt_token: str, tag_name: str):
             content=json.dumps([tag_name])
         )
         if response.status_code == 204:
-            print(f"Successfully deleted tag: {tag_name}")
+            logger.info(f"Successfully deleted tag: {tag_name}")
             return True
         elif response.status_code == 400:
             error_msg = f"Cannot delete tag '{tag_name}' - it may still be in use by projects or policies"
@@ -855,18 +847,14 @@ async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVer
 
         # Apply taxonomies in priority order
         for taxonomy in taxonomies_list:
-            try:
-                # Use regex library for better JS compatibility
-                js_pattern = regex.compile(taxonomy.regex_pattern)
-                match = js_pattern.match(project_tags)
-                if match:
-                    groups = match.groupdict()
-                    if taxonomy.id in groups:
-                        version_info[f'{taxonomy.id}_id'] = groups[taxonomy.id]
-                        version_info[f'{taxonomy.id}_name'] = groups[taxonomy.id]
-            except Exception as e:
-                print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
-                continue
+            # Use regex library for better JS compatibility
+            js_pattern = regex.compile(taxonomy.regex_pattern)
+            match = js_pattern.match(project_tags)
+            if match:
+                groups = match.groupdict()
+                if taxonomy.id in groups:
+                    version_info[f'{taxonomy.id}_id'] = groups[taxonomy.id]
+                    version_info[f'{taxonomy.id}_name'] = groups[taxonomy.id]
 
         # Create ProjectVersion object
         # Convert tag objects to strings for ProjectVersion model
@@ -897,8 +885,8 @@ async def get_projects(
     excludeInactive: Optional[str] = None
 ):
     """Get projects from DT API with pagination"""
-    print(f"Getting projects with DT token: {dt_token[:50] if dt_token else 'None'}...")
-    print(f"Parameters received: page={page}, limit={limit}, search={search}, active_only={active_only}")
+    logger.info(f"Getting projects with DT token: {dt_token[:50] if dt_token else 'None'}...")
+    logger.info(f"Parameters received: page={page}, limit={limit}, search={search}, active_only={active_only}")
 
     # Build DT API parameters
     params = {
@@ -914,61 +902,57 @@ async def get_projects(
     if excludeInactive is not None:
         # Use excludeInactive parameter if provided
         params["excludeInactive"] = excludeInactive
-        print(f"Setting excludeInactive to: {params['excludeInactive']} (from excludeInactive parameter)")
+        logger.info(f"Setting excludeInactive to: {params['excludeInactive']} (from excludeInactive parameter)")
     elif active_only is not None:
         # Fall back to active_only parameter
         params["excludeInactive"] = "true" if active_only else "false"
-        print(f"Setting excludeInactive to: {params['excludeInactive']} (active_only={active_only})")
+        logger.info(f"Setting excludeInactive to: {params['excludeInactive']} (active_only={active_only})")
     else:
         params["excludeInactive"] = "false"  # Default to include all projects when not specified
-        print(f"Using default excludeInactive: {params['excludeInactive']} (both parameters are None)")
+        logger.info(f"Using default excludeInactive: {params['excludeInactive']} (both parameters are None)")
 
-    print(f"API params: {params}")  # Debug log
+    logger.info(f"API params: {params}")  # Debug log
 
     projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search, excludeInactive=params.get("excludeInactive", "true"))
-    print(f"Successfully retrieved {len(projects)} projects")
+    logger.info(f"Successfully retrieved {len(projects)} projects")
 
     # Get total count for pagination
-    try:
-        headers = {}
-        if dt_token:
-            headers["Authorization"] = f"Bearer {dt_token}"
-        elif DT_API_KEY:
-            headers["X-API-Key"] = DT_API_KEY
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-API-Key"] = DT_API_KEY
 
-        # Build DT API parameters for count
-        count_params = {
-            "pageNumber": "1",
-            "pageSize": "1"
-        }
+    # Build DT API parameters for count
+    count_params = {
+        "pageNumber": "1",
+        "pageSize": "1"
+    }
 
-        # Use the same excludeInactive logic as the main request
-        if excludeInactive is not None:
-            count_params["excludeInactive"] = excludeInactive
-        elif active_only is not None:
-            count_params["excludeInactive"] = "true" if active_only else "false"
+    # Use the same excludeInactive logic as the main request
+    if excludeInactive is not None:
+        count_params["excludeInactive"] = excludeInactive
+    elif active_only is not None:
+        count_params["excludeInactive"] = "true" if active_only else "false"
+    else:
+        count_params["excludeInactive"] = "false"
+
+    if search:
+        count_params["name"] = search
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=count_params, timeout=30.0)
+        response.raise_for_status()
+
+        # Get total count from X-Total-Count header
+        total_count = response.headers.get("X-Total-Count")
+        if total_count:
+            total_count = int(total_count)
         else:
-            count_params["excludeInactive"] = "false"
-
-        if search:
-            count_params["name"] = search
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=count_params, timeout=30.0)
-            response.raise_for_status()
-
-            # Get total count from X-Total-Count header
-            total_count = response.headers.get("X-Total-Count")
-            if total_count:
-                total_count = int(total_count)
-            else:
-                # Fallback - count the actual results with same parameters
-                projects_response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=count_params, timeout=30.0)
-                projects_data = projects_response.json()
-                total_count = len(projects_data)
-    except Exception as e:
-        print(f"Error getting project count: {e}")
-        raise HTTPException(status_code=500, detail=f"Error getting project count: {e}")
+            # Fallback - count the actual results with same parameters
+            projects_response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=count_params, timeout=30.0)
+            projects_data = projects_response.json()
+            total_count = len(projects_data)
 
     return {
         "data": projects,
@@ -987,7 +971,7 @@ async def get_projects_count(
     active_only: Optional[bool] = None
 ):
     """Get total count of projects for pagination"""
-    print(f"Getting projects count with: search={search}, active_only={active_only}")
+    logger.info(f"Getting projects count with: search={search}, active_only={active_only}")
 
     headers = {}
     if dt_token:
@@ -1004,7 +988,7 @@ async def get_projects_count(
     if search:
         params["name"] = search
 
-    print(f"Count API params: {params}")
+    logger.info(f"Count API params: {params}")
 
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)
@@ -1179,7 +1163,7 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
         headers["X-Api-Key"] = DT_API_KEY
     async with httpx.AsyncClient() as client:
         # Test DT connectivity first
-        print(f"Connecting to DT at: {DT_API_URL}")
+        logger.info(f"Connecting to DT at: {DT_API_URL}")
 
         # Get all tags from DT - using the correct endpoint that returns TagListResponseItem
         response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers)
@@ -1202,11 +1186,11 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
 
         response.raise_for_status()
         dt_tags = response.json()
-        print(f"Successfully retrieved {len(dt_tags)} tags from DT")
+        logger.info(f"Successfully retrieved {len(dt_tags)} tags from DT")
 
         # Load taxonomies to determine taxonomy for each tag
         taxonomies = load_taxonomies()
-        print(f"Loaded {len(taxonomies)} taxonomies for tag categorization")
+        logger.info(f"Loaded {len(taxonomies)} taxonomies for tag categorization")
 
         # Transform tags and add taxonomy information
         tags_with_taxonomy = []
@@ -1216,16 +1200,12 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
 
             # Find taxonomy that matches this tag
             for taxonomy in taxonomies:
-                try:
-                    # Use regex library for better JS compatibility
-                    js_pattern = regex.compile(taxonomy.regex_pattern)
-                    match = js_pattern.match(tag_name)
-                    if match:
-                        taxonomy_id = taxonomy.id
-                        break
-                except Exception as e:
-                    print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
-                    continue
+                # Use regex library for better JS compatibility
+                js_pattern = regex.compile(taxonomy.regex_pattern)
+                match = js_pattern.match(tag_name)
+                if match:
+                    taxonomy_id = taxonomy.id
+                    break
 
             tags_with_taxonomy.append({
                 'name': tag_name,
@@ -1247,15 +1227,11 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
     is_custom_tag = True
 
     for taxonomy in taxonomies:
-        try:
-            js_pattern = regex.compile(taxonomy.regex_pattern)
-            if js_pattern.match(tag_name):
-                is_custom_tag = False
-                print(f"Tag '{tag_name}' matches taxonomy '{taxonomy.id}'")
-                break
-        except Exception as e:
-            print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
-            continue
+        js_pattern = regex.compile(taxonomy.regex_pattern)
+        if js_pattern.match(tag_name):
+            is_custom_tag = False
+            logger.info(f"Tag '{tag_name}' matches taxonomy '{taxonomy.id}'")
+            break
 
     headers = {}
     if dt_token:
@@ -1263,7 +1239,7 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
 
-    print(f"Creating tag '{tag_name}' in DT at {DT_API_URL} (custom: {is_custom_tag})")
+    logger.info(f"Creating tag '{tag_name}' in DT at {DT_API_URL} (custom: {is_custom_tag})")
     async with httpx.AsyncClient() as client:
         response = await client.put(
             f"{DT_API_URL}/api/v1/tag",
@@ -1272,7 +1248,7 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
         )
 
         if response.status_code == 201:
-            print(f"Successfully created tag '{tag_name}'")
+            logger.info(f"Successfully created tag '{tag_name}'")
             return {'name': tag_name, 'projectsCount': 0, 'custom': is_custom_tag}
         elif response.status_code == 401:
             raise HTTPException(
@@ -1288,7 +1264,7 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
             raise HTTPException(status_code=409, detail="Tag already exists")
         else:
             error_detail = f"Failed to create tag (DT API status: {response.status_code})"
-            print(error_detail)
+            logger.info(error_detail)
             raise HTTPException(status_code=500, detail=error_detail)
 
 @app.delete("/api/tag/{tag_name}")
@@ -1316,12 +1292,8 @@ async def delete_tag(tag_name: str, dt_token: str = Depends(get_dt_token_from_re
 @app.get("/api/tag/{tag_name}/project")
 async def get_projects_for_tag(tag_name: str, dt_token: str = Depends(get_dt_token_from_request)):
     """Get all projects that have a specific tag"""
-    try:
-        projects = await get_projects_with_tag(dt_token, tag_name)
-        return projects
-    except Exception as e:
-        print(f"Error getting projects for tag {tag_name}: {e}")
-        raise HTTPException(status_code=500, detail=f"Error getting projects for tag: {e}")
+    projects = await get_projects_with_tag(dt_token, tag_name)
+    return projects
 
 
 @app.post("/api/tag/{tag_name}/project")
@@ -1332,7 +1304,7 @@ async def add_tag_to_projects(tag_name: str, request: dict, dt_token: str = Depe
     if not projects:
         raise HTTPException(status_code=400, detail="Projects are required")
 
-    print(f"Adding tag '{tag_name}' to projects {projects}")
+    logger.info(f"Adding tag '{tag_name}' to projects {projects}")
     # invoke /v1/tag/{name}/project on DT
     headers = {}
     if dt_token:
@@ -1361,55 +1333,50 @@ async def remove_tag_from_projects(tag_name: str, request: dict, dt_token: str =
     if not projects:
         raise HTTPException(status_code=400, detail="Projects are required")
 
-    print(f"Removing tag '{tag_name}' from projects {projects}")
+    logger.info(f"Removing tag '{tag_name}' from projects {projects}")
 
     # For each project, remove the specified tag
     for project_uuid in projects:
-        try:
-            # Get current project to preserve existing tags
-            headers = {}
-            if dt_token:
-                headers["Authorization"] = f"Bearer {dt_token}"
-            elif DT_API_KEY:
-                headers["X-API-Key"] = DT_API_KEY
+        # Get current project to preserve existing tags
+        headers = {}
+        if dt_token:
+            headers["Authorization"] = f"Bearer {dt_token}"
+        elif DT_API_KEY:
+            headers["X-API-Key"] = DT_API_KEY
 
-            async with httpx.AsyncClient() as client:
-                project_response = await client.get(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, timeout=30.0)
-                project_response.raise_for_status()
-                current_project = project_response.json()
+        async with httpx.AsyncClient() as client:
+            project_response = await client.get(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, timeout=30.0)
+            project_response.raise_for_status()
+            current_project = project_response.json()
 
-                # Remove specified tag from existing tags
-                current_tags = current_project.get('tags', [])
-                if isinstance(current_tags, list) and current_tags and isinstance(current_tags[0], dict):
-                    tag_names = [tag.get('name', '') for tag in current_tags]
-                else:
-                    tag_names = current_tags if isinstance(current_tags, list) else []
+            # Remove specified tag from existing tags
+            current_tags = current_project.get('tags', [])
+            if isinstance(current_tags, list) and current_tags and isinstance(current_tags[0], dict):
+                tag_names = [tag.get('name', '') for tag in current_tags]
+            else:
+                tag_names = current_tags if isinstance(current_tags, list) else []
 
-                # Remove the specified tag if present
-                if tag_name in tag_names:
-                    tag_names.remove(tag_name)
+            # Remove the specified tag if present
+            if tag_name in tag_names:
+                tag_names.remove(tag_name)
 
-                # Update project with remaining tags
-                update_data = {"tags": tag_names}
-                await client.put(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, json=update_data, timeout=30.0)
-                print(f"Successfully removed tag '{tag_name}' from project {project_uuid}")
-
-        except Exception as e:
-            print(f"Error removing tag '{tag_name}' from project {project_uuid}: {e}")
-            continue  # Continue with next project
+            # Update project with remaining tags
+            update_data = {"tags": tag_names}
+            await client.put(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, json=update_data, timeout=30.0)
+            logger.info(f"Successfully removed tag '{tag_name}' from project {project_uuid}")
 
     return {"message": f"Successfully removed tag '{tag_name}' from {len(projects)} projects"}
 
 @app.get("/api/aggregate", response_model=List[SecurityNode])
 async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_request)):
-    print("Starting security data aggregation...")
+    logger.info("Starting security data aggregation...")
 
     # Set a timeout for the entire operation
     import asyncio
 
     # Load taxonomies and project versions with timeout
     taxonomies = load_taxonomies()
-    print(f"Loaded {len(taxonomies)} taxonomies")
+    logger.info(f"Loaded {len(taxonomies)} taxonomies")
 
     # Get project versions with timeout
     try:
@@ -1418,14 +1385,14 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
             timeout=30.0
         )
     except asyncio.TimeoutError:
-        print("Timeout getting project versions")
+        logger.info("Timeout getting project versions")
         raise HTTPException(status_code=504, detail="Timeout getting project data")
 
-    print(f"Loaded {len(project_versions)} project versions")
+    logger.info(f"Loaded {len(project_versions)} project versions")
 
     # If no project versions, return empty list
     if not project_versions:
-        print("No project versions found - returning empty security hierarchy")
+        logger.info("No project versions found - returning empty security hierarchy")
         return []
 
     # Sort taxonomies by priority
@@ -1442,15 +1409,11 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
 
         # Apply taxonomies in priority order
         for taxonomy in taxonomies:
-            try:
-                js_pattern = regex.compile(taxonomy.regex_pattern)
-                match = js_pattern.match(project_tags)
-                if match:
-                    groups = match.groupdict()
-                    project_path.append((taxonomy.id, groups.get(taxonomy.id, project_version.name)))
-            except Exception as e:
-                print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
-                continue
+            js_pattern = regex.compile(taxonomy.regex_pattern)
+            match = js_pattern.match(project_tags)
+            if match:
+                groups = match.groupdict()
+                project_path.append((taxonomy.id, groups.get(taxonomy.id, project_version.name)))
 
         # Create or update nodes in hierarchy
         parent_id = None
@@ -1516,39 +1479,35 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
                     )
 
                     if project_version:
-                        try:
-                            js_pattern = regex.compile(taxonomy.regex_pattern)
-                            match = js_pattern.match(" ".join(project_version.tags))
-                            if match:
-                                groups = match.groupdict()
-                                relation_value = groups.get(relation.group)
-                                if relation_value:
-                                    # Find target parent node
-                                    target_node_id = f"{relation.targets}:{relation_value}"
-                                    if target_node_id in all_nodes:
-                                        # Update parent relationship
-                                        old_parent_id = node.parent_id
-                                        node.parent_id = target_node_id
+                        js_pattern = regex.compile(taxonomy.regex_pattern)
+                        match = js_pattern.match(" ".join(project_version.tags))
+                        if match:
+                            groups = match.groupdict()
+                            relation_value = groups.get(relation.group)
+                            if relation_value:
+                                # Find target parent node
+                                target_node_id = f"{relation.targets}:{relation_value}"
+                                if target_node_id in all_nodes:
+                                    # Update parent relationship
+                                    old_parent_id = node.parent_id
+                                    node.parent_id = target_node_id
 
-                                        # Remove from old parent
-                                        if old_parent_id and old_parent_id in all_nodes:
-                                            all_nodes[old_parent_id].children = [
-                                                child for child in all_nodes[old_parent_id].children
-                                                if child.id != node.id
-                                            ]
+                                    # Remove from old parent
+                                    if old_parent_id and old_parent_id in all_nodes:
+                                        all_nodes[old_parent_id].children = [
+                                            child for child in all_nodes[old_parent_id].children
+                                            if child.id != node.id
+                                        ]
 
-                                        # Add to new parent
-                                        all_nodes[target_node_id].children.append(node)
+                                    # Add to new parent
+                                    all_nodes[target_node_id].children.append(node)
 
-                                        # Remove from root if it was there
-                                        if node.id in [n.id for n in root_nodes.get(taxonomy.id, [])]:
-                                            root_nodes[taxonomy.id] = [
-                                                n for n in root_nodes.get(taxonomy.id, [])
-                                                if n.id != node.id
-                                            ]
-                        except Exception as e:
-                            print(f"Error with regex regex_pattern '{taxonomy.regex_pattern}': {e}")
-                            continue
+                                    # Remove from root if it was there
+                                    if node.id in [n.id for n in root_nodes.get(taxonomy.id, [])]:
+                                        root_nodes[taxonomy.id] = [
+                                            n for n in root_nodes.get(taxonomy.id, [])
+                                            if n.id != node.id
+                                        ]
 
     # Calculate roll-up metrics
     def calculate_rollup(node):
@@ -1591,7 +1550,7 @@ async def aggregate_security_data(dt_token: str = Depends(get_dt_token_from_requ
             calculate_rollup(node)
             all_root_nodes.append(node)
 
-    print(f"Successfully aggregated {len(all_nodes)} security nodes")
+    logger.info(f"Successfully aggregated {len(all_nodes)} security nodes")
     return all_root_nodes
 
 @app.get("/api/dt-token")
@@ -1641,9 +1600,9 @@ async def api_health_check():
 
 class SimpleTaxonomyGraphBuilder:
     def build_graph(self, tags, taxonomies, root_taxonomy=None, associative_mode=False):
-        print(f'Building graph with {len(tags)} tags and {len(taxonomies)} taxonomies')
-        print(f'Associative mode: {associative_mode}')
-        print(f'Root taxonomy: {root_taxonomy}')
+        logger.info(f'Building graph with {len(tags)} tags and {len(taxonomies)} taxonomies')
+        logger.info(f'Associative mode: {associative_mode}')
+        logger.info(f'Root taxonomy: {root_taxonomy}')
 
         # Normalize all taxonomies to consistent structure
         normalized_taxonomies = {}
@@ -1699,7 +1658,7 @@ class SimpleTaxonomyGraphBuilder:
                     'projectsCount': tag.get('projectsCount', 0)
                 }
 
-        print(f'Created {len(nodes)} nodes')
+        logger.info(f'Created {len(nodes)} nodes')
 
         # Build edges based on mode
         if associative_mode:
@@ -1707,7 +1666,7 @@ class SimpleTaxonomyGraphBuilder:
         else:
             edges = self._build_normal_relations(normalized_taxonomies, normalized_tags, root_taxonomy)
 
-        print(f'Created {len(edges)} edges')
+        logger.info(f'Created {len(edges)} edges')
 
         return {
             'nodes': list(nodes.values()),
@@ -1732,7 +1691,7 @@ class SimpleTaxonomyGraphBuilder:
                     if root_taxonomy:
                         # Check if any group in groupRelations is the root taxonomy and get its position
                         root_group_position = next((i for i, relation in enumerate(group_relations) if relation['group'] == root_taxonomy), -1)
-                        print(f'Root group position: {root_group_position}')
+                        logger.info(f'Root group position: {root_group_position}')
                         if root_group_position > 0:
                             # Reorder the groupRelations array so that the root group is first
                             root_group = group_relations[root_group_position]
@@ -1895,7 +1854,7 @@ async def test_proxy_post(request: Request):
 
 @app.api_route("/api/v1/{path:path}", methods=["GET"])
 async def proxy_dt_api_get(path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
-    print(f"Proxy GET request: /api/v1/{path}")
+    logger.info(f"Proxy GET request: /api/v1/{path}")
 
     # Prepare headers for DT API
     headers = {}
@@ -1908,9 +1867,9 @@ async def proxy_dt_api_get(path: str, request: Request, dt_token: str = Depends(
     params = dict(request.query_params)
 
     target_url = f"{DT_API_URL}/api/v1/{path}"
-    print(f"GET Target URL: {target_url}")
-    print(f"GET Request headers: {headers}")
-    print(f"GET Request params: {params}")
+    logger.info(f"GET Target URL: {target_url}")
+    logger.info(f"GET Request headers: {headers}")
+    logger.info(f"GET Request params: {params}")
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
@@ -1919,10 +1878,10 @@ async def proxy_dt_api_get(path: str, request: Request, dt_token: str = Depends(
             params=params
         )
 
-        print(f"GET DT API Response status: {response.status_code}")
-        print(f"GET DT API Response headers: {dict(response.headers)}")
+        logger.info(f"GET DT API Response status: {response.status_code}")
+        logger.info(f"GET DT API Response headers: {dict(response.headers)}")
         if response.status_code == 405:
-            print(f"GET 405 Method Not Allowed for {path} - check DT API docs")
+            logger.info(f"GET 405 Method Not Allowed for {path} - check DT API docs")
 
         # Return response with same status and headers
         return Response(
@@ -1935,7 +1894,7 @@ async def proxy_dt_api_get(path: str, request: Request, dt_token: str = Depends(
 async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
     """Proxy API requests to DT API"""
     data = await request.body()
-    print(f"Proxy {request.method} request: /api/v1/{path}")
+    logger.info(f"Proxy {request.method} request: /api/v1/{path}")
 
     # copy headers from the request
     #headers = {}
@@ -1951,8 +1910,8 @@ async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_
     params = dict(request.query_params)
 
     target_url = f"{DT_API_URL}/api/v1/{path}"
-    print(f"Target URL: {target_url}")
-    print(f"Request headers: {headers}")
+    logger.info(f"Target URL: {target_url}")
+    logger.info(f"Request headers: {headers}")
 
     async with httpx.AsyncClient() as client:
         response = await client.request(
@@ -1963,12 +1922,12 @@ async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_
             content=data
         )
 
-    print(f"DT API Response status: {response.status_code}")
-    print(f"DT API Response headers: {dict(response.headers)}")
+    logger.info(f"DT API Response status: {response.status_code}")
+    logger.info(f"DT API Response headers: {dict(response.headers)}")
 
     # Handle specific authentication errors
     if response.status_code == 401:
-        print("DT API returned 401 Unauthorized - token is invalid or expired")
+        logger.info("DT API returned 401 Unauthorized - token is invalid or expired")
         return Response(
             content=b'{"detail": "DT API authentication failed. Please check your credentials or login again."}',
             status_code=401,

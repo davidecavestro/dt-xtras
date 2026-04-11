@@ -19,9 +19,9 @@ const logger = pino({
       send: (level, logEvent) => {
         // In production, you might want to send logs to a service
         // For now, we'll just use console
-        const msg = logEvent.messages.map(m => m.msg || m).join(' ')
+        const msg = logEvent.messages.map(m => (m && m.msg) ? m.msg : (m || '')).filter(Boolean).join(' ')
         const levelUpper = level.toUpperCase()
-        
+
         switch (level) {
           case 'error':
             console.error(`[${levelUpper}] ${msg}`, logEvent)
