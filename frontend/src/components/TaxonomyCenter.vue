@@ -17,29 +17,13 @@
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium text-gray-900 dark:text-white">Taxonomy Relations Graph</h3>
             </div>
-            <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 resize overflow-hidden" style="height: 400px; position: relative; overflow: hidden;">
+            <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 overflow-hidden" style="height: 400px;">
               <div ref="cytoscapeContainer" class="w-full h-full"></div>
             </div>
           </div>
 
-          <!-- Vertical Splitter for Mobile Only -->
-          <div class="lg:hidden flex items-center justify-center py-2">
-            <div
-              class="w-full h-1 bg-gray-300 dark:bg-gray-600 rounded-full cursor-ns-resize hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
-              @mousedown="startResize"
-            ></div>
-          </div>
-
-          <!-- Horizontal Splitter for Desktop Only -->
-          <div
-            class="hidden lg:flex items-center justify-center px-2 cursor-ew-resize"
-            @mousedown="startHorizontalResize"
-          >
-            <div class="w-1 h-full bg-gray-300 dark:bg-gray-600 rounded-full hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"></div>
-          </div>
-
           <!-- Taxonomies List -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex-1 lg:basis-1/2" :style="{ height: isMobile ? graphHeight + 'px' : 'auto' }">
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex-1 lg:basis-1/2">
           <div class="px-1 py-5 sm:px-1 flex justify-between items-start">
             <div>
               <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Existing Taxonomies</h3>
@@ -484,14 +468,6 @@ const draggedIndex = ref(null)
 const cytoscapeContainer = ref(null)
 const cytoscapeInstance = ref(null)
 
-// Splitter state
-const graphHeight = ref(400)
-const isResizing = ref(false)
-const isHorizontalResizing = ref(false)
-const startY = ref(0)
-const startHeight = ref(0)
-const startX = ref(0)
-const startWidth = ref(0)
 
 // Mobile detection
 const isMobile = computed(() => {
@@ -999,107 +975,4 @@ const graphGroup = ref(null)
       }
     }
 
-    // Splitter resize methods
-    const startResize = (event) => {
-      if (isMobile.value) {
-        isResizing.value = true
-        startY.value = event.clientY
-        startHeight.value = graphHeight.value
-
-        // Add global event listeners
-        document.addEventListener('mousemove', handleResize)
-        document.addEventListener('mouseup', stopResize)
-
-        // Prevent text selection during resize
-        document.body.style.userSelect = 'none'
-        document.body.style.cursor = 'ns-resize'
-      }
-    }
-
-    const startHorizontalResize = (event) => {
-      if (!isMobile.value) {
-        isHorizontalResizing.value = true
-        startX.value = event.clientX
-        startWidth.value = event.target.parentElement.offsetWidth
-
-        // Add global event listeners
-        document.addEventListener('mousemove', handleHorizontalResize)
-        document.addEventListener('mouseup', stopHorizontalResize)
-
-        // Prevent text selection during resize
-        document.body.style.userSelect = 'none'
-        document.body.style.cursor = 'ew-resize'
-      }
-    }
-
-    const handleResize = (event) => {
-      if (!isResizing.value) return
-
-      const deltaY = event.clientY - startY.value
-      const newHeight = startHeight.value + deltaY
-
-      // Set minimum and maximum height constraints
-      const minHeight = 200
-      const maxHeight = window.innerHeight - 200
-
-      if (newHeight >= minHeight && newHeight <= maxHeight) {
-        graphHeight.value = newHeight
-      }
-    }
-
-    const handleHorizontalResize = (event) => {
-      if (!isHorizontalResizing.value) return
-
-      const deltaX = event.clientX - startX.value
-      const containerWidth = window.innerWidth - 100 // Account for padding
-      const newWidth = startWidth.value + deltaX
-
-      // Set minimum and maximum width constraints
-      const minWidth = 300
-      const maxWidth = containerWidth - 300
-
-      if (newWidth >= minWidth && newWidth <= maxWidth) {
-        // Update flex basis for both panels
-        const leftPanel = document.querySelector('.lg\\:basis-1\\/2')
-        const rightPanel = document.querySelectorAll('.lg\\:basis-1\\/2')[1]
-
-        if (leftPanel && rightPanel) {
-          const leftPercentage = (newWidth / containerWidth) * 100
-          const rightPercentage = 100 - leftPercentage
-
-          leftPanel.style.flexBasis = `${leftPercentage}%`
-          rightPanel.style.flexBasis = `${rightPercentage}%`
-        }
-      }
-    }
-
-    const stopResize = () => {
-      isResizing.value = false
-
-      // Remove global event listeners
-      document.removeEventListener('mousemove', handleResize)
-      document.removeEventListener('mouseup', stopResize)
-
-      // Restore default cursor and selection
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-    }
-
-    const stopHorizontalResize = () => {
-      isHorizontalResizing.value = false
-
-      // Remove global event listeners
-      document.removeEventListener('mousemove', handleHorizontalResize)
-      document.removeEventListener('mouseup', stopHorizontalResize)
-
-      // Restore default cursor and selection
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-    }
-
-    // Cleanup on component unmount
-    onUnmounted(() => {
-      stopResize()
-      stopHorizontalResize()
-    })
-</script>
+    </script>
