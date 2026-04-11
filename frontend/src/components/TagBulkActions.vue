@@ -612,7 +612,11 @@ export default {
       loading.value = true
 
       try {
-        await linkTagsToProjects(selectedTags.value[0], selectedProjects.value)
+        // for every selected tag, invoke the api that link it to the selected projects
+        await Promise.all(selectedTags.value.map(async (tag) => {
+          await linkTagsToProjects(tag, selectedProjects.value)
+        }))
+
 
         statusMessage.value = `Successfully linked ${selectedTags.value.length} tags to ${selectedProjects.value.length} projects`
         statusMessageClass.value = 'text-green-600 dark:text-green-400'
@@ -635,7 +639,10 @@ export default {
       loading.value = true
 
       try {
-        await unlinkTagsFromProjects(selectedTags.value[0], selectedProjects.value)
+        // for every selected tag, invoke the api that link it to the selected projects
+        await Promise.all(selectedTags.value.map(async (tag) => {
+          await unlinkTagsFromProjects(tag, selectedProjects.value)
+        }))
 
         statusMessage.value = `Successfully unlinked ${selectedTags.value.length} tags from ${selectedProjects.value.length} projects`
         statusMessageClass.value = 'text-green-600 dark:text-green-400'

@@ -214,7 +214,7 @@ export const useTagStore = defineStore('tags', () => {
       const { default: axios } = await import('axios')
 
       const response = await axios.delete(`/api/v1/tag/${encodeURIComponent(tagName)}/project`, {
-        projects: projectUuids
+        data: projectUuids
       })
 
       // Update timestamp to trigger watchers
