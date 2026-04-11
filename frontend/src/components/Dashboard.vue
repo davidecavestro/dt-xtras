@@ -434,22 +434,26 @@ export default {
     const graphStore = useGraphStore()
     const taxonomyStore = useTaxonomyStore()
     const { edges, graphData, nodes, rootNodes, loading: graphLoading } = storeToRefs(graphStore)
-    const { isLoading: projectLoading, error } = storeToRefs(projectStore)
+    const { isLoading: projectLoading, error, projects } = storeToRefs(projectStore)
     const { tags, isLoading: tagLoading } = storeToRefs(tagStore)
     const { taxonomies, loading: taxonomiesLoading } = storeToRefs(taxonomyStore)
 
-    // Coordinated loading state - wait for all stores to be ready and tree built
+    // Coordinated loading state - wait for all stores to be ready
     const isDataReady = computed(() => {
-      return (
-        !projectLoading.value &&
-        !tagLoading.value &&
-        !graphLoading.value &&
-        !taxonomiesLoading.value &&
-        projectStore.projects.length > 0 &&
-        nodes.value.length > 0 &&
-        edges.value.length > 0 &&
-        treeData.value.length > 0
-      );
+      try {
+        return (
+          !projectLoading.value &&
+          !tagLoading.value &&
+          !graphLoading.value &&
+          !taxonomiesLoading.value &&
+          projects.value && projects.value.length > 0 &&
+          nodes.value && nodes.value.length > 0 &&
+          edges.value && edges.value.length > 0
+        );
+      } catch (err) {
+        console.warn('Error in isDataReady computed:', err);
+        return false;
+      }
     })
 
     const shouldShowLoading = computed(() => !isDataReady.value)
@@ -466,10 +470,10 @@ export default {
       refreshData()
     })
 
-    // Methods from stores
-    const { loadProjects } = projectStore
-    const { loadTags } = tagStore
-    const { findReachableNodes } = graphStore
+    // Methods from stores - call directly on store instances to maintain context
+    // const { loadProjects } = projectStore
+    // const { loadTags } = tagStore
+    // const { findReachableNodes } = graphStore
 
     const setAssociativeMode = (isAssociative) => {
       graphStore.setAssociativeMode(isAssociative);
@@ -546,23 +550,25 @@ export default {
 
     // Computed properties for filtered data
     const filteredTreeData = computed(() => {
+      if (!treeData.value || !Array.isArray(treeData.value)) return []
       if (!searchQuery.value) return treeData.value
 
       const query = searchQuery.value.toLowerCase()
       const filterNode = (node) => {
+        if (!node || !node.name) return false
         if (node.name.toLowerCase().includes(query)) return true
 
-        if (node.children && node.children.length > 0) {
+        if (node.children && Array.isArray(node.children) && node.children.length > 0) {
           node.children = node.children.map(filterNode)
-          return node.children.some(child => child.name.toLowerCase().includes(query))
+          return node.children.some(child => child && child.name && child.name.toLowerCase().includes(query))
         }
 
         return false
       }
 
       return treeData.value.map(filterNode).filter(node =>
-        node.name.toLowerCase().includes(query) ||
-        (node.children && node.children.length > 0)
+        node && node.name && node.name.toLowerCase().includes(query) ||
+        (node.children && Array.isArray(node.children) && node.children.length > 0)
       )
     })
 
@@ -646,8 +652,8 @@ export default {
 
     // Helper function to find reachable tags using tree structure
     const findReachableTags = (startNodeId) => {
-      logger.info('findReachableTags called with startNodeId:', startNodeId);
-      logger.info('treeData available:', !!treeData.value, 'length:', treeData.value?.length);
+      console.log('findReachableTags called with startNodeId:', startNodeId);
+      console.log('treeData available:', !!treeData.value, 'length:', treeData.value?.length);
 
       if (!startNodeId || !treeData.value || treeData.value.length === 0) return new Set()
 
@@ -703,7 +709,7 @@ export default {
         }
       }
 
-      logger.info('findReachableTags returning:', Array.from(reachableTags));
+      console.log('findReachableTags returning:', Array.from(reachableTags));
       return reachableTags
     }
 
@@ -757,7 +763,7 @@ export default {
 
     // Tree building function using graph builder data
     const buildTreeFromGraph = (graph) => {
-      if (!graph || !nodes.value) {
+      if (!graph || !nodes.value || !edges.value) {
         return [];
       }
 
@@ -765,8 +771,8 @@ export default {
       const rootNodesArray = []
 
       // Create map of all nodes from graph data (excluding associative tag nodes and nodes with no edges)
-      const allTargetIds = new Set(edges.value.map(edge => edge.target))
-      const allSourceIds = new Set(edges.value.map(edge => edge.source))
+      const allTargetIds = new Set(edges.value.map(edge => edge?.target).filter(Boolean))
+      const allSourceIds = new Set(edges.value.map(edge => edge?.source).filter(Boolean))
 
       nodes.value.forEach(node => {
         // Skip associative tag nodes
@@ -826,23 +832,34 @@ export default {
     }
 
     const relatedProjects = computed(() => {
-      if (!treeData.value || treeData.value.length === 0) return []
+      try {
+        // If no projects loaded yet, return empty
+        if (!projects.value || projects.value.length === 0) return []
 
-      if (!selectedTreeNode.value) {
-        return projectStore.projects
-      }
-
-      const reachableNodes = findReachableTags(selectedTreeNode.value.id)
-
-      return projectStore.projects.filter(project => {
-        if (!project.tags || project.tags.length === 0) {
-          return false
+        // If no tree data yet but projects are loaded, return all projects
+        if (!treeData.value || treeData.value.length === 0) {
+          return projects.value || []
         }
 
-        return project.tags.some(tag =>
-          reachableNodes.has(tag.name)
-        )
-      })
+        if (!selectedTreeNode.value) {
+          return projects.value || []
+        }
+
+        const reachableNodes = findReachableTags(selectedTreeNode.value?.id)
+
+        return (projects.value || []).filter(project => {
+          if (!project || !project.tags || project.tags.length === 0) {
+            return false
+          }
+
+          return project.tags.some(tag =>
+            tag && tag.name && reachableNodes.has(tag.name)
+          )
+        })
+      } catch (err) {
+        console.error('Error in relatedProjects computed:', err);
+        return []
+      }
     })
 
     // Helper function to update all reachable nodes
@@ -873,13 +890,18 @@ export default {
 
     // Helper function to expand all nodes recursively
     const expandAll = (nodes) => {
+      if (!nodes || !Array.isArray(nodes)) return
+
       const expanded = new Set()
 
       // Recursive function to collect all node IDs
       const collectAllNodeIds = (nodeList) => {
+        if (!nodeList || !Array.isArray(nodeList)) return
+
         nodeList.forEach(node => {
+          if (!node || !node.id) return
           expanded.add(node.id)
-          if (node.children && node.children.length > 0) {
+          if (node.children && Array.isArray(node.children) && node.children.length > 0) {
             collectAllNodeIds(node.children)
           }
         })
@@ -892,8 +914,8 @@ export default {
     const refreshData = async () => {
       try {
         // Load all data in parallel for better performance
-        await Promise.all([
-          loadProjects(),
+        const results = await Promise.all([
+          projectStore.loadProjects(),
           tagStore.loadTags(),
           taxonomyStore.loadTaxonomies(),
           graphStore.loadGraph({
@@ -902,22 +924,37 @@ export default {
           })
         ]);
 
-        // Only build tree after all data is loaded
-        if (nodes.value.length > 0 && edges.value.length > 0) {
-          treeData.value = buildTreeFromGraph(graphData.value);
+        // Check if any promises failed
+        const failures = results.filter(result => result.status === 'rejected');
+        if (failures.length > 0) {
+          console.warn('Some data loading operations failed:', failures);
+        }
 
-          // Update all reachable nodes for the computed property
-          await updateAllReachableNodes();
+        // Use graph data directly - no need for complex tree building
+        if (nodes.value && nodes.value.length > 0 &&
+            edges.value && edges.value.length > 0) {
 
-          if (treeData.value && treeData.value.length > 0) {
-            expandAll(treeData.value);
+          try {
+            // Use graph nodes directly as tree data
+            treeData.value = nodes.value.filter(node => !node.associative);
+
+            // Update all reachable nodes for computed property
+            await updateAllReachableNodes();
+
+            if (treeData.value && treeData.value.length > 0) {
+              expandAll(treeData.value);
+            }
+          } catch (treeErr) {
+            console.error('Error setting up tree data:', treeErr);
+            treeData.value = [];
           }
         } else {
           // Clear tree data if no nodes/edges available
           treeData.value = [];
         }
       } catch (err) {
-        error.value = err.message || 'Failed to load data';
+        console.error('Error in refreshData:', err);
+        error.value = err?.message || 'Failed to load data';
         treeData.value = [];
       }
     };
