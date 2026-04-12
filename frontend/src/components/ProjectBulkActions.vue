@@ -51,7 +51,28 @@
 
       <!-- Filters -->
       <div class="px-4 py-4 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Project Name Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Project Name
+            </label>
+            <select
+              v-model="projectFilter"
+              @change="handleProjectFilterChange(projectFilter)"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="">All Projects</option>
+              <option
+                v-for="projectName in uniqueProjectNames"
+                :key="projectName"
+                :value="projectName"
+              >
+                {{ projectName }}
+              </option>
+            </select>
+          </div>
+
           <!-- Search -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -60,7 +81,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search by name or tags..."
+              placeholder="Filter by project, version or tags..."
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
@@ -133,7 +154,7 @@
       <!-- Pagination Controls -->
       <div v-if="totalProjects > 0" class="flex items-center justify-between mb-6 px-4 pt-4">
         <div class="flex items-center space-x-4">
-          <div class="text-sm text-gray-700 dark:text-gray-300">
+          <div class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
             Showing {{ projects.length }} of {{ totalProjects }} projects
           </div>
           <div class="flex items-center space-x-2">
@@ -594,6 +615,7 @@ export default {
     const logger = createLogger('ProjectBulkActions')
     const activityFilter = ref('all')
     const sbomFilter = ref('all')
+    const projectFilter = ref('')
     const selectedProjects = ref([])
     const selectAll = ref(false)
     const showDeleteConfirmation = ref(false)
@@ -602,12 +624,31 @@ export default {
     const viewMode = ref('deck') // 'list' or 'deck'
 
     // Computed properties
+    const uniqueProjectNames = computed(() => {
+      if (!projects.value) return []
+      const names = new Set()
+      projects.value.forEach(project => {
+        const name = project.name
+        if (name) names.add(name)
+      })
+      return Array.from(names).sort()
+    })
+
     const filteredProjects = computed(() => {
       let filtered = projects.value || []
       logger.debug('Raw projects count:', projects.value?.length)
       logger.debug('Search query:', searchQuery.value)
+      logger.debug('Project filter:', projectFilter.value)
       logger.debug('Activity filter:', activityFilter.value)
       logger.debug('SBOM filter:', sbomFilter.value)
+
+      // Project name filter (exact match)
+      if (projectFilter.value) {
+        const filterName = projectFilter.value.toLowerCase()
+        filtered = filtered.filter(project =>
+          (project.name && project.name.toLowerCase() === filterName)
+        )
+      }
 
       // Search filter
       if (searchQuery.value) {
@@ -678,7 +719,15 @@ export default {
     const data = computed(() => {
       let projectsToShow = paginatedProjects.value || []
 
-      // Apply additional filters that aren't in the store
+      // Apply project name filter (exact match)
+      if (projectFilter.value) {
+        const filterName = projectFilter.value.toLowerCase()
+        projectsToShow = projectsToShow.filter(project =>
+          (project.name && project.name.toLowerCase() === filterName)
+        )
+      }
+
+      // Apply additional filters that aren't in store
       const now = new Date()
 
       // Activity filter
@@ -768,8 +817,14 @@ export default {
       currentPage.value = 1
     }
 
+    const handleProjectFilterChange = (projectName) => {
+      // Reset to first page when filter changes
+      currentPage.value = 1
+    }
+
     const clearFilters = () => {
       searchQuery.value = ''
+      projectFilter.value = ''
       activityFilter.value = 'all'
       sbomFilter.value = 'all'
 
@@ -994,6 +1049,7 @@ export default {
       isLoading,
       projects,
       searchQuery,
+      projectFilter,
       activityFilter,
       sbomFilter,
       selectedProjects,
@@ -1006,11 +1062,13 @@ export default {
       totalProjects,
       totalPages,
       viewMode,
+      uniqueProjectNames,
       filteredProjects,
       paginatedProjects,
       data,
       refreshProjects,
       setQuickFilter,
+      handleProjectFilterChange,
       clearFilters,
       toggleSelectAll,
       getActiveStatus,

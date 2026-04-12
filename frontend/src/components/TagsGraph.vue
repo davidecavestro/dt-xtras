@@ -278,6 +278,9 @@ export default {
     const taxonomyStore = useTaxonomyStore();
     const projectStore = useProjectStore();
 
+    // Store instances
+    const graphStore = useGraphStore();
+
     // Store references
     const { tags, isLoading: tagsLoading, error: tagsError } = storeToRefs(tagStore);
     const { taxonomies, isLoading: taxonomiesLoading, error: taxonomiesError } = storeToRefs(taxonomyStore);

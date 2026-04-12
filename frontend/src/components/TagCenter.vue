@@ -67,17 +67,6 @@
       <!-- Search and Filters -->
       <div v-if="tags.length > 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
         <div class="flex flex-col sm:flex-row gap-4">
-          <!-- Search -->
-          <div class="flex-1">
-            <input
-              v-model="searchQuery"
-              @input="setSearchQuery(searchQuery)"
-              type="text"
-              placeholder="Search tags..."
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            />
-          </div>
-
           <!-- Taxonomy Filter -->
           <div class="sm:w-48">
             <select
@@ -90,6 +79,17 @@
                 {{ taxonomy.name }}
               </option>
             </select>
+          </div>
+
+          <!-- Search -->
+          <div class="flex-1">
+            <input
+              v-model="searchQuery"
+              @input="setSearchQuery(searchQuery)"
+              type="text"
+              placeholder="Search tags..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
           </div>
 
           <!-- Clear Filters -->
@@ -105,7 +105,7 @@
       <!-- Pagination Controls -->
       <div v-if="totalPages > 1" class="flex items-center justify-between mb-6 px-4">
         <div class="flex items-center space-x-4">
-          <div class="text-sm text-gray-700 dark:text-gray-300">
+          <div class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
             Showing {{ paginatedTags.length }} of {{ totalTags }} tags
           </div>
           <div class="flex items-center space-x-2">
@@ -876,6 +876,7 @@ export default {
       totalTags,
       totalPages,
       searchQuery,
+      selectedTaxonomy,
       filteredTags,
       paginatedTags,
       hasPreviousPage,
@@ -898,7 +899,6 @@ export default {
 
     // Create Tag Modal state
     const showCreateTagModal = ref(false)
-    const selectedTaxonomy = ref(null)
     const tagBuilderParts = ref([])
     const editingTag = ref(null)
     const editInput = ref(null) // Ref for edit input focus

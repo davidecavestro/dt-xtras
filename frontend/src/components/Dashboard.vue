@@ -211,7 +211,7 @@
             <!-- Pagination Controls -->
             <div v-if="relatedProjects.length > pageSize" class="flex items-center justify-between mb-4 px-4">
               <div class="flex items-center space-x-4">
-                <div class="text-sm text-gray-700 dark:text-gray-300">
+                <div class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
                   Showing {{ paginatedProjects.length }} of {{ relatedProjects.length }} projects
                 </div>
                 <div class="flex items-center space-x-2">

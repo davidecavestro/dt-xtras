@@ -13,7 +13,7 @@
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Projects</h2>
         <div class="flex items-center gap-2">
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            {{ totalProjects || 0 }} projects
+            {{ filteredTotal || 0 }} projects
           </div>
           <!-- View Mode Controls -->
           <div class="flex items-center space-x-2">
@@ -71,23 +71,6 @@
             />
           </div>
 
-          <!-- Activity Filter -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Activity Status
-            </label>
-            <select
-              v-model="filters.activityFilter"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="all">All Projects</option>
-              <option value="active">Active Only</option>
-              <option value="inactive">Inactive Only</option>
-              <option value="recent">Recent (Last 7 days)</option>
-              <option value="old">Old (30+ days)</option>
-            </select>
-          </div>
-
           <!-- Quick Actions -->
           <div class="flex items-end space-x-2">
             <label class="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
@@ -110,10 +93,10 @@
       </div>
 
       <!-- Pagination Controls -->
-      <div v-if="totalProjects > projectStore.pageSize" class="flex items-center justify-between mb-6 px-4">
+      <div v-if="filteredTotal > projectStore.pageSize" class="flex items-center justify-between mb-6 px-4">
         <div class="flex items-center space-x-4">
-          <div class="text-sm text-gray-700 dark:text-gray-300">
-            Showing {{ data.length }} of {{ totalProjects }} projects
+          <div class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
+            Showing {{ data.length }} of {{ filteredTotal }} projects
           </div>
           <div class="flex items-center space-x-2">
             <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
@@ -204,8 +187,16 @@
             <div class="flex-1">
               <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
-              <div v-if="project.tags && project.tags.length > 0" class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">
-                🏷 {{ Array.isArray(project.tags) ? project.tags.map( tag => tag.name ).join(', ') : 'No tags' }}
+              <div v-if="project.tags && project.tags.length > 0" class="text-sm flex flex-wrap gap-1 mt-1">
+                <span
+                  v-for="tag in project.tags"
+                  :key="tag.name"
+                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                  :class="getTagStyle(tag)"
+                  :style="getTagDynamicStyle(tag)"
+                >
+                  {{ tag.name }}
+                </span>
               </div>
             </div>
             <div class="text-right">
@@ -275,6 +266,8 @@
             v-for="project in data"
             :key="project.uuid"
             :project="project"
+            :getTagStyle="getTagStyle"
+            :getTagDynamicStyle="getTagDynamicStyle"
             @select="viewProject"
             @view="viewProject"
             @security-details="viewSecurityDetails"
@@ -299,6 +292,7 @@ import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 import { useProjectStore } from '../stores/projects'
+import { useTaxonomyStore } from '../stores/taxonomies'
 
 export default {
   name: 'ProjectCenter',
@@ -317,6 +311,10 @@ export default {
   setup() {
     const projectStore = useProjectStore()
     const { projects, isLoading, error, totalProjects } = storeToRefs(projectStore)
+
+    const taxonomyStore = useTaxonomyStore()
+    const { taxonomies } = storeToRefs(taxonomyStore)
+    const { getTaxonomyBadgeStyle, getTagTaxonomy, loadTaxonomies } = taxonomyStore
 
     const filters = ref({
       search: '',
@@ -381,9 +379,47 @@ export default {
 
     // Reactive data for grid and deck views
     const data = computed(() => {
+      let filteredProjects = projects.value || []
+
+      // Apply search filter
+      if (filters.value.search) {
+        const query = filters.value.search.toLowerCase()
+        filteredProjects = filteredProjects.filter(project =>
+          (project.name && project.name.toLowerCase().includes(query)) ||
+          (project.tags && project.tags.some(tag => tag.name && tag.name.toLowerCase().includes(query)))
+        )
+      }
+
+      // Apply show inactive filter
+      if (!filters.value.showInactive) {
+        filteredProjects = filteredProjects.filter(project => project.active !== false)
+      }
+
+      // Apply pagination
       const startIndex = (projectStore.currentPage - 1) * projectStore.pageSize
       const endIndex = startIndex + projectStore.pageSize
-      return projects.value.slice(startIndex, endIndex)
+      return filteredProjects.slice(startIndex, endIndex)
+    })
+
+    // Computed property for filtered total count
+    const filteredTotal = computed(() => {
+      let filteredProjects = projects.value || []
+
+      // Apply search filter
+      if (filters.value.search) {
+        const query = filters.value.search.toLowerCase()
+        filteredProjects = filteredProjects.filter(project =>
+          (project.name && project.name.toLowerCase().includes(query)) ||
+          (project.tags && project.tags.some(tag => tag.name && tag.name.toLowerCase().includes(query)))
+        )
+      }
+
+      // Apply show inactive filter
+      if (!filters.value.showInactive) {
+        filteredProjects = filteredProjects.filter(project => project.active !== false)
+      }
+
+      return filteredProjects.length
     })
 
     // Dark mode detection for grid
@@ -476,17 +512,68 @@ export default {
     // Computed property to check if any filters are active
     const hasActiveFilters = computed(() => {
       return filters.value.search ||
-             filters.value.showInactive ||
-             filters.value.activityFilter !== 'all'
+             filters.value.showInactive
     })
 
     // Clear all filters
     const clearFilters = () => {
       filters.value = {
         search: '',
-        showInactive: false,
-        activityFilter: 'all'
+        showInactive: false
       }
+    }
+
+    // Tag styling function
+    const getTagStyle = (tag) => {
+      // Try to get taxonomy from tag object first, then fallback to store lookup
+      let hasTaxonomy = getTagTaxonomy(tag)
+
+      // If tag doesn't have taxonomy info, try to find it by matching tag name with taxonomies
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          try {
+            return new RegExp(taxonomy.regex_pattern).test(tag.name)
+          } catch (e) {
+            return false
+          }
+        })
+      }
+
+      // Store taxonomy reference for style application
+      if (hasTaxonomy) {
+        tag._taxonomy = hasTaxonomy
+      }
+
+      // Return taxonomy style if it's a taxonomy tag
+      if (hasTaxonomy) {
+        return 'taxonomy'
+      }
+
+      // Default style for non-taxonomy tags
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+    }
+
+    const getTagDynamicStyle = (tag) => {
+      // Get taxonomy using same logic as getTagStyle
+      let hasTaxonomy = getTagTaxonomy(tag)
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          try {
+            return new RegExp(taxonomy.regex_pattern).test(tag.name)
+          } catch (e) {
+            return false
+          }
+        })
+      }
+
+      // Return taxonomy style if it's a taxonomy tag
+      if (hasTaxonomy) {
+        return getTaxonomyBadgeStyle(hasTaxonomy)
+      }
+
+      return {}
     }
 
     // Watch for filter changes and refetch data
@@ -498,11 +585,13 @@ export default {
 
     onMounted(() => {
       fetchProjects()
+      loadTaxonomies()
     })
 
     return {
       data,
       totalProjects,
+      filteredTotal,
       isLoading,
       error,
       projectStore,
@@ -525,6 +614,8 @@ export default {
       viewSecurityDetails,
       analyzeProject,
       getProjectVulnerabilities,
+      getTagStyle,
+      getTagDynamicStyle,
       buildDTProjectUrl,
       buildDTProjectFindingsUrl
     }

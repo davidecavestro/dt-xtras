@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
     <div class="flex items-center">
-      <span class="text-sm text-gray-700 dark:text-gray-300">
+      <span class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
         Showing
         <span class="font-medium">{{ startItem }}</span>
         to
