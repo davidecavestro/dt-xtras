@@ -1,62 +1,125 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-    <!-- Header -->
-    <div class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tag Bulk Actions</h1>
-      <p class="text-gray-600 dark:text-gray-400 mt-1">Link and unlink tags from projects in bulk</p>
-    </div>
+  <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
+    <!-- Fixed Header with Title, Buttons, and Selected Items -->
+    <div class="fixed top-0 left-64 right-0 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4 z-10" style="--header-height: auto">
+      <!-- Title and Description -->
+      <div class="mb-4">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tag Bulk Actions</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-1">Link and unlink tags from projects in bulk</p>
+      </div>
 
-    <!-- Action Buttons -->
-    <div class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-3">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-          <button
-            @click="confirmLink"
-            :disabled="selectedTags.length === 0 || selectedProjects.length === 0 || loading"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center"
-          >
-            <Link class="w-4 h-4 mr-2" />
-            Link Selected
-          </button>
+      <!-- Action Buttons -->
+      <div class="mb-4">
+        <!-- Primary Actions Row -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <button
+              @click="confirmLink"
+              :disabled="selectedTags.length === 0 || selectedProjects.length === 0 || loading"
+              class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center sm:justify-start"
+            >
+              <Link class="w-4 h-4 mr-2 flex-shrink-0" />
+              <span class="text-sm sm:text-base">Link Selected</span>
+            </button>
+
+            <button
+              @click="confirmUnlink"
+              :disabled="selectedTags.length === 0 || selectedProjects.length === 0 || loading"
+              class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center sm:justify-start"
+            >
+              <Unlink class="w-4 h-4 mr-2 flex-shrink-0" />
+              <span class="text-sm sm:text-base">Unlink Selected</span>
+            </button>
+
+            <button
+              @click="clearSelection"
+              :disabled="selectedTags.length === 0 && selectedProjects.length === 0"
+              class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center sm:justify-start"
+            >
+              <span class="text-sm sm:text-base">Clear Selection</span>
+            </button>
+          </div>
 
           <button
-            @click="confirmUnlink"
-            :disabled="selectedTags.length === 0 || selectedProjects.length === 0 || loading"
-            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center"
+            @click="refreshData"
+            :disabled="loading"
+            class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center sm:justify-start"
           >
-            <Unlink class="w-4 h-4 mr-2" />
-            Unlink Selected
-          </button>
-
-          <button
-            @click="clearSelection"
-            :disabled="selectedTags.length === 0 && selectedProjects.length === 0"
-            class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            Clear Selection
+            <RefreshCw :class="['w-4 h-4 mr-2 flex-shrink-0', loading && 'animate-spin']" />
+            <span class="text-sm sm:text-base">Refresh</span>
           </button>
         </div>
+      </div>
 
-        <button
-          @click="refreshData"
-          :disabled="loading"
-          class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center"
-        >
-          <RefreshCw :class="['w-4 h-4', loading && 'animate-spin']" />
-          Refresh
-        </button>
+      <!-- Selected Items -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <!-- Selected Tags -->
+        <div>
+          <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Selected Tags ({{ selectedTags.length }})
+          </h3>
+          <div v-if="selectedTags.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic">
+            No tags selected
+          </div>
+          <div v-else class="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+            <span
+              v-for="tagName in selectedTags"
+              :key="tagName"
+              @click="toggleTagSelection(tagName)"
+              class="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium border cursor-pointer hover:opacity-80 transition-opacity"
+              :style="getSelectedTagStyle(tagName)"
+            >
+              <span class="truncate max-w-20 sm:max-w-none">{{ tagName }}</span>
+              <button
+                @click.stop="toggleTagSelection(tagName)"
+                class="ml-1 sm:ml-2 text-red-500 hover:text-red-700 text-xs font-bold flex-shrink-0"
+                title="Remove tag"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        </div>
+
+        <!-- Selected Projects -->
+        <div>
+          <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Selected Projects ({{ selectedProjects.length }})
+          </h3>
+          <div v-if="selectedProjects.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic">
+            No projects selected
+          </div>
+          <div v-else class="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+            <span
+              v-for="projectUuid in selectedProjects"
+              :key="projectUuid"
+              @click="toggleProjectSelection(projectUuid)"
+              class="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium border cursor-pointer hover:opacity-80 transition-opacity"
+              :style="getSelectedProjectStyle(projectUuid)"
+            >
+              <span class="truncate max-w-24 sm:max-w-none">{{ getProjectName(projectUuid) }}:{{ getProjectVersion(projectUuid) }}</span>
+              <button
+                @click.stop="toggleProjectSelection(projectUuid)"
+                class="ml-1 sm:ml-2 text-red-500 hover:text-red-700 text-xs font-bold flex-shrink-0"
+                title="Remove project"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Status Message -->
-    <div v-if="statusMessage" :class="['px-6 py-3 text-sm', statusMessageClass]">
+    <div v-if="statusMessage" :class="['fixed top-80 left-64 right-0 px-6 py-3 text-sm z-20', statusMessageClass]">
       {{ statusMessage }}
     </div>
 
-    <!-- Main Content -->
-    <div class="flex-1 flex overflow-hidden">
+    <!-- Main Content - Two Scrollable Columns -->
+    <div class="flex-1 flex overflow-hidden" style="padding-top: var(--header-height, 12rem)">
       <!-- Left Column - Tags -->
-      <div class="w-1/3 flex flex-col border-r border-gray-200 dark:border-gray-700">
+      <div class="w-1/2 flex flex-col border-r border-gray-200 dark:border-gray-700">
         <div class="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Tags</h2>
 
@@ -72,8 +135,9 @@
           </div>
 
           <!-- Tag Pagination Controls -->
-          <div v-if="totalTagPages > 1" class="mb-4 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
+          <div v-if="totalTagPages > 1" class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <!-- Info and Page Size -->
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div class="text-sm text-gray-700 dark:text-gray-300">
                 Showing {{ paginatedTags.length }} of {{ totalTags }} tags
               </div>
@@ -91,7 +155,8 @@
                 </select>
               </div>
             </div>
-            <div class="flex items-center space-x-2">
+            <!-- Navigation Buttons -->
+            <div class="flex items-center justify-center sm:justify-end space-x-2">
               <button
                 @click="previousTagPage"
                 :disabled="!hasPreviousTagPage || tagsLoading"
@@ -161,95 +226,33 @@
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading tags...</p>
           </div>
 
-          <div v-else class="space-y-2">
-            <div
-              v-for="tag in paginatedTags"
-              :key="tag.name"
-              class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
-            >
-              <input
-                type="checkbox"
-                :value="tag.name"
-                v-model="selectedTags"
-                class="mr-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-              />
-              <div class="flex-1">
-                <div class="font-medium text-gray-900 dark:text-white flex items-center flex-wrap gap-2">
-                  {{ tag.name }}
-                  <span v-if="getTagTaxonomy(tag)"
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
-                        :style="getTaxonomyBadgeStyle(getTagTaxonomy(tag))">
-                    {{ getTagTaxonomy(tag).name }}
-                  </span>
-                </div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                  Used by {{ tag.projectsCount || 0 }} projects
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Center Column - Selected Items -->
-      <div class="w-1/3 flex flex-col border-r border-gray-200 dark:border-gray-700">
-        <div class="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Selected Items</h2>
-
-          <!-- Selected Tags Section -->
-          <div class="mb-4">
-            <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Selected Tags ({{ selectedTags.length }})
-            </h3>
-            <div v-if="selectedTags.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic">
-              No tags selected
-            </div>
-            <div v-else class="space-y-1">
+          <div v-else class="flex-1 overflow-y-auto">
+            <div class="space-y-2">
               <div
-                v-for="tagName in selectedTags"
-                :key="tagName"
-                class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                v-for="tag in paginatedTags"
+                :key="tag.name"
+                class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                @click="toggleTagSelection(tag.name)"
               >
-                <span class="text-sm text-gray-900 dark:text-white">{{ tagName }}</span>
-                <button
-                  @click="toggleTagSelection(tagName)"
-                  class="text-red-500 hover:text-red-700 text-xs"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Selected Projects Section -->
-          <div>
-            <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Selected Projects ({{ selectedProjects.length }})
-            </h3>
-            <div v-if="selectedProjects.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic">
-              No projects selected
-            </div>
-            <div v-else class="space-y-1">
-              <div
-                v-for="projectUuid in selectedProjects"
-                :key="projectUuid"
-                class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
-                :class="getProjectStyle(projectUuid)"
-              >
+                <input
+                  type="checkbox"
+                  :value="tag.name"
+                  v-model="selectedTags"
+                  class="mr-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                />
                 <div class="flex-1">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ getProjectName(projectUuid) }}
+                  <div class="font-medium text-gray-900 dark:text-white flex items-center flex-wrap gap-2">
+                    {{ tag.name }}
+                    <span v-if="getTagTaxonomy(tag)"
+                          class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                          :style="getTaxonomyBadgeStyle(getTagTaxonomy(tag))">
+                      {{ getTagTaxonomy(tag).name }}
+                    </span>
                   </div>
-                  <div class="text-xs text-gray-600 dark:text-gray-400">
-                    {{ getProjectVersion(projectUuid) }}
+                  <div class="text-sm text-gray-600 dark:text-gray-400">
+                    Used by {{ tag.projectsCount || 0 }} projects
                   </div>
                 </div>
-                <button
-                  @click="toggleProjectSelection(projectUuid)"
-                  class="text-red-500 hover:text-red-700 text-xs ml-2"
-                >
-                  ✕
-                </button>
               </div>
             </div>
           </div>
@@ -257,19 +260,35 @@
       </div>
 
       <!-- Right Column - Projects -->
-      <div class="w-1/3 flex flex-col bg-white dark:bg-gray-800">
+      <div class="w-1/2 flex flex-col bg-white dark:bg-gray-800">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Projects</h2>
 
           <!-- Project Search -->
           <div class="mb-3">
-            <input
-              v-model="projectSearchQuery"
-              @input="setProjectSearchQuery(projectSearchQuery)"
-              type="text"
-              placeholder="Search by project name..."
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
+            <div class="flex gap-2">
+              <select
+                v-model="projectFilter"
+                @change="handleProjectFilterChange(projectFilter)"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-0 sm:min-w-32"
+              >
+                <option value="">All Projects</option>
+                <option
+                  v-for="projectName in uniqueProjectNames"
+                  :key="projectName"
+                  :value="projectName"
+                >
+                  {{ projectName }}
+                </option>
+              </select>
+              <input
+                v-model="projectSearchQuery"
+                @input="setProjectSearchQuery(projectSearchQuery)"
+                type="text"
+                placeholder="Refine searching by project name, version or tags..."
+                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
           </div>
 
           <!-- Active Filter -->
@@ -287,8 +306,9 @@
           </div>
 
           <!-- Project Pagination Controls -->
-          <div v-if="totalProjectPages > 1" class="mb-4 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
+          <div v-if="totalProjectPages > 1" class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <!-- Info and Page Size -->
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div class="text-sm text-gray-700 dark:text-gray-300">
                 Showing {{ paginatedProjects.length }} of {{ totalProjects }} projects
               </div>
@@ -306,7 +326,8 @@
                 </select>
               </div>
             </div>
-            <div class="flex items-center space-x-2">
+            <!-- Navigation Buttons -->
+            <div class="flex items-center justify-center sm:justify-end space-x-2">
               <button
                 @click="previousProjectPage"
                 :disabled="!hasPreviousProjectPage || projectsLoading"
@@ -382,7 +403,8 @@
             <div
               v-for="project in paginatedProjects"
               :key="project.uuid"
-              class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
+              class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+              @click="toggleProjectSelection(project.uuid)"
             >
               <input
                 type="checkbox"
@@ -580,6 +602,7 @@ export default {
       totalProjects,
       totalPages: totalProjectPages,
       searchQuery: projectSearchQuery,
+      projectFilter,
       filteredProjects,
       paginatedProjects,
       hasPreviousPage: hasPreviousProjectPage,
@@ -590,6 +613,7 @@ export default {
     const {
       loadProjects,
       setSearchQuery: setProjectSearchQuery,
+      setProjectFilter,
       setActiveFilter,
       goToPage: goToProjectPage,
       nextPage: nextProjectPage,
@@ -610,6 +634,18 @@ export default {
     const statusMessage = ref('')
     const statusMessageClass = ref('')
     const loading = ref(false)
+    const selectedProjectFilter = ref('')
+
+    // Computed property for unique project names
+    const uniqueProjectNames = computed(() => {
+      if (!projects.value) return []
+      const names = new Set()
+      projects.value.forEach(project => {
+        const name = project.displayName || project.name
+        if (name) names.add(name)
+      })
+      return Array.from(names).sort()
+    })
 
     // Local methods
     const toggleSelectAllTags = () => {
@@ -751,6 +787,39 @@ export default {
       return {}
     }
 
+    const getSelectedTagStyle = (tagName) => {
+      // Find taxonomy for this tag name
+      let hasTaxonomy = taxonomies.value.find(taxonomy => {
+        if (!taxonomy.regex_pattern) return false
+        try {
+          return new RegExp(taxonomy.regex_pattern).test(tagName)
+        } catch (e) {
+          return false
+        }
+      })
+
+      // Return taxonomy style if found, otherwise default style
+      if (hasTaxonomy) {
+        return getTaxonomyBadgeStyle(hasTaxonomy)
+      }
+
+      return {
+        backgroundColor: '#e5e7eb',
+        color: '#374151',
+        borderColor: '#d1d5db'
+      }
+    }
+
+    const getSelectedProjectStyle = (projectUuid) => {
+      // Projects don't have taxonomy colors, so return default styling
+      // The CSS classes from getProjectStyle will handle the red strikethrough for unlinking
+      return {
+        backgroundColor: '#e5e7eb',
+        color: '#374151',
+        borderColor: '#d1d5db'
+      }
+    }
+
     const toggleTagSelection = (tagName) => {
       const index = selectedTags.value.indexOf(tagName)
       if (index > -1) {
@@ -835,6 +904,18 @@ export default {
       selectAllProjects.value = false
     }
 
+    const handleProjectFilterChange = (projectName) => {
+      if (projectName) {
+        // Set project filter to the selected project name
+        setProjectFilter(projectName)
+        selectedProjectFilter.value = projectName
+      } else {
+        // Clear filter
+        selectedProjectFilter.value = ''
+        setProjectFilter('')
+      }
+    }
+
     const refreshData = async () => {
       loading.value = true
       try {
@@ -892,6 +973,7 @@ export default {
       totalProjectPages,
       tagSearchQuery,
       projectSearchQuery,
+      projectFilter,
       filteredTags,
       filteredProjects,
       paginatedTags,
@@ -902,11 +984,15 @@ export default {
       hasNextProjectPage,
       activeOnly,
 
+      // Local computed
+      uniqueProjectNames,
+
       // Store methods
       loadTags,
       loadProjects,
       setTagSearchQuery,
       setProjectSearchQuery,
+      setProjectFilter,
       setActiveFilter,
       goToTagPage,
       goToProjectPage,
@@ -932,6 +1018,8 @@ export default {
       getProjectStyle,
       getTagStyle,
       getTagDynamicStyle,
+      getSelectedTagStyle,
+      getSelectedProjectStyle,
 
       // Local methods
       toggleSelectAllTags,
@@ -944,7 +1032,11 @@ export default {
       confirmUnlink,
       clearSelection,
       buildDTProjectUrl,
-      refreshData
+      handleProjectFilterChange,
+      refreshData,
+
+      // Local state
+      selectedProjectFilter
     }
   }
 }

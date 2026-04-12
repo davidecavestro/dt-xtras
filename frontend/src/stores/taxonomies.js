@@ -63,16 +63,71 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
   const getTaxonomyBadgeStyle = (taxonomy) => {
     if (!taxonomy || !taxonomy.color) return {}
 
-    // Convert hex color to RGB for better opacity handling
+    // Convert hex color to RGB
     const hex = taxonomy.color.replace('#', '')
     const r = parseInt(hex.substring(0, 2), 16)
     const g = parseInt(hex.substring(2, 4), 16)
     const b = parseInt(hex.substring(4, 6), 16)
 
+    // Calculate luminance to determine if color is light or dark
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    const isLightColor = luminance > 0.5
+
+    // Detect if we're in dark mode - check for dark class on html or body element
+    const isDarkMode = typeof document !== 'undefined' &&
+                      (document.documentElement.classList.contains('dark') ||
+                       document.body.classList.contains('dark'))
+
+    let backgroundColor, textColor, borderColor
+
+    if (isDarkMode) {
+      // Dark mode: use more opaque backgrounds for light colors, less for dark colors
+      if (isLightColor) {
+        backgroundColor = `${taxonomy.color}40` // More opaque for light colors
+        textColor = taxonomy.color
+        borderColor = `${taxonomy.color}60`
+      } else {
+        backgroundColor = `${taxonomy.color}20` // Less opaque for dark colors
+        textColor = `${taxonomy.color}cc` // Lighten text for dark colors
+        borderColor = `${taxonomy.color}40`
+      }
+    } else {
+      // Light mode: use more opaque backgrounds for dark colors, less for light colors
+      if (isLightColor) {
+        backgroundColor = `${taxonomy.color}30` // More opaque for light colors
+        // For light colors, use a much darker text color for better contrast
+        textColor = adjustColorBrightness(taxonomy.color, -0.6) // Darken by 60%
+        borderColor = `${taxonomy.color}60`
+      } else {
+        backgroundColor = `${taxonomy.color}20` // Less opaque for dark colors
+        textColor = taxonomy.color
+        borderColor = `${taxonomy.color}40`
+      }
+    }
+
+    // Helper function to adjust color brightness
+    function adjustColorBrightness(hexColor, factor) {
+      const hex = hexColor.replace('#', '')
+      const r = parseInt(hex.substring(0, 2), 16)
+      const g = parseInt(hex.substring(2, 4), 16)
+      const b = parseInt(hex.substring(4, 6), 16)
+
+      const adjust = (value) => {
+        const adjusted = Math.round(value + (255 - value) * factor)
+        return Math.max(0, Math.min(255, adjusted))
+      }
+
+      const newR = adjust(r).toString(16).padStart(2, '0')
+      const newG = adjust(g).toString(16).padStart(2, '0')
+      const newB = adjust(b).toString(16).padStart(2, '0')
+
+      return `#${newR}${newG}${newB}`
+    }
+
     return {
-      backgroundColor: `${taxonomy.color}20`, // Add transparency
-      color: taxonomy.color,
-      borderColor: `${taxonomy.color}40`
+      backgroundColor,
+      color: textColor,
+      borderColor
     }
   }
 
