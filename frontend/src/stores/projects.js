@@ -19,12 +19,22 @@ export const useProjectStore = defineStore('projects', () => {
 
   // Search and filter state
   const searchQuery = ref('')
+  const projectFilter = ref('')
   const activeOnly = ref(false)
   const selectedTags = ref([])
 
   // Computed properties
   const filteredProjects = computed(() => {
     let filtered = projects.value
+
+    // Apply project name filter (exact match on name or displayName)
+    if (projectFilter.value) {
+      const filterName = projectFilter.value.toLowerCase()
+      filtered = filtered.filter(project =>
+        (project.name && project.name.toLowerCase() === filterName) ||
+        (project.displayName && project.displayName.toLowerCase() === filterName)
+      )
+    }
 
     // Apply search filter
     if (searchQuery.value) {
@@ -33,7 +43,7 @@ export const useProjectStore = defineStore('projects', () => {
         (project.name && project.name.toLowerCase().includes(query)) ||
         (project.displayName && project.displayName.toLowerCase().includes(query)) ||
         (project.version && project.version.toLowerCase().includes(query)) ||
-        (project.tags && project.tags.some(tag => tag && tag.toLowerCase && tag.toLowerCase().includes(query)))
+        (project.tags && project.tags.some(tag => tag && tag.name && tag.name.toLowerCase && tag.name.toLowerCase().includes(query)))
       )
     }
 
@@ -420,8 +430,15 @@ export const useProjectStore = defineStore('projects', () => {
     }
   }
 
+  const setProjectFilter = (projectName) => {
+    projectFilter.value = projectName
+    currentPage.value = 1 // Reset to first page when filtering
+    updatePaginationInfo()
+  }
+
   const clearFilters = () => {
     searchQuery.value = ''
+    projectFilter.value = ''
     activeOnly.value = false
     selectedTags.value = []
     currentPage.value = 1
@@ -479,6 +496,7 @@ export const useProjectStore = defineStore('projects', () => {
     totalProjects,
     totalPages,
     searchQuery,
+    projectFilter,
     activeOnly,
     selectedTags,
 
@@ -517,6 +535,7 @@ export const useProjectStore = defineStore('projects', () => {
 
     // Filter methods
     setSearchQuery,
+    setProjectFilter,
     setActiveFilter,
     setSelectedTags,
     addTagFilter,
