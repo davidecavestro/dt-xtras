@@ -16,7 +16,7 @@
             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center"
           >
             <Link class="w-4 h-4 mr-2" />
-            Link Selected ({{ selectedTags.length }} tags × {{ selectedProjects.length }} projects)
+            Link Selected
           </button>
 
           <button
@@ -234,6 +234,7 @@
                 v-for="projectUuid in selectedProjects"
                 :key="projectUuid"
                 class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                :class="getProjectStyle(projectUuid)"
               >
                 <div class="flex-1">
                   <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -399,8 +400,36 @@
                     {{ getActivityStatus(project) }}
                   </span>
                 </div>
-                <div v-if="project.tags && project.tags.length > 0" class="text-sm text-gray-600 dark:text-gray-400">
-                  🏷 {{ project.tags.map( tag => tag.name).join(', ') }}
+                <div v-if="project.tags && project.tags.length > 0" class="text-sm flex flex-wrap gap-1 mt-1">
+                  <!-- Existing tags -->
+                  <span
+                    v-for="tag in project.tags"
+                    :key="tag.name"
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                    :class="getTagStyle(tag, project.uuid)"
+                    :style="getTagDynamicStyle(tag, project.uuid)"
+                  >
+                    {{ tag.name }}
+                  </span>
+                  <!-- Temporary preview tags (selected tags that don't exist on this project) -->
+                  <span
+                    v-for="selectedTag in selectedTags"
+                    :key="'preview-' + selectedTag"
+                    v-show="selectedProjects.includes(project.uuid) && (!project.tags || !project.tags.some(t => t.name === selectedTag))"
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold border bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700"
+                  >
+                    {{ selectedTag }}
+                  </span>
+                </div>
+                <!-- Handle case where project has no tags but selected tags should show as preview -->
+                <div v-else-if="selectedTags.length > 0 && selectedProjects.includes(project.uuid)" class="text-sm flex flex-wrap gap-1 mt-1">
+                  <span
+                    v-for="selectedTag in selectedTags"
+                    :key="'preview-' + selectedTag"
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold border bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700"
+                  >
+                    {{ selectedTag }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -416,6 +445,17 @@
         <p class="text-gray-600 dark:text-gray-400 mb-6">
           Are you sure you want to link {{ selectedTags.length }} tag(s) to {{ selectedProjects.length }} project(s)?
         </p>
+        <div v-if="projectsToBeLinked.length > 0" class="mb-4 p-3 bg-green-50 dark:bg-green-900 rounded-md">
+          <p class="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+            Projects that will have tags added:
+          </p>
+          <ul class="list-disc list-inside text-sm text-green-700 dark:text-green-300 space-y-1">
+            <li v-for="project in projectsToBeLinked" :key="project.uuid" class="flex items-center">
+              <span class="font-medium">{{ getProjectName(project.uuid) }}</span>
+              <span class="text-xs text-green-600 dark:text-green-400 ml-2">({{ getProjectVersion(project.uuid) }})</span>
+            </li>
+          </ul>
+        </div>
         <div class="flex justify-end space-x-3">
           <button
             @click="showLinkConfirmation = false"
@@ -441,6 +481,17 @@
         <p class="text-gray-600 dark:text-gray-400 mb-6">
           Are you sure you want to unlink {{ selectedTags.length }} tag(s) from {{ selectedProjects.length }} project(s)?
         </p>
+        <div v-if="projectsToBeUnlinked.length > 0" class="mb-4 p-3 bg-red-50 dark:bg-red-900 rounded-md">
+          <p class="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+            Projects that will have tags removed:
+          </p>
+          <ul class="list-disc list-inside text-sm text-red-700 dark:text-red-300 space-y-1">
+            <li v-for="project in projectsToBeUnlinked" :key="project.uuid" class="flex items-center">
+              <span class="font-medium">{{ getProjectName(project.uuid) }}</span>
+              <span class="text-xs text-gray-600 dark:text-gray-400 ml-2">({{ getProjectVersion(project.uuid) }})</span>
+            </li>
+          </ul>
+        </div>
         <div class="flex justify-end space-x-3">
           <button
             @click="showUnlinkConfirmation = false"
@@ -585,6 +636,119 @@ export default {
     const getProjectVersion = (projectUuid) => {
       const project = projects.value.find(p => p.uuid === projectUuid)
       return project ? project.version : 'Unknown'
+    }
+
+    // Computed properties to track projects affected by bulk operations
+    const projectsToBeLinked = computed(() => {
+      if (selectedTags.value.length === 0 || selectedProjects.value.length === 0) return []
+
+      return paginatedProjects.value.filter(project =>
+        !selectedProjects.value.includes(project.uuid)
+      )
+    })
+
+    const projectsToBeUnlinked = computed(() => {
+      if (selectedTags.value.length === 0 || selectedProjects.value.length === 0) return []
+
+      return paginatedProjects.value.filter(project =>
+        selectedProjects.value.includes(project.uuid)
+      )
+    })
+
+    const getProjectStyle = (projectUuid) => {
+      const willBeUnlinked = projectsToBeUnlinked.value.some(p => p.uuid === projectUuid)
+      const willBeLinked = projectsToBeLinked.value.some(p => p.uuid === projectUuid)
+
+      if (willBeUnlinked) {
+        return 'line-through text-red-600 dark:text-red-400'
+      } else if (willBeLinked) {
+        return 'font-bold text-green-600 dark:text-green-400'
+      }
+      return ''
+    }
+
+    const getTagStyle = (tag, projectUuid) => {
+      const isProjectSelected = selectedProjects.value.includes(projectUuid)
+      const isTagSelected = selectedTags.value.includes(tag.name)
+
+      // Try to get taxonomy from tag object first, then fallback to store lookup
+      let hasTaxonomy = getTagTaxonomy(tag)
+
+      // If tag doesn't have taxonomy info, try to find it by matching tag name with taxonomies
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          try {
+            return new RegExp(taxonomy.regex_pattern).test(tag.name)
+          } catch (e) {
+            return false
+          }
+        })
+      }
+
+      const project = projects.value.find(p => p.uuid === projectUuid)
+      const tagExistsOnProject = project && project.tags && project.tags.some(t => t.name === tag.name)
+
+      // Store taxonomy reference for style application
+      if (hasTaxonomy) {
+        tag._taxonomy = hasTaxonomy
+      }
+
+      // Red strikethrough: tag exists on selected project and will be unlinked
+      if (isProjectSelected && isTagSelected && tagExistsOnProject) {
+        return 'line-through text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900 border-red-200 dark:border-red-700'
+      }
+
+      // Green bold: tag doesn't exist on selected project but will be linked (visual preview)
+      if (isProjectSelected && isTagSelected && !tagExistsOnProject) {
+        return 'font-bold text-green-600 dark:text-green-400'
+      }
+
+      // Show taxonomy colors for existing tags on selected projects (not in selection)
+      if (hasTaxonomy && isProjectSelected && !isTagSelected) {
+        return 'taxonomy'
+      }
+
+      // Show taxonomy colors for tags on unselected projects
+      if (hasTaxonomy && !isProjectSelected) {
+        return 'taxonomy'
+      }
+
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+    }
+
+    const getTagStyleForTemplate = (tag, projectUuid) => {
+      const styleClass = getTagStyle(tag, projectUuid)
+      return styleClass
+    }
+
+    const getTagDynamicStyle = (tag, projectUuid) => {
+      const isProjectSelected = selectedProjects.value.includes(projectUuid)
+      const isTagSelected = selectedTags.value.includes(tag.name)
+
+      // Get taxonomy using same logic as getTagStyle
+      let hasTaxonomy = getTagTaxonomy(tag)
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          try {
+            return new RegExp(taxonomy.regex_pattern).test(tag.name)
+          } catch (e) {
+            return false
+          }
+        })
+      }
+
+      const project = projects.value.find(p => p.uuid === projectUuid)
+      const tagExistsOnProject = project && project.tags && project.tags.some(t => t.name === tag.name)
+
+      // Return taxonomy style if it's a taxonomy tag
+      if (hasTaxonomy &&
+          ((isProjectSelected && !isTagSelected) || !isProjectSelected)) {
+        return getTaxonomyBadgeStyle(hasTaxonomy)
+      }
+
+      return {}
     }
 
     const toggleTagSelection = (tagName) => {
@@ -761,6 +925,13 @@ export default {
       taxonomies,
       getTagTaxonomy,
       getTaxonomyBadgeStyle,
+
+      // Computed properties for visual indicators
+      projectsToBeLinked,
+      projectsToBeUnlinked,
+      getProjectStyle,
+      getTagStyle,
+      getTagDynamicStyle,
 
       // Local methods
       toggleSelectAllTags,
