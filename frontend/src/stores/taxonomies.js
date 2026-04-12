@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { parseRegExpLiteral } from 'regexpp'
+import { createLogger } from '../utils/logger'
 
 export const useTaxonomyStore = defineStore('taxonomies', () => {
+  const logger = createLogger('taxonomies')
   // State
   const taxonomies = ref([])
   const loading = ref(false)
@@ -228,10 +230,27 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
             continue
           }
 
-          // Find target taxonomy by group name
-          const targetTaxonomy = taxonomies.value.find(t =>
-            t.regex_pattern && t.regex_pattern.includes(`(?<${relation.targets}>`)
-          )
+          // Find target taxonomy by group name - more flexible matching
+          const targetTaxonomy = taxonomies.value.find(t => {
+            if (!t.regex_pattern) return false
+
+            // Try exact match first
+            if (t.regex_pattern.includes(`(?<${relation.targets}>`)) {
+              return true
+            }
+
+            // Try to match by taxonomy id if relation targets matches taxonomy id
+            if (t.id === relation.targets) {
+              return true
+            }
+
+            // Try to match by taxonomy name if relation targets matches taxonomy name
+            if (t.name.toLowerCase() === relation.targets.toLowerCase()) {
+              return true
+            }
+
+            return false
+          })
 
           if (!targetTaxonomy) {
             logger.warn(`Could not find taxonomy with group ${relation.targets}`)
@@ -249,8 +268,26 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
 
           targetTags.forEach(tag => {
             const match = tag.name.match(targetRegex)
-            if (match && match.groups && match.groups[relation.targets]) {
-              captureGroupValues.add(match.groups[relation.targets])
+            if (match && match.groups) {
+              // Try to find the appropriate capture group
+              let value = null
+
+              // First try the relation targets as capture group name
+              if (match.groups[relation.targets]) {
+                value = match.groups[relation.targets]
+              } else {
+                // If that doesn't work, try to find the first capture group
+                const groupNames = Object.keys(match.groups)
+                if (groupNames.length > 1) {
+                  value = tag.name
+                } else if (groupNames.length > 0) {
+                  value = match.groups[groupNames[0]]
+                }
+              }
+
+              if (value) {
+                captureGroupValues.add(value)
+              }
             }
           })
 

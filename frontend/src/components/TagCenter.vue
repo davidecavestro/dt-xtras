@@ -36,7 +36,7 @@
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               ]"
             >
-              <ListIcon class="w-4 h-4" />
+              <List class="w-4 h-4" />
             </button>
             <button
               @click="tagsViewMode = 'deck'"
@@ -47,7 +47,7 @@
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               ]"
             >
-              <SquareIcon class="w-4 h-4" />
+              <Square class="w-4 h-4" />
             </button>
             <!-- <button
               @click="tagsViewMode = 'grid'"
@@ -193,14 +193,13 @@
             <!-- Show tag name or edit input -->
             <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
               <input
-  :data-tag-name="tag.name"
-  v-model="editingTagName"
-  @keyup.enter="saveEditTag"
-  @keyup.escape="cancelEditTag"
-  @blur="saveEditTag"
-  class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
-  placeholder="Tag name"
-/>
+                :data-tag-name="tag.name"
+                v-model="editingTagName"
+                @keyup.enter="saveEditTag"
+                @keyup.escape="cancelEditTag"
+                class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
+                placeholder="Tag name"
+              />
               <button
                 @click="saveEditTag"
                 class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
@@ -316,14 +315,13 @@
             <!-- Show tag name or edit input -->
             <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
               <input
-  :data-tag-name="tag.name"
-  v-model="editingTagName"
-  @keyup.enter="saveEditTag"
-  @keyup.escape="cancelEditTag"
-  @blur="saveEditTag"
-  class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
-  placeholder="Tag name"
-/>
+                :data-tag-name="tag.name"
+                v-model="editingTagName"
+                @keyup.enter="saveEditTag"
+                @keyup.escape="cancelEditTag"
+                class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
+                placeholder="Tag name"
+              />
               <button
                 @click="saveEditTag"
                 class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
@@ -487,7 +485,7 @@
         <div class="p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ editingTag ? 'Edit Tag' : 'Create Tag' }} for {{ selectedTaxonomy?.name }}
+              {{ editingTag ? 'Edit Tag' : (selectedTaxonomy ? `Create Tag for ${selectedTaxonomy.name}` : 'Create Tag') }}
             </h3>
             <button
               @click="closeCreateTagModal"
@@ -497,14 +495,36 @@
             </button>
           </div>
 
-          <!-- Pattern Display -->
-          <div class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-            <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pattern:</div>
-            <code class="text-sm bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded text-gray-800 dark:text-gray-200 font-mono break-all hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">{{ selectedTaxonomy?.regex_pattern }}</code>
+          <!-- Free-form Tag Creation (when no taxonomy selected) -->
+          <div v-if="!selectedTaxonomy" class="space-y-4">
+            <!-- Pattern Display -->
+            <div class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pattern:</div>
+              <div class="text-sm bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded text-gray-800 dark:text-gray-200 font-mono break-all hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                Free-form tag (no pattern restrictions)
+              </div>
+            </div>
+
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Tag Name
+            </label>
+            <input
+              v-model="newTag"
+              type="text"
+              @input="validateTag"
+              class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              placeholder="Enter new tag name..."
+            />
+            <div v-if="tagValidation.message" :class="[
+              'mt-1 text-xs',
+              tagValidation.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            ]">
+              {{ tagValidation.message }}
+            </div>
           </div>
 
-          <!-- Dynamic Tag Builder -->
-          <div class="space-y-4">
+          <!-- Dynamic Tag Builder (when taxonomy selected) -->
+          <div v-else class="space-y-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Build Tag
             </label>
@@ -555,8 +575,8 @@
           <!-- Action Buttons -->
           <div class="mt-6 flex gap-2">
             <button
-              @click="createOrUpdateTag"
-              :disabled="!canCreateTag"
+              @click="selectedTaxonomy ? createOrUpdateTag : handleCreateTag"
+              :disabled="selectedTaxonomy ? (editingTag ? !canEditTag : !canCreateTag) : !tagValidation.valid"
               class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               {{ editingTag ? 'Update Tag' : 'Create Tag' }}
@@ -692,9 +712,6 @@
                 <code class="text-sm bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded text-gray-800 dark:text-gray-200 font-mono break-all">
                   {{ generatedTag || 'Start building your tag...' }}
                 </code>
-                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Debug: tagBuilderParts = {{ JSON.stringify(tagBuilderParts) }}
-                </div>
               </div>
             </div>
           </div>
@@ -720,7 +737,7 @@
             <button
               v-else
               @click="cloneTagFromBuilder"
-              :disabled="!canCreateTag"
+              :disabled="!canCloneTag"
               class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               Clone Tag
@@ -823,20 +840,33 @@
       </div>
     </div>
   </div>
+
+  <!-- Confirmation Dialog -->
+  <ConfirmDialog
+    :show="showConfirmDialog"
+    :title="confirmDialogTitle"
+    :message="confirmDialogMessage"
+    :confirm-text="confirmDialogConfirmText"
+    :cancel-text="confirmDialogCancelText"
+    @confirm="handleConfirm"
+    @cancel="handleCancel"
+  />
 </template>
 
 <script>
-import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useTaxonomyStore } from '../stores/taxonomies'
-import { useToast } from '../composables/useToast'
-import { buildDTProjectUrl } from '../config.js'
 import { useRouter } from 'vue-router'
-import { List as ListIcon, Grid as GridIcon, Square as SquareIcon, Folder, Trash2, Edit2 } from 'lucide-vue-next'
-import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
-
 import { useTagStore } from '../stores/tags'
+import { useTaxonomyStore } from '../stores/taxonomies'
+import { useProjectStore } from '../stores/projects'
+import useToast from '../composables/useToast'
 import { createLogger } from '../utils/logger'
+import { useConfirmDialog } from '../composables/useConfirmDialog'
+import { Edit2, Copy, Tag, Grid3X3, List, Square, Folder, Trash2 } from 'lucide-vue-next'
+import ConfirmDialog from './ConfirmDialog.vue'
+import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
+import { buildDTProjectUrl } from '../config.js'
 
 // URL encoding utility
 const encodeTagName = (tagName) => {
@@ -848,21 +878,24 @@ export default {
   components: {
     Vue3Datagrid,
     VGridVueTemplate,
-    ListIcon,
-    GridIcon,
-    SquareIcon,
+    List,
+    Grid3X3,
+    Square,
+    Edit2,
+    Copy,
+    Tag,
     Folder,
     Trash2,
-    Edit2
+    ConfirmDialog
   },
   setup() {
     const logger = createLogger('tag-center')
     const router = useRouter()
     const tagStore = useTagStore()
     const taxonomyStore = useTaxonomyStore()
+    const projectStore = useProjectStore()
     const { showSuccess, showError } = useToast()
-
-    // Use taxonomy store
+    const { showConfirmDialog, confirmDialogTitle, confirmDialogMessage, confirmDialogConfirmText, confirmDialogCancelText, showConfirm, handleConfirm, handleCancel } = useConfirmDialog()
     const { taxonomies, loading: taxonomiesLoading } = storeToRefs(taxonomyStore)
     const { getTaxonomyBadgeStyle, getTagTaxonomy, loadTaxonomies } = taxonomyStore
 
@@ -902,6 +935,7 @@ export default {
     const tagBuilderParts = ref([])
     const editingTag = ref(null)
     const editInput = ref(null) // Ref for edit input focus
+    const isSavingTag = ref(false)
 
     // Clone Tag Modal state
     const showCloneTagModal = ref(false)
@@ -909,6 +943,9 @@ export default {
     const cloneTagName = ref('')
     const cloneTagValidation = ref({ valid: false, message: '' })
     const linkProjects = ref(false)
+    const sourceTag = ref(null)
+    const targetTag = ref(null)
+    const copyProjectsValidation = ref({ valid: false, message: '' })
 
     // Local state not in store
     const projects = ref([])
@@ -1080,7 +1117,14 @@ export default {
 
 
     const handleDeleteTag = async (tag) => {
-      if (!confirm(`Are you sure you want to delete tag "${tag.name}"?`)) return
+      const confirmed = await showConfirm({
+        title: 'Delete Tag',
+        message: `Are you sure you want to delete tag "${tag.name}"?`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      })
+
+      if (!confirmed) return
 
       try {
         await tagStore.deleteTag(tag.name)
@@ -1151,7 +1195,6 @@ export default {
             if (taxonomyByName) {
               logger.info('🔧 Found taxonomy by name instead:', taxonomyByName)
               // Use the found taxonomy and proceed with the same logic
-              selectedTaxonomy.value = taxonomyByName // Set selectedTaxonomy for parseTaxonomyPattern
               const parts = taxonomyStore.parseTaxonomyPattern(taxonomyByName.regex_pattern, taxonomyByName.relations)
               await taxonomyStore.loadDropdownValues(parts, taxonomyByName, tagStore.tags)
               const regex = new RegExp(taxonomyByName.regex_pattern)
@@ -1178,9 +1221,7 @@ export default {
               tagBuilderParts.value = []
             }
           } else {
-            logger.info('🔧 Found taxonomy by ID:', taxonomy)
-            // Set selectedTaxonomy for parseTaxonomyPattern to use
-            selectedTaxonomy.value = taxonomy
+            logger.info('Found taxonomy by ID:', taxonomy)
             // Parse taxonomy pattern to extract parts
             const parts = taxonomyStore.parseTaxonomyPattern(taxonomy.regex_pattern, taxonomy.relations)
 
@@ -1195,8 +1236,8 @@ export default {
             logger.info('🔧 Regex match result:', match)
 
             if (match) {
-              logger.info('🔧 Match groups:', match.groups)
-              logger.info('🔧 Parts before mapping:', parts)
+              logger.info('Match groups:', JSON.stringify(match.groups))
+              logger.info('Parts before mapping:', JSON.stringify(parts))
               // Pre-populate tag builder parts with original tag values
               tagBuilderParts.value = parts.map((part) => {
                 if (part.type === 'static') {
@@ -1212,16 +1253,16 @@ export default {
                 }
                 return part
               })
-              logger.info('🔧 Tag builder parts after mapping:', tagBuilderParts.value)
+              logger.info('🔧 Tag builder parts after mapping:', JSON.stringify(tagBuilderParts.value))
             } else {
               // If no match, just load empty parts with dropdown options
               tagBuilderParts.value = parts
             }
 
-            logger.info('🔧 Clone tag builder initialized:', tagBuilderParts.value)
+            logger.info('🔧 Clone tag builder initialized:', JSON.stringify(tagBuilderParts.value))
           }
 
-          logger.info('🔧 Clone tag builder initialized:', tagBuilderParts.value)
+          logger.info('🔧 Clone tag builder initialized:', JSON.stringify(tagBuilderParts.value))
         } catch (error) {
           logger.error('Error initializing clone tag builder:', error)
           tagBuilderParts.value = []
@@ -1278,9 +1319,6 @@ export default {
 
     // Copy Projects to Tag functionality
     const showCopyProjectsModal = ref(false)
-    const sourceTag = ref(null)
-    const targetTag = ref(null)
-    const copyProjectsValidation = ref({ valid: false, message: '' })
 
     // Searchable dropdown state
     const targetTagSearch = ref('')
@@ -1510,9 +1548,11 @@ export default {
     }
 
     const saveEditTag = async () => {
-      if (!editingTag.value || !editingTagName.value.trim()) {
+      if (!editingTag.value || !editingTagName.value.trim() || isSavingTag.value) {
         return
       }
+
+      isSavingTag.value = true
 
       try {
         await tagStore.updateTag(editingTag.value.name, {
@@ -1532,6 +1572,8 @@ export default {
       } catch (error) {
         logger.error('Error updating tag:', error)
         showError('Failed to update tag', 'Please try again.')
+      } finally {
+        isSavingTag.value = false
       }
     }
 
@@ -1555,6 +1597,36 @@ export default {
       const taxonomy = taxonomies.value.find(t => t.id === selectedTaxonomy.value?.id)
       // check that generatedTag is compatible with the tag pattern
       return generatedTag.value.length > 0 && taxonomy && new RegExp(taxonomy.regex_pattern).test(generatedTag.value)
+    })
+
+    // Separate validation for clone tag that doesn't depend on selectedTaxonomy
+    const canCloneTag = computed(() => {
+      if (!cloningTag.value || !cloningTag.value.taxonomy) {
+        return false
+      }
+
+      const taxonomy = taxonomies.value.find(t => t.id === cloningTag.value.taxonomy)
+      if (!taxonomy) {
+        return false
+      }
+
+      // check that generatedTag is compatible with the tag pattern
+      return generatedTag.value.length > 0 && new RegExp(taxonomy.regex_pattern).test(generatedTag.value)
+    })
+
+    // Separate validation for edit tag that doesn't depend on selectedTaxonomy
+    const canEditTag = computed(() => {
+      if (!editingTag.value || !editingTag.value.taxonomy) {
+        return false
+      }
+
+      const taxonomy = taxonomies.value.find(t => t.id === editingTag.value.taxonomy)
+      if (!taxonomy) {
+        return false
+      }
+
+      // check that generatedTag is compatible with the tag pattern
+      return generatedTag.value.length > 0 && new RegExp(taxonomy.regex_pattern).test(generatedTag.value)
     })
 
     // Check if tag has capture groups (for showing simple vs advanced clone)
@@ -1845,7 +1917,19 @@ export default {
       // Tag builder properties
       tagBuilderParts,
       generatedTag,
-      canCreateTag
+      canCreateTag,
+      canCloneTag,
+      canEditTag,
+      hasCaptureGroups,
+
+      // Confirmation dialog
+      showConfirmDialog,
+      confirmDialogTitle,
+      confirmDialogMessage,
+      confirmDialogConfirmText,
+      confirmDialogCancelText,
+      handleConfirm,
+      handleCancel
     }
   }
 }

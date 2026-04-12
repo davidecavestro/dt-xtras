@@ -146,10 +146,10 @@
         </router-link>
 
         <router-link
-          to="/taxonomy-builder"
+          to="/taxonomies"
           class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
           :class="[
-            $route.path === '/taxonomy-builder'
+            $route.path === '/taxonomies'
               ? 'bg-gray-700 dark:bg-gray-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
