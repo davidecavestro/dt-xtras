@@ -453,7 +453,6 @@ const tagStore = useTagStore()
 // Reactive data
 const editingTaxonomy = ref(null)
 const isEditingExisting = ref(false)
-const generatedTag = ref('')
 const testTags = ref('')
 const regexTestResult = ref(null)
 const showTagsModal = ref(false)
@@ -901,10 +900,26 @@ const graphGroup = ref(null)
     }, { deep: true })
 
     // Computed properties for tag creation
+    const generatedTag = computed(() => {
+      return tagBuilderParts.value.map(part => {
+        if (part.type === 'static') {
+          return part.value
+        } else {
+          return part.value || ''
+        }
+      }).join('')
+    })
+
     const canCreateTag = computed(() => {
-      return tagBuilderParts.value.every(part =>
-        part.type === 'static' || (part.value && part.value.trim())
+      const result = tagBuilderParts.value.every(part =>
+        part.type === 'static' || part.type === 'group' || (part.value && part.value.trim())
       )
+      logger.info('Debug canCreateTag:', {
+        tagBuilderParts: tagBuilderParts.value,
+        result,
+        generatedTag: generatedTag.value
+      })
+      return result
     })
 
     // Methods for tag management
@@ -954,13 +969,21 @@ const graphGroup = ref(null)
       selectedTaxonomy.value = taxonomy
 
       try {
+        // Ensure tags are loaded first
+        if (tagStore.tags.length === 0) {
+          await tagStore.loadTags()
+        }
+
         // Parse the regex pattern to extract static parts and capture groups
         const parts = taxonomyStore.parseTaxonomyPattern(taxonomy.regex_pattern, taxonomy.relations)
+        logger.info('Debug createTaxonomyTag - parsed parts:', parts)
 
         // Load existing tag values for dropdowns
         await taxonomyStore.loadDropdownValues(parts, taxonomy, tagStore.tags)
+        logger.info('Debug createTaxonomyTag - parts after loadDropdownValues:', parts)
 
         tagBuilderParts.value = parts
+        logger.info('Debug createTaxonomyTag - tagBuilderParts set to:', tagBuilderParts.value)
         showCreateTagModal.value = true
       } catch (error) {
         logger.error('Error parsing taxonomy pattern:', error)

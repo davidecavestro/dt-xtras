@@ -135,10 +135,9 @@ class Taxonomy(BaseModel):
     relations: Optional[List[TaxonomyRelation]] = None
     associative: Optional[bool] = None
 
-    # For backward compatibility with new YAML format
-    @property
-    def regex_pattern(self) -> str:
-        return self.regex_pattern
+class TaxonomyPriority(BaseModel):
+    id: str
+    priority: int
 
 class DTProject(BaseModel):
     uuid: str
@@ -519,14 +518,14 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
     if not new_name:
         raise HTTPException(status_code=400, detail="New tag name is required")
 
-    logger.info(f"DEBUG: Renaming tag '{tag_name}' to '{new_name}'")
+    logger.info(f"Renaming tag '{tag_name}' to '{new_name}'")
 
     # Extract DT API key from our wrapper JWT
     dt_token = get_dt_token_from_request(credentials)
 
     if new_name == tag_name:
         # No change needed
-        logger.info(f"DEBUG: No change needed, returning existing tag")
+        logger.info("No change needed, returning existing tag")
         existing_tag = await get_tag_by_name(tag_name, dt_token)
         if existing_tag:
             return existing_tag
@@ -539,7 +538,7 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
         response = await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[new_name], timeout=30.0)
@@ -554,10 +553,9 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
     # Step 3: Add new tag to all those projects
     if projects_with_old_tag:
         logger.info(f"Adding new tag to {len(projects_with_old_tag)} projects")
-        for project in projects_with_old_tag:
-            await add_tag_to_project(dt_token, project['uuid'], new_name)
-            # Remove old tag from this project
-            await remove_tag_from_project(dt_token, project['uuid'], tag_name)
+        await add_projects_to_tag(dt_token, new_name, projects_with_old_tag)
+        # Remove old tag from this project
+        await remove_projects_from_tag(dt_token, tag_name, projects_with_old_tag)
 
     # Step 4: Delete old tag
     logger.info(f"Deleting old tag: {tag_name}")
@@ -593,7 +591,7 @@ async def get_tag_by_name(tag_name: str, dt_token: str) -> dict:
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers, timeout=30.0)
@@ -612,7 +610,7 @@ async def get_projects_with_tag(dt_token: str, tag_name: str) -> List[dict]:
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     # Use DT API endpoint to get projects by tag with pagination
     all_projects = []
@@ -652,7 +650,7 @@ async def add_tag_to_project(dt_token: str, project_uuid: str, tag_name: str):
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     # Get current project to preserve existing tags
     async with httpx.AsyncClient() as client:
@@ -682,7 +680,7 @@ async def remove_tag_from_project(dt_token: str, project_uuid: str, tag_name: st
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     # Get current project to preserve existing tags
     async with httpx.AsyncClient() as client:
@@ -712,7 +710,7 @@ async def delete_tag_from_dt(dt_token: str, tag_name: str):
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
         # Step 1: Get and remove from notification rules
@@ -787,9 +785,6 @@ async def delete_tag_from_dt(dt_token: str, tag_name: str):
         if response.status_code == 204:
             logger.info(f"Successfully deleted tag: {tag_name}")
             return True
-        elif response.status_code == 400:
-            error_msg = f"Cannot delete tag '{tag_name}' - it may still be in use by projects or policies"
-            raise ValueError(error_msg)
         else:
             response.raise_for_status()
 
@@ -828,6 +823,29 @@ async def delete_taxonomy(taxonomy_id: str, permissions: List[str] = Depends(req
     taxonomies.pop(index)
     save_taxonomies(taxonomies)
     return {"message": "Taxonomy deleted successfully"}
+
+@app.put("/api/taxonomies/reorder")
+async def reorder_taxonomies(taxonomy_order: List[TaxonomyPriority], permissions: List[str] = Depends(require_edit_permissions)):
+    """Reorder taxonomies based on the provided order"""
+    taxonomies = load_taxonomies()
+
+    # Create a mapping of taxonomy ID to taxonomy data
+    taxonomy_map = {t.id: t for t in taxonomies}
+
+    # Update priorities based on the provided order
+    for taxonomy_priority in taxonomy_order:
+        if taxonomy_priority.id in taxonomy_map:
+            # Update the priority
+            existing_taxonomy = taxonomy_map[taxonomy_priority.id]
+            existing_taxonomy.priority = taxonomy_priority.priority
+        else:
+            logger.warning(f"Taxonomy {taxonomy_priority.id} not found in existing taxonomies")
+
+    # Sort by priority to ensure correct order
+    taxonomies.sort(key=lambda x: x.priority)
+
+    save_taxonomies(taxonomies)
+    return {"message": "Taxonomies reordered successfully", "taxonomies": taxonomies}
 
 # Project Version Management
 async def get_project_versions_internal(dt_token: str = None) -> List[ProjectVersion]:
@@ -921,7 +939,7 @@ async def get_projects(
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     # Build DT API parameters for count
     count_params = {
@@ -977,7 +995,7 @@ async def get_projects_count(
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     # Build DT API parameters
     params = {
@@ -1310,7 +1328,7 @@ async def add_tag_to_projects(tag_name: str, request: dict, dt_token: str = Depe
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
-        headers["X-API-Key"] = DT_API_KEY
+        headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
         project_response = await client.post(
@@ -1342,7 +1360,7 @@ async def remove_tag_from_projects(tag_name: str, request: dict, dt_token: str =
         if dt_token:
             headers["Authorization"] = f"Bearer {dt_token}"
         elif DT_API_KEY:
-            headers["X-API-Key"] = DT_API_KEY
+            headers["X-Api-Key"] = DT_API_KEY
 
         async with httpx.AsyncClient() as client:
             project_response = await client.get(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, timeout=30.0)

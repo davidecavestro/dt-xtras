@@ -34,7 +34,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/taxonomy-builder',
+    path: '/taxonomies',
     component: TaxonomyCenter,
     meta: { requiresAuth: true }
   },
