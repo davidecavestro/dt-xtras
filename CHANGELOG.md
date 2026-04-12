@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7] - 2026-04-12
+### :sparkles: New Features
+- [`ef11aef`](https://github.com/davidecavestro/dt-xtras/commit/ef11aef94f7b42765c3692a7cd49127846435114) - enhance bulk tag actions easing selections *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+
+### :bug: Bug Fixes
+- [`a0a47ac`](https://github.com/davidecavestro/dt-xtras/commit/a0a47acf2e2a996fec04238e3d45bfc5fc6aa0fd) - broken tag edit *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+
+### :wrench: Chores
+- [`d6565a5`](https://github.com/davidecavestro/dt-xtras/commit/d6565a598e7f9c42c0a338565a39899b50fefc0b) - decorate linking/unlinking tags on the Tag Bulk Actions view *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+- [`1e7fbb3`](https://github.com/davidecavestro/dt-xtras/commit/1e7fbb30303d82d4c41dde434c16e25d9c491f1c) - fix tag filtering *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+
+
 ## [v0.6] - 2026-04-11
 ### :sparkles: New Features
 - [`efbde9d`](https://github.com/davidecavestro/dt-xtras/commit/efbde9d79cc31f2e64819781fc55648c6e8c875a) - move the graph logic to backend api *(commit by [@davidecavestro](https://github.com/davidecavestro))*
@@ -26,3 +38,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`e18927d`](https://github.com/davidecavestro/dt-xtras/commit/e18927d8040fa65fa39a9c88c6406ae89b900d46) - remove duplicated logic from frontend *(commit by [@davidecavestro](https://github.com/davidecavestro))*
 
 [v0.6]: https://github.com/davidecavestro/dt-xtras/compare/v0.5...v0.6
+[v0.7]: https://github.com/davidecavestro/dt-xtras/compare/v0.6...v0.7
