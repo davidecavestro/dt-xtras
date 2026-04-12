@@ -587,7 +587,33 @@ const graphGroup = ref(null)
       }
 
       try {
+        // Get the taxonomy being deleted to know its priority
+        const deletedTaxonomy = taxonomies.value.find(t => t.id === id)
+        if (!deletedTaxonomy) {
+          throw new Error('Taxonomy not found')
+        }
+
+        // Delete the taxonomy
         await taxonomyStore.deleteTaxonomy(id)
+
+        // Reorder priorities for remaining taxonomies
+        const remainingTaxonomies = taxonomies.value.filter(t => t.id !== id && t.priority > deletedTaxonomy.priority)
+
+        if (remainingTaxonomies.length > 0) {
+          // Create new priority order
+          const newOrder = taxonomies.value
+            .filter(t => t.id !== id)
+            .map(taxonomy => {
+              if (taxonomy.priority > deletedTaxonomy.priority) {
+                return { ...taxonomy, priority: taxonomy.priority - 1 }
+              }
+              return taxonomy
+            })
+
+          // Update priorities in backend
+          await taxonomyStore.reorderTaxonomies(newOrder)
+        }
+
         await loadTaxonomies()
       } catch (error) {
         logger.error('Error deleting taxonomy:', error)
@@ -650,10 +676,12 @@ const graphGroup = ref(null)
 
       // Convert relations to Cytoscape edges
       const edges = [];
+      const taxonomyIds = new Set(taxonomies.value.map(t => t.id));
+
       taxonomies.value.forEach(taxonomy => {
         if (taxonomy.relations) {
           taxonomy.relations.forEach(relation => {
-            if (relation.targets) {
+            if (relation.targets && taxonomyIds.has(relation.targets)) {
               edges.push({
                 data: {
                   id: `${taxonomy.id}-${relation.targets}`,
@@ -908,7 +936,7 @@ const graphGroup = ref(null)
         const usageResults = await Promise.all(usagePromises)
         tagUsage.value = usageResults.reduce((acc, result) => ({ ...acc, ...result }), {})
 
-        showTaxonomyTagsModal.value = true
+        showTagsModal.value = true
       } catch (error) {
         logger.error('Error loading taxonomy tags:', error)
         showError('Error loading taxonomy tags: ' + (error.response?.data?.detail || error.message))

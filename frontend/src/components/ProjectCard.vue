@@ -1,6 +1,6 @@
 <template>
   <div
-    class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer min-w-0 h-full flex flex-col"
+    class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow min-w-0 h-full flex flex-col"
     @click="$emit('select', project)"
   >
     <!-- Header with responsive layout -->
@@ -60,7 +60,9 @@
           <span
             v-for="(tag, index) in project.tags"
             :key="tag"
-            class="px-1 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs rounded truncate flex-shrink-0"
+            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border truncate flex-shrink-0"
+            :class="getTagStyle(tag)"
+            :style="getTagDynamicStyle(tag)"
           >
             {{ tag.name }}
           </span>
@@ -133,6 +135,14 @@ export default {
     project: {
       type: Object,
       required: true
+    },
+    getTagStyle: {
+      type: Function,
+      default: () => 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+    },
+    getTagDynamicStyle: {
+      type: Function,
+      default: () => ({})
     }
   },
   emits: ['select', 'view', 'security-details', 'analyze'],

@@ -125,20 +125,36 @@
 
           <!-- Tag Search -->
           <div class="mb-3">
-            <input
-              v-model="tagSearchQuery"
-              @input="setTagSearchQuery(tagSearchQuery)"
-              type="text"
-              placeholder="Search by tag name..."
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
+            <div class="flex gap-2">
+              <select
+                v-model="selectedTaxonomy"
+                @change="setTaxonomyFilter(selectedTaxonomy)"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-0 sm:min-w-32"
+              >
+                <option value="">All Taxonomies</option>
+                <option
+                  v-for="taxonomy in taxonomies"
+                  :key="taxonomy.id"
+                  :value="taxonomy.id"
+                >
+                  {{ taxonomy.name }}
+                </option>
+              </select>
+              <input
+                v-model="tagSearchQuery"
+                @input="setTagSearchQuery(tagSearchQuery)"
+                type="text"
+                placeholder="Search by tag name..."
+                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
           </div>
 
           <!-- Tag Pagination Controls -->
           <div v-if="totalTagPages > 1" class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <!-- Info and Page Size -->
             <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <div class="text-sm text-gray-700 dark:text-gray-300">
+              <div class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
                 Showing {{ paginatedTags.length }} of {{ totalTags }} tags
               </div>
               <div class="flex items-center space-x-2">
@@ -285,7 +301,7 @@
                 v-model="projectSearchQuery"
                 @input="setProjectSearchQuery(projectSearchQuery)"
                 type="text"
-                placeholder="Refine searching by project name, version or tags..."
+                placeholder="Filter by project, version or tags..."
                 class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
@@ -309,7 +325,7 @@
           <div v-if="totalProjectPages > 1" class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <!-- Info and Page Size -->
             <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <div class="text-sm text-gray-700 dark:text-gray-300">
+              <div class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
                 Showing {{ paginatedProjects.length }} of {{ totalProjects }} projects
               </div>
               <div class="flex items-center space-x-2">
@@ -574,6 +590,7 @@ export default {
       totalTags,
       totalPages: totalTagPages,
       searchQuery: tagSearchQuery,
+      selectedTaxonomy,
       filteredTags,
       paginatedTags,
       hasPreviousPage: hasPreviousTagPage,
@@ -583,6 +600,7 @@ export default {
     const {
       loadTags,
       setSearchQuery: setTagSearchQuery,
+      setTaxonomyFilter,
       goToPage: goToTagPage,
       nextPage: nextTagPage,
       previousPage: previousTagPage,
@@ -916,6 +934,7 @@ export default {
       }
     }
 
+
     const refreshData = async () => {
       loading.value = true
       try {
@@ -974,6 +993,7 @@ export default {
       tagSearchQuery,
       projectSearchQuery,
       projectFilter,
+      selectedTaxonomy,
       filteredTags,
       filteredProjects,
       paginatedTags,
@@ -991,6 +1011,7 @@ export default {
       loadTags,
       loadProjects,
       setTagSearchQuery,
+      setTaxonomyFilter,
       setProjectSearchQuery,
       setProjectFilter,
       setActiveFilter,
