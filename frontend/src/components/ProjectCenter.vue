@@ -1,10 +1,22 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Project Center</h2>
-      <p class="text-gray-600 dark:text-gray-400 mb-6">
-        Browse and manage Dependency-Track projects
-      </p>
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Project Center</h2>
+          <p class="text-gray-600 dark:text-gray-400">
+            Browse and manage Dependency-Track projects
+          </p>
+        </div>
+        <button
+          @click="refreshProjects"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+          title="Refresh projects"
+        >
+          <RefreshCw class="mr-2 h-4 w-4" :class="{ 'animate-spin': isLoading }" />
+          Refresh
+        </button>
+      </div>
     </div>
 
     <!-- Projects List -->
@@ -283,13 +295,15 @@
 <script>
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
+import { RefreshCw, FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import ProjectCard from './ProjectCard.vue'
 import NameCell from './grid-cells/NameCell.vue'
 import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
+import { createLogger } from '../utils/logger'
+import { useToast } from '../composables/useToast'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 import { useProjectStore } from '../stores/projects'
 import { useTaxonomyStore } from '../stores/taxonomies'
@@ -301,6 +315,7 @@ export default {
     ListIcon,
     GridIcon,
     SquareIcon,
+    RefreshCw,
     Vue3Datagrid,
     ProjectCard,
     NameCell,
@@ -309,9 +324,10 @@ export default {
     DateCell
   },
   setup() {
+    const logger = createLogger('ProjectBulkActions')
     const projectStore = useProjectStore()
     const { projects, isLoading, error, totalProjects } = storeToRefs(projectStore)
-
+    const { showSuccess, showError } = useToast()
     const taxonomyStore = useTaxonomyStore()
     const { taxonomies } = storeToRefs(taxonomyStore)
     const { getTaxonomyBadgeStyle, getTagTaxonomy, loadTaxonomies } = taxonomyStore
@@ -576,6 +592,20 @@ export default {
       return {}
     }
 
+    // Refresh functionality
+    const refreshProjects = async () => {
+      try {
+        await Promise.all([
+          fetchProjects(),
+          loadTaxonomies()
+        ])
+        showSuccess('Projects refreshed successfully')
+      } catch (error) {
+        logger.error('Error refreshing projects:', error)
+        showError('Failed to refresh projects', 'Please try again.')
+      }
+    }
+
     // Watch for filter changes and refetch data
     watch(filters, async () => {
       // Use store pagination instead
@@ -601,6 +631,7 @@ export default {
       isDarkMode,
       hasActiveFilters,
       fetchProjects,
+      refreshProjects,
       debouncedSearch,
       handlePageChange,
       handlePageSizeChange,

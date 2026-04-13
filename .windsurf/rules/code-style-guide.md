@@ -8,3 +8,5 @@ globs: **/*(.vue|.js|.py)
 # ALways check DT openapi at /workspace/docs/dt-openapi.json for backend api implementations
 # Be conservative: limit changes to just the needed ones, unless prompted otherwise
 # Don't operate partial reads on files: read and validate the entire source file before making any changes
+# When you insert new code, check that you are not duplicating variables, functions or code blocks
+# When you remove code, check that you are not removing needed imports or functions

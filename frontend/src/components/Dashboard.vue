@@ -22,10 +22,10 @@
         <button
           @click="refreshData"
           :disabled="shouldShowLoading"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
         >
-          <RefreshCw v-if="shouldShowLoading" class="animate-spin w-4 h-4" />
-          <span v-else>Refresh</span>
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': projectLoading || tagLoading }"/>
+          <span>Refresh</span>
         </button>
       </div>
 
@@ -1105,6 +1105,8 @@ export default {
     return {
       // Coordinated loading state
       shouldShowLoading,
+      projectLoading,
+      tagLoading,
       isDataReady,
 
       // Graph data
