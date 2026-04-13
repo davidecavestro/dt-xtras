@@ -1,10 +1,22 @@
 <template>
   <div class="px-4 py-6 sm:px-0">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Tag Center</h2>
-      <p class="text-gray-600 dark:text-gray-400 mb-6">
-        Manage tags and link them to Dependency-Track projects
-      </p>
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Tag Center</h2>
+          <p class="text-gray-600 dark:text-gray-400">
+            Manage tags and link them to Dependency-Track projects
+          </p>
+        </div>
+        <button
+          @click="refreshTags"
+          class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
+          title="Refresh tags"
+        >
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': tagsLoading }"/>
+          Refresh
+        </button>
+      </div>
 
       <!-- Create Tag Button -->
       <div class="mb-6">
@@ -485,7 +497,7 @@
         <div class="p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ editingTag ? 'Edit Tag' : (selectedTaxonomy ? `Create Tag for ${selectedTaxonomy.name}` : 'Create Tag') }}
+              {{ editingTag ? 'Edit Tag' : (selectedTaxonomy ? `Create Tag for ${selectedTaxonomy}` : 'Create Tag') }}
             </h3>
             <button
               @click="closeCreateTagModal"
@@ -863,7 +875,7 @@ import { useProjectStore } from '../stores/projects'
 import useToast from '../composables/useToast'
 import { createLogger } from '../utils/logger'
 import { useConfirmDialog } from '../composables/useConfirmDialog'
-import { Edit2, Copy, Tag, Grid3X3, List, Square, Folder, Trash2 } from 'lucide-vue-next'
+import { RefreshCw, Edit2, Copy, Tag, Grid3X3, List, Square, Folder, Trash2 } from 'lucide-vue-next'
 import ConfirmDialog from './ConfirmDialog.vue'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { buildDTProjectUrl } from '../config.js'
@@ -886,6 +898,7 @@ export default {
     Tag,
     Folder,
     Trash2,
+    RefreshCw,
     ConfirmDialog
   },
   setup() {
@@ -1157,12 +1170,6 @@ export default {
     const clearForm = () => {
       newTag.value = ''
       tagValidation.value = { valid: false, message: '' }
-    }
-
-
-    const refreshTags = () => {
-      loadTags()
-      loadProjects()
     }
 
     const formatDate = (dateString) => {
@@ -1577,6 +1584,21 @@ export default {
       }
     }
 
+    // Refresh functionality
+    const refreshTags = async () => {
+      try {
+        await Promise.all([
+          loadTaxonomies(),
+          loadTags(),
+          loadProjects()
+        ])
+        showSuccess('Tags refreshed successfully')
+      } catch (error) {
+        logger.error('Error refreshing tags:', error)
+        showError('Failed to refresh tags', 'Please try again.')
+      }
+    }
+
     // Lifecycle
     onMounted(() => {
       loadTaxonomies()
@@ -1658,7 +1680,7 @@ export default {
           return
         }
 
-        selectedTaxonomy.value = matchingTaxonomy
+        selectedTaxonomy.value = matchingTaxonomy || ""
         editingTag.value = tag
 
         logger.info('🔧 Set selectedTaxonomy and editingTag')
@@ -1711,7 +1733,7 @@ export default {
 
     const closeCreateTagModal = () => {
       showCreateTagModal.value = false
-      selectedTaxonomy.value = null
+      selectedTaxonomy.value = ""
       tagBuilderParts.value = []
       editingTag.value = null
     }
