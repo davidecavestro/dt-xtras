@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.8] - 2026-04-16
+### :bug: Bug Fixes
+- [`3c1e3dd`](https://github.com/davidecavestro/dt-xtras/commit/3c1e3ddd5cce155610820035cebb147688620b84) - broken tag rename *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+
+### :wrench: Chores
+- [`d64ec72`](https://github.com/davidecavestro/dt-xtras/commit/d64ec7227ec650e6ff31d83bfcdefd9a0d8b0d0e) - add zizmor for CI checks *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+- [`901b7a0`](https://github.com/davidecavestro/dt-xtras/commit/901b7a0c9d315ccf6ac7be4b3cad61cfc5edd8bd) - switch to alpine to reduce CVEs *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+- [`dc9a7be`](https://github.com/davidecavestro/dt-xtras/commit/dc9a7be0fbd25db308d5542a8aec458126b870a7) - move tree build logic to backend *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+
+
 ## [v0.7] - 2026-04-12
 ### :sparkles: New Features
 - [`ef11aef`](https://github.com/davidecavestro/dt-xtras/commit/ef11aef94f7b42765c3692a7cd49127846435114) - enhance bulk tag actions easing selections *(commit by [@davidecavestro](https://github.com/davidecavestro))*
@@ -39,3 +49,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [v0.6]: https://github.com/davidecavestro/dt-xtras/compare/v0.5...v0.6
 [v0.7]: https://github.com/davidecavestro/dt-xtras/compare/v0.6...v0.7
+[v0.8]: https://github.com/davidecavestro/dt-xtras/compare/v0.7...v0.8
