@@ -280,6 +280,16 @@
               <RefreshCw class="mr-2 h-4 w-4" />
               Refresh Selected ({{ selectedProjects.length }})
             </button>
+
+            <!-- Bulk Rename -->
+            <button
+              v-if="selectedProjects.length > 0"
+              @click="showRenameModal = true"
+              class="px-4 py-2 border border-purple-300 text-sm font-medium rounded-md text-purple-700 bg-purple-50 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+            >
+              <Edit3 class="mr-2 h-4 w-4" />
+              Rename Selected ({{ selectedProjects.length }})
+            </button>
           </div>
         </div>
       </div>
@@ -581,6 +591,76 @@
         </div>
       </div>
     </div>
+
+    <!-- Rename Modal -->
+    <div
+      v-if="showRenameModal"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 sm:mx-0 sm:h-10 sm:w-10">
+                <Edit3 class="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+                  Rename Projects
+                </h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Enter a new name for the {{ selectedProjects.length }} selected project(s). All selected projects will be renamed to this name.
+                  </p>
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      New Project Name
+                    </label>
+                    <input
+                      v-model="newProjectName"
+                      type="text"
+                      placeholder="Enter new project name..."
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+                      @keyup.enter="confirmRename"
+                    />
+                  </div>
+                  <div class="max-h-32 overflow-y-auto">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Projects to rename:</p>
+                    <ul class="text-sm text-gray-600 dark:text-gray-400">
+                      <li v-for="uuid in selectedProjects" :key="uuid" class="py-1">
+                        • {{ getProjectName(uuid) }}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button
+              @click="confirmRename"
+              type="button"
+              :disabled="!newProjectName.trim()"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Rename
+            </button>
+            <button
+              @click="showRenameModal = false; newProjectName = ''"
+              type="button"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -590,7 +670,7 @@ import { storeToRefs } from 'pinia'
 import { useProjectStore } from '../stores/projects'
 import { useToast } from '../composables/useToast'
 import { createLogger } from '../utils/logger'
-import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff, List as ListIcon, Square as SquareIcon } from 'lucide-vue-next'
+import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff, List as ListIcon, Square as SquareIcon, Edit3 } from 'lucide-vue-next'
 import ProjectCard from './ProjectCard.vue'
 
 export default {
@@ -606,6 +686,7 @@ export default {
     PowerOff,
     ListIcon,
     SquareIcon,
+    Edit3,
     ProjectCard
   },
   setup() {
@@ -621,6 +702,8 @@ export default {
     const showDeleteConfirmation = ref(false)
     const showActivateConfirmation = ref(false)
     const showDeactivateConfirmation = ref(false)
+    const showRenameModal = ref(false)
+    const newProjectName = ref('')
     const viewMode = ref('deck') // 'list' or 'deck'
 
     // Computed properties
@@ -986,6 +1069,27 @@ export default {
       }
     }
 
+    const confirmRename = async () => {
+      if (!newProjectName.value.trim()) {
+        showError('Please enter a new project name')
+        return
+      }
+
+      try {
+        const result = await projectStore.bulkRenameProjects(selectedProjects.value, newProjectName.value.trim())
+
+        showSuccess(`Renamed ${result.successCount} projects to '${newProjectName.value}'`)
+
+        selectedProjects.value = []
+        selectAll.value = false
+        newProjectName.value = ''
+        showRenameModal.value = false
+      } catch (error) {
+        logger.error('Failed to rename projects:', error)
+        showError('Failed to rename some projects. Please try again.')
+      }
+    }
+
     const refreshSelectedProjects = async () => {
       try {
         await projectStore.bulkRefreshProjects(selectedProjects.value)
@@ -1057,6 +1161,8 @@ export default {
       showDeleteConfirmation,
       showActivateConfirmation,
       showDeactivateConfirmation,
+      showRenameModal,
+      newProjectName,
       currentPage,
       pageSize,
       totalProjects,
@@ -1084,6 +1190,7 @@ export default {
       confirmDelete,
       confirmActivate,
       confirmDeactivate,
+      confirmRename,
       refreshSelectedProjects,
       goToPage,
       nextPage,

@@ -367,6 +367,38 @@ export const useProjectStore = defineStore('projects', () => {
     }
   }
 
+  const bulkRenameProjects = async (projectUuids, newName) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const response = await axios.patch('/api/project/bulk-rename', {
+        projectUuids,
+        newName
+      })
+
+      // Update local project names
+      projectUuids.forEach(uuid => {
+        const project = projects.value.find(p => p.uuid === uuid)
+        if (project) {
+          project.name = newName
+        }
+      })
+
+      // Update timestamp to trigger watchers
+      lastUpdate.value = Date.now()
+
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to rename projects'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // Pagination methods
   const goToPage = (page) => {
     if (page >= 1 && page <= totalPages.value) {
@@ -523,6 +555,7 @@ export const useProjectStore = defineStore('projects', () => {
     deleteProject,
     refreshProject,
     bulkRefreshProjects,
+    bulkRenameProjects,
     getActivityStatus,
     getActivityStatusClass,
 
