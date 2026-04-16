@@ -72,6 +72,34 @@ jobs:
           format: cyclonedx-json
           artifact-name: frontend.cdx.json
 
+      - name: "Set up Python"
+        uses: "actions/setup-python@v6"
+        with:
+          python-version: "3.14"
+          cache: "pip"
+          cache-dependency-path: "backend/requirements.txt"
+
+      - name: "Install backend dependencies"
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: "Generate OpenAPI JSON"
+        env:
+          DT_API_URL: "http://localhost:8080"
+          DT_API_KEY: "dummy"
+          JWT_SECRET_KEY: "dummy"
+        run: |
+          cd backend
+          python -c "import json; from main import app; print(json.dumps(app.openapi(), indent=2))" > openapi.json
+
+      - name: "Upload OpenAPI artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-schema
+          path: backend/openapi.json
+          retention-days: 30
+
       - name: Update CHANGELOG
         id: changelog
         uses: requarks/changelog-action@v1
@@ -94,7 +122,12 @@ jobs:
 
             - Backend: ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
             - Frontend: ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
+
+            ## API Documentation
+
+            - OpenAPI Schema: openapi.json (attached to this release)
           token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "backend/openapi.json"
 
       - name: Publish SBOM
         uses: anchore/sbom-action/publish-sbom@v0

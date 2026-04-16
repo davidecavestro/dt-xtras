@@ -25,9 +25,10 @@ from collections import defaultdict, Counter
 app = FastAPI(title="dt-xtras", version="1.0.0")
 
 # CORS middleware - configurable via environment variables
-cors_origins = os.getenv("CORS_ORIGINS", "").split(",")
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+cors_origins = cors_origins_env.split(",") if cors_origins_env else ["*"]
 cors_allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
-cors_allow_methods = os.getenv("CORS_ALLOW_METHODS", "*").split(",")
+cors_allow_methods = os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,PATCH,OPTIONS").split(",")
 cors_allow_headers = os.getenv("CORS_ALLOW_HEADERS", "*").split(",")
 
 app.add_middleware(
@@ -1198,6 +1199,76 @@ async def refresh_project(project_uuid: str, dt_token: str = Depends(get_dt_toke
             raise HTTPException(status_code=response.status_code, detail=f"Failed to refresh project: {response.text}")
 
         return {"message": "Project refresh triggered successfully"}
+
+@app.patch("/api/project/bulk-rename")
+async def bulk_rename_projects(
+    rename_data: dict,
+    dt_token: str = Depends(get_dt_token_from_request),
+    permissions: List[str] = Depends(require_edit_permissions)
+):
+    """Rename multiple projects to a new name"""
+    project_uuids = rename_data.get('projectUuids', [])
+    new_name = rename_data.get('newName', '').strip()
+
+    if not project_uuids:
+        raise HTTPException(status_code=400, detail="No projects selected for rename")
+
+    if not new_name:
+        raise HTTPException(status_code=400, detail="New project name is required")
+
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    results = {"success": [], "failed": []}
+
+    async with httpx.AsyncClient() as client:
+        for uuid in project_uuids:
+            try:
+                # First get the current project data
+                get_response = await client.get(
+                    f"{DT_API_URL}/api/v1/project/{uuid}",
+                    headers=headers,
+                    timeout=30.0
+                )
+
+                if get_response.status_code == 404:
+                    results["failed"].append({"uuid": uuid, "error": "Project not found"})
+                    continue
+
+                get_response.raise_for_status()
+                project_data = get_response.json()
+
+                # Update only the name field
+                project_data["name"] = new_name
+
+                # Send the update back to DT
+                patch_response = await client.patch(
+                    f"{DT_API_URL}/api/v1/project/{uuid}",
+                    headers=headers,
+                    json=project_data,
+                    timeout=30.0
+                )
+
+                if patch_response.status_code == 409:
+                    results["failed"].append({"uuid": uuid, "error": "Conflict - project with this name may already exist"})
+                elif patch_response.status_code not in [200, 204]:
+                    results["failed"].append({"uuid": uuid, "error": f"HTTP {patch_response.status_code}"})
+                else:
+                    results["success"].append(uuid)
+
+            except Exception as e:
+                logger.error(f"Failed to rename project {uuid}: {str(e)}")
+                results["failed"].append({"uuid": uuid, "error": str(e)})
+
+    return {
+        "message": f"Renamed {len(results['success'])} projects to '{new_name}'",
+        "successCount": len(results["success"]),
+        "failedCount": len(results["failed"]),
+        "failed": results["failed"]
+    }
 
 @app.delete("/api/project-versions/{version_id}")
 async def delete_project_version(version_id: str, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
