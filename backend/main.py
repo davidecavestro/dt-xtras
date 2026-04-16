@@ -554,7 +554,7 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
     if projects_with_old_tag:
         logger.info(f"Adding new tag to {len(projects_with_old_tag)} projects")
         await add_projects_to_tag(dt_token, new_name, projects_with_old_tag)
-        # Remove old tag from this project
+        logger.info(f"Removing old tag from {len(projects_with_old_tag)} projects")
         await remove_projects_from_tag(dt_token, tag_name, projects_with_old_tag)
 
     # Step 4: Delete old tag
@@ -703,6 +703,73 @@ async def remove_tag_from_project(dt_token: str, project_uuid: str, tag_name: st
         response = await client.put(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, json=update_data, timeout=30.0)
         response.raise_for_status()
         logger.info(f"Successfully removed tag {tag_name} from project {project_uuid}")
+
+async def add_projects_to_tag(dt_token: str, tag_name: str, projects: List[dict]):
+    """Add multiple projects to a tag using DT API"""
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    # Extract project UUIDs from project objects
+    project_uuids = [project.get('uuid') for project in projects if project.get('uuid')]
+
+    if not project_uuids:
+        logger.info(f"No projects to add to tag {tag_name}")
+        return
+
+    logger.info(f"Adding {len(project_uuids)} projects to tag {tag_name}")
+
+    async with httpx.AsyncClient() as client:
+        encoded_tag_name = urlencode(tag_name)
+        response = await client.post(
+            f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project",
+            headers=headers,
+            json=project_uuids,
+            timeout=30.0
+        )
+
+        if response.status_code == 204:
+            logger.info(f"Successfully added {len(project_uuids)} projects to tag {tag_name}")
+        elif response.status_code == 404:
+            raise ValueError(f"Tag '{tag_name}' not found")
+        else:
+            response.raise_for_status()
+
+async def remove_projects_from_tag(dt_token: str, tag_name: str, projects: List[dict]):
+    """Remove multiple projects from a tag using DT API"""
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    # Extract project UUIDs from project objects
+    project_uuids = [project.get('uuid') for project in projects if project.get('uuid')]
+
+    if not project_uuids:
+        logger.info(f"No projects to remove from tag {tag_name}")
+        return
+
+    logger.info(f"Removing {len(project_uuids)} projects from tag {tag_name}")
+
+    async with httpx.AsyncClient() as client:
+        encoded_tag_name = urlencode(tag_name)
+        response = await client.request(
+            method="DELETE",
+            url=f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project",
+            headers=headers,
+            json=project_uuids,
+            timeout=30.0
+        )
+
+        if response.status_code == 204:
+            logger.info(f"Successfully removed {len(project_uuids)} projects from tag {tag_name}")
+        elif response.status_code == 404:
+            raise ValueError(f"Tag '{tag_name}' not found")
+        else:
+            response.raise_for_status()
 
 async def delete_tag_from_dt(dt_token: str, tag_name: str):
     """Delete a tag from DT API after removing it from all related objects"""

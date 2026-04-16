@@ -44,14 +44,14 @@ it will probably be deprecated in favor of a more integrated approach.
 Combine bundles on regions for brands:
 - `brand:qualcoz` → Brand classification: QUALCOZ Ltd
 - `region:eu` → Region classification: EU
-- `anybnd:2026.05` → Bundle version classification: ANYBND version 2026.05
-- `site:qualcoz:eu:anybnd:2026.05` → A site serving Brand QUALCOZ Ltd for
-Region EU using the software Bundle ANYBND version 2026.05
+- `bee:2026.05` → Bundle version classification: BEE version 2026.05
+- `site:qualcoz:eu:bee:2026.05` → A site serving Brand QUALCOZ Ltd for
+Region EU using the software Bundle BEE version 2026.05
 
-In the example above, the tag `brand:qualcoz:eu:anybnd:2026.05` provides all projects tagged as `anybnd:2026.05` with the following classifications:
+In the example above, the tag `brand:qualcoz:eu:bee:2026.05` provides all projects tagged as `bee:2026.05` with the following classifications:
 - Brand: QUALCOZ Ltd
 - Region: EU
-- Bundle: ANYBND
+- Bundle: BEE
 - Version: 2026.05
 
 Combine environments, customers, and product versions:
