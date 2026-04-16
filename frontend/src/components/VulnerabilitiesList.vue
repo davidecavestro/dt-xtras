@@ -197,6 +197,7 @@ import { AlertCircle, RefreshCw, Shield } from 'lucide-vue-next'
 import apiService from '../services/api'
 import Pagination from './Pagination.vue'
 import { usePaginatedData } from '../composables/usePagination'
+import { createLogger } from '../utils/logger'
 
 export default {
   name: 'VulnerabilitiesList',
@@ -207,6 +208,7 @@ export default {
     Pagination
   },
   setup() {
+    const logger = createLogger('ProjectBulkActions')
     const filters = ref({
       search: '',
       severity: '',

@@ -204,6 +204,7 @@ import NameCell from './grid-cells/NameCell.vue'
 import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
+import { createLogger } from '../utils/logger'
 
 export default {
   name: 'ProjectsGrid',
@@ -211,6 +212,7 @@ export default {
     Vue3Datagrid
   },
   setup() {
+    const logger = createLogger('ProjectBulkActions')
     // Use project store
     const projectStore = useProjectStore()
     const { projects, isLoading, error } = projectStore

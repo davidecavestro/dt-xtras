@@ -1793,6 +1793,179 @@ class SimpleTaxonomyGraphBuilder:
         return ':'.join(values.values()) if values else None
 
 
+@app.get("/api/tree")
+async def get_tree(
+    dt_token: str = Depends(get_dt_token_from_request),
+    root_taxonomy: Optional[str] = None,
+    associative_mode: bool = False
+):
+    """Build and return taxonomy tree with aggregated project data"""
+
+    # Get graph data first
+    graph_data = await get_graph_data(dt_token, root_taxonomy, associative_mode)
+
+    if not graph_data or not graph_data.get('nodes') or not graph_data.get('edges'):
+        return {"nodes": [], "tree": []}
+
+    # Build tree structure from graph data
+    tree_data = build_tree_from_graph_data(graph_data['nodes'], graph_data['edges'])
+
+    return {
+        "nodes": graph_data['nodes'],
+        "edges": graph_data['edges'],
+        "tree": tree_data
+    }
+
+def build_tree_from_graph_data(nodes, edges):
+    """Build tree structure from graph nodes and edges with project aggregation"""
+    if not nodes or not edges:
+        return []
+
+    logger.info(f'build_tree_from_graph_data: building tree from {len(nodes)} nodes and {len(edges)} edges')
+
+    node_map = {}
+    root_nodes_array = []
+
+    # Create map of all nodes from graph data (excluding associative tag nodes)
+    all_target_ids = set(edge.get('target') for edge in edges if edge.get('target'))
+    all_source_ids = set(edge.get('source') for edge in edges if edge.get('source'))
+
+    for node in nodes:
+        # Skip associative tag nodes
+        if node.get('associative'):
+            continue  # Skip this node
+
+        # Include all non-associative nodes, even those without edges
+        node_map[node['id']] = {
+            'id': node['id'],
+            'name': node['name'],
+            'type': 'taxonomy',
+            'children': [],
+            'vulnerabilities': 0,
+            'projectsCount': node.get('projectsCount', 0),
+        }
+
+    # Build tree structure from edges
+    for edge in edges:
+        parent_node = node_map.get(edge.get('source'))
+        child_node = node_map.get(edge.get('target'))
+
+        # Only add edge if both nodes exist
+        if parent_node and child_node:
+            parent_node['children'].append(child_node)
+            logger.info('Added edge: %s -> %s', edge.get('source'), edge.get('target'))
+
+    # Find root nodes (nodes without incoming edges)
+    for node_id, node_data in node_map.items():
+        has_incoming_edge = node_id in all_target_ids
+        if not has_incoming_edge:
+            root_nodes_array.append(node_id)
+            logger.info('Found root node: %s %s', node_id, node_data['name'])
+
+    # If no root nodes found, use all available nodes as root (fallback)
+    if len(root_nodes_array) == 0:
+        logger.info('No root nodes found, using all nodes as roots')
+        for node_id in node_map.keys():
+            root_nodes_array.append(node_id)
+
+    # Return sorted tree nodes - nodes with children first, then leaves
+    result = []
+    for node_id in root_nodes_array:
+        node_data = node_map.get(node_id)
+        if node_data:
+            result.append(node_data)
+
+    # Sort result: nodes with children first, then by name
+    def sort_key(node):
+        has_children = len(node.get('children', [])) > 0
+        return (-has_children, node['name'].lower())  # Negative for children first, then alphabetical
+
+    result.sort(key=sort_key)
+
+    logger.info('build_tree_from_graph_data: returning %d root nodes with children: %s',
+                len(result),
+                [(n['name'], len(n['children'])) for n in result])
+
+    return result
+
+async def get_graph_data(dt_token: str, root_taxonomy: Optional[str], associative_mode: bool):
+    """Get graph data with project aggregation"""
+    # Fetch tags directly from DT API
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    # api is paginated, consume all pages
+    tags_response = []
+    page = 1
+    pageSize = 100
+    async with httpx.AsyncClient() as client:
+        while True:
+            response = await client.get(f"{DT_API_URL}/api/v1/tag?pageNumber={page}&pageSize={pageSize}", headers=headers)
+            response.raise_for_status()
+            if response.status_code != 200:
+                raise Exception(f"DT API returned status {response.status_code}: {response.text}")
+            page_response = response.json()
+            if not page_response or not isinstance(page_response, list):
+                break
+            tags_response.extend(page_response)
+            if len(page_response) < pageSize:
+                break
+            page += 1
+
+    # Fetch projects for project count aggregation
+    projects_response = await get_dt_projects(dt_token, limit=1000)  # Get more projects for better aggregation
+
+    # Create project tag mapping
+    project_tag_map = {}
+    for project in projects_response:
+        if project.get('tags'):
+            for tag in project['tags']:
+                tag_name = tag if isinstance(tag, str) else tag.get('name', '')
+                if tag_name:
+                    if tag_name not in project_tag_map:
+                        project_tag_map[tag_name] = []
+                    project_tag_map[tag_name].append(project)
+
+    taxonomies = load_taxonomies()
+
+    if not tags_response or not isinstance(tags_response, list):
+        raise Exception("No tags found in DT API response")
+
+    # Use tags directly without project count enrichment for now
+    enriched_tags = []
+    for tag in tags_response:
+        # Get taxonomy from tag if already present, otherwise find it
+        tag_taxonomy = tag.get('taxonomy')
+        if not tag_taxonomy:
+            # Find matching taxonomy for this tag
+            for taxonomy in taxonomies:
+                if taxonomy.regex_pattern and regex.search(taxonomy.regex_pattern, tag['name']):
+                    tag_taxonomy = taxonomy
+                    break
+
+        # Add project count from aggregation
+        projects_count = len(project_tag_map.get(tag['name'], []))
+
+        enriched_tags.append({
+            'name': tag['name'],
+            'taxonomy': tag_taxonomy,
+            'projectsCount': projects_count  # Use actual project count
+        })
+
+    # Build graph
+    graph_builder = SimpleTaxonomyGraphBuilder()
+    graph_data = graph_builder.build_graph(
+        enriched_tags,
+        taxonomies,
+        root_taxonomy,
+        associative_mode
+    )
+
+    return graph_data
+
 @app.get("/api/graph")
 async def get_graph(
     dt_token: str = Depends(get_dt_token_from_request),
