@@ -559,6 +559,7 @@ import { useProjectStore } from '../stores/projects'
 import { useToast } from '../composables/useToast'
 import { X, Link, Unlink, RefreshCw, Folder } from 'lucide-vue-next'
 import { buildDTProjectUrl } from '../config.js'
+import { createLogger } from '../utils/logger'
 
 export default {
   name: 'TagBulkActions',
@@ -570,6 +571,7 @@ export default {
     Folder
   },
   setup() {
+    const logger = createLogger('ProjectBulkActions')
     // Use stores
     const taxonomyStore = useTaxonomyStore()
     const tagStore = useTagStore()

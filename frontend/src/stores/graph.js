@@ -1,13 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { createLogger } from '../utils/logger'
 
 export const useGraphStore = defineStore('graph', () => {
+  const logger = createLogger('graph-store')
+
   // State
   const nodes = ref([])
   const edges = ref([])
   const loading = ref(false)
   const error = ref('')
   const lastUpdate = ref(0)
+  const treeData = ref([])
 
   // Graph parameters
   const rootTaxonomy = ref(null)
@@ -69,11 +73,12 @@ export const useGraphStore = defineStore('graph', () => {
         associative_mode: params.associativeMode !== undefined ? params.associativeMode : associativeMode.value
       }
 
-      const response = await axios.get('/api/graph', { params: queryParams })
+      const response = await axios.get('/api/tree', { params: queryParams })
 
       // Update state
       nodes.value = response.data.nodes || []
       edges.value = response.data.edges || []
+      treeData.value = response.data.tree || []
 
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
@@ -86,6 +91,7 @@ export const useGraphStore = defineStore('graph', () => {
       // Reset state on error
       nodes.value = []
       edges.value = []
+      treeData.value = []
 
       throw err
     } finally {
@@ -209,6 +215,7 @@ export const useGraphStore = defineStore('graph', () => {
     loading,
     error,
     lastUpdate,
+    treeData,
     rootTaxonomy,
     associativeMode,
 

@@ -108,6 +108,7 @@ import Pagination from './Pagination.vue'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import { useTagStore } from '../stores/tags.js'
 import ProjectCard from './ProjectCard.vue'
+import { createLogger } from '../utils/logger'
 
 export default {
   name: 'ProjectsList',
@@ -120,6 +121,7 @@ export default {
     RiskScoreBadge
   },
   setup() {
+    const logger = createLogger('ProjectBulkActions')
     const filters = ref({
       search: '',
       activeOnly: false

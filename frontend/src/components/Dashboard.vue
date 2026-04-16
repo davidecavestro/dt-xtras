@@ -410,6 +410,7 @@ import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import Pagination from './Pagination.vue'
 import ProjectCard from './ProjectCard.vue'
 import NameCell from './grid-cells/NameCell.vue'
+import { createLogger } from '../utils/logger'
 
 export default {
   name: 'Dashboard',
@@ -434,6 +435,7 @@ export default {
   },
   setup() {
     const router = useRouter()
+    const logger = createLogger('app')
 
     // Use stores
     const projectStore = useProjectStore()
@@ -459,7 +461,7 @@ export default {
           edges.value && edges.value.length > 0
         );
       } catch (err) {
-        console.warn('Error in isDataReady computed:', err);
+        logger.warn('Error in isDataReady computed:', err);
         return false;
       }
     })
@@ -698,8 +700,8 @@ export default {
 
     // Helper function to find reachable tags using tree structure
     const findReachableTags = (startNodeId) => {
-      console.log('findReachableTags called with startNodeId:', startNodeId);
-      console.log('treeData available:', !!treeData.value, 'length:', treeData.value?.length);
+      logger.info('findReachableTags called with startNodeId:', startNodeId);
+      logger.info('treeData available:', !!treeData.value, 'length:', treeData.value?.length);
 
       if (!startNodeId || !treeData.value || treeData.value.length === 0) return new Set()
 
@@ -755,7 +757,7 @@ export default {
         }
       }
 
-      console.log('findReachableTags returning:', Array.from(reachableTags));
+      logger.info('findReachableTags returning:', Array.from(reachableTags));
       return reachableTags
     }
 
@@ -807,91 +809,6 @@ export default {
       })
     }
 
-    // Tree building function using graph builder data
-    const buildTreeFromGraph = (graph) => {
-      if (!graph || !nodes.value || !edges.value) {
-        console.log('buildTreeFromGraph: missing data', { graph: !!graph, nodes: nodes.value?.length, edges: edges.value?.length });
-        return [];
-      }
-
-      console.log('buildTreeFromGraph: building tree from', nodes.value.length, 'nodes and', edges.value.length, 'edges');
-
-      const nodeMap = new Map()
-      const rootNodesArray = []
-
-      // Create map of all nodes from graph data (excluding associative tag nodes)
-      const allTargetIds = new Set(edges.value.map(edge => edge?.target).filter(Boolean))
-      const allSourceIds = new Set(edges.value.map(edge => edge?.source).filter(Boolean))
-
-      nodes.value.forEach(node => {
-        // Skip associative tag nodes
-        if (node.associative) {
-          return; // Skip this node
-        }
-
-        // Include all non-associative nodes, even those without edges
-        nodeMap.set(node.id, {
-          id: node.id,
-          name: node.name,
-          type: 'taxonomy',
-          children: [],
-          vulnerabilities: 0,
-          projectsCount: node.projectsCount || 0,
-        })
-      })
-
-      // Build tree structure from edges
-      edges.value.forEach(edge => {
-        const parentNode = nodeMap.get(edge.source)
-        const childNode = nodeMap.get(edge.target)
-
-        // Only add edge if both nodes exist
-        if (parentNode && childNode) {
-          parentNode.children.push(childNode)
-          console.log('Added edge:', edge.source, '->', edge.target)
-        }
-      })
-
-      // Find root nodes (nodes without incoming edges)
-      nodeMap.forEach((nodeData, nodeId) => {
-        const hasIncomingEdge = allTargetIds.has(nodeId)
-        if (!hasIncomingEdge) {
-          rootNodesArray.push(nodeId)
-          console.log('Found root node:', nodeId, nodeData.name)
-        }
-      })
-
-      // If no root nodes found, use all available nodes as root (fallback)
-      if (rootNodesArray.length === 0) {
-        console.log('No root nodes found, using all nodes as roots');
-        nodeMap.forEach((nodeData, nodeId) => {
-          rootNodesArray.push(nodeId)
-        })
-      }
-
-      // Return sorted tree nodes - nodes with children first, then leaves
-      const result = rootNodesArray.map(nodeId => nodeMap.get(nodeId)).filter(Boolean).sort((a, b) => {
-        // First sort by whether node has children (nodes with children first)
-        const aHasChildren = a.children && a.children.length > 0
-        const bHasChildren = b.children && b.children.length > 0
-
-        if (aHasChildren && !bHasChildren) {
-          return -1 // a comes first (has children)
-        }
-        if (!aHasChildren && bHasChildren) {
-          return 1 // b comes first (has children)
-        }
-
-        // If both have children or both are leaves, sort by name as usual
-        return a.name.localeCompare(b.name)
-      });
-
-      console.log('buildTreeFromGraph: returning', result.length, 'root nodes with children:',
-        result.map(n => ({ name: n.name, children: n.children.length })));
-
-      return result;
-    }
-
     const relatedProjects = computed(() => {
       try {
         // If no projects loaded yet, return empty
@@ -918,7 +835,7 @@ export default {
           )
         })
       } catch (err) {
-        console.error('Error in relatedProjects computed:', err);
+        logger.error('Error in relatedProjects computed:', err);
         return []
       }
     })
@@ -981,32 +898,22 @@ export default {
           taxonomyStore.loadTaxonomies(),
           graphStore.loadGraph({
             rootTaxonomy: null,
-            associativeMode: associativeMode.value
+            treeData: [] // Declare treeData as an array
           })
-        ]);
+        ])
 
-        // Check if any promises failed
-        const failures = results.filter(result => result.status === 'rejected');
-        if (failures.length > 0) {
-          console.warn('Some data loading operations failed:', failures);
-        }
-
-        // Build proper hierarchical tree structure from graph data
+        // Build hierarchical tree structure from graph data
         if (nodes.value && nodes.value.length > 0 &&
             edges.value && edges.value.length > 0) {
 
           try {
-            // Build hierarchical tree from graph data
-            treeData.value = buildTreeFromGraph(graphData.value);
+            // Use tree data from backend instead of client-side building
+            treeData.value = graphStore.treeData || [];
 
             // Update all reachable nodes for computed property
             await updateAllReachableNodes();
-
-            if (treeData.value && treeData.value.length > 0) {
-              expandAll(treeData.value);
-            }
           } catch (treeErr) {
-            console.error('Error building tree:', treeErr);
+            logger.error('Error building tree:', treeErr);
             treeData.value = [];
           }
         } else {
@@ -1014,7 +921,7 @@ export default {
           treeData.value = [];
         }
       } catch (err) {
-        console.error('Error in refreshData:', err);
+        logger.error('Error in refreshData:', err);
         error.value = err?.message || 'Failed to load data';
         treeData.value = [];
       }
@@ -1154,7 +1061,6 @@ export default {
       clearSelection,
       findReachableTags,
       setAssociativeMode,
-      buildTreeFromGraph,
       buildTreeFromTaxonomies,
       updateAllReachableNodes,
       expandAll,
