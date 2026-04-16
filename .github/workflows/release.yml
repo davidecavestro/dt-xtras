@@ -21,16 +21,16 @@ jobs:
       actions: read
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd" # v6
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
 
       - name: "Set up Docker Buildx"
-        uses: "docker/setup-buildx-action@v4"
+        uses: "docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd" # v4
 
       - name: "Login to Container registry"
-        uses: "docker/login-action@v4"
+        uses: "docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121" # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -38,7 +38,7 @@ jobs:
 
       - name: "Build and push backend image"
         id: backend_build
-        uses: "docker/build-push-action@v7"
+        uses: "docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f" # v7
         with:
           context: ./backend
           push: true
@@ -49,7 +49,7 @@ jobs:
 
       - name: "Build and push frontend image"
         id: frontend_build
-        uses: "docker/build-push-action@v7"
+        uses: "docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f" # v7
         with:
           context: ./frontend
           push: true
@@ -59,21 +59,21 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
       - name: "Generate Backend SBOM"
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           image: ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
           format: cyclonedx-json
           artifact-name: backend.cdx.json
 
       - name: "Generate frontend SBOM"
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           image: ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
           format: cyclonedx-json
           artifact-name: frontend.cdx.json
 
       - name: "Set up Python"
-        uses: "actions/setup-python@v6"
+        uses: "actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405" # v6
         with:
           python-version: "3.14"
           cache: "pip"
@@ -94,7 +94,7 @@ jobs:
           python -c "import json; from main import app; print(json.dumps(app.openapi(), indent=2))" > openapi.json
 
       - name: "Upload OpenAPI artifact"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: openapi-schema
           path: backend/openapi.json
@@ -102,13 +102,13 @@ jobs:
 
       - name: Update CHANGELOG
         id: changelog
-        uses: requarks/changelog-action@v1
+        uses: requarks/changelog-action@6d71e098526ee17bae963f058d34cd763378337f # v1
         with:
           token: ${{ github.token }}
           tag: ${{ github.ref_name }}
 
       - name: Create Release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           allowUpdates: true
           draft: false
@@ -130,12 +130,12 @@ jobs:
           artifacts: "backend/openapi.json"
 
       - name: Publish SBOM
-        uses: anchore/sbom-action/publish-sbom@v0
+        uses: anchore/sbom-action/publish-sbom@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           sbom-artifact-match: ".*\\.cdx\\.json$"
 
       - name: Commit CHANGELOG.md
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7
         with:
           branch: main
           commit_message: 'docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]'

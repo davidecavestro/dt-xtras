@@ -28,10 +28,10 @@ jobs:
       any: ${{ steps.changes.outputs.any }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Check for file changes
-      uses: dorny/paths-filter@v2
+      uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50 # v2
       id: changes
       with:
         filters: |
@@ -51,17 +51,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build and push backend image
-      uses: docker/build-push-action@v7
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
       with:
         context: ./backend
         file: ./backend/Dockerfile
@@ -79,17 +79,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build and push frontend image
-      uses: docker/build-push-action@v7
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
       with:
         context: ./frontend
         file: ./frontend/Dockerfile
@@ -110,33 +110,33 @@ jobs:
 
     steps:
     - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@v0.35.0
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
       with:
         image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/backend:main
         format: 'sarif'
         output: 'trivy-results-backend.sarif'
 
     - name: Run Trivy vulnerability scanner on frontend
-      uses: aquasecurity/trivy-action@v0.35.0
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
       with:
         image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/frontend:main
         format: 'sarif'
         output: 'trivy-results-frontend.sarif'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4
       with:
         sarif_file: 'trivy-results-backend.sarif'
       continue-on-error: true
 
     - name: Upload Trivy scan results to GitHub Security tab (frontend)
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4
       with:
         sarif_file: 'trivy-results-frontend.sarif'
       continue-on-error: true
