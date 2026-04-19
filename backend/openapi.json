@@ -1,1 +1,2138 @@
-{"openapi": "3.1.0", "info": {"title": "dt-xtras", "version": "1.0.0"}, "paths": {"/auth/login": {"post": {"summary": "Login", "description": "Authenticate with DT API and return JWT token", "operationId": "login_auth_login_post", "requestBody": {"content": {"application/x-www-form-urlencoded": {"schema": {"$ref": "#/components/schemas/Body_login_auth_login_post"}}}, "required": true}, "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/auth/logout": {"post": {"summary": "Logout", "description": "Logout endpoint - JWT tokens are stateless so client-side token removal is sufficient", "operationId": "logout_auth_logout_post", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}}}}, "/api/health": {"get": {"summary": "Api Health Check", "description": "API health check with dependencies", "operationId": "api_health_check_api_health_get", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}}}}, "/api/taxonomies": {"get": {"summary": "Get Taxonomies", "operationId": "get_taxonomies_api_taxonomies_get", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {"items": {"$ref": "#/components/schemas/Taxonomy"}, "type": "array", "title": "Response Get Taxonomies Api Taxonomies Get"}}}}}}, "post": {"summary": "Create Taxonomy", "operationId": "create_taxonomy_api_taxonomies_post", "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Taxonomy"}}}, "required": true}, "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Taxonomy"}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}, "security": [{"HTTPBearer": []}]}}, "/api/taxonomies/{taxonomy_id}/tag": {"get": {"summary": "Get Taxonomy Tags", "description": "Get all tags that match a specific taxonomy pattern", "operationId": "get_taxonomy_tags_api_taxonomies__taxonomy_id__tag_get", "security": [{"HTTPBearer": []}], "parameters": [{"name": "taxonomy_id", "in": "path", "required": true, "schema": {"type": "string", "title": "Taxonomy Id"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Tag"}, "title": "Response Get Taxonomy Tags Api Taxonomies  Taxonomy Id  Tag Get"}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/tag/{tag_name}": {"put": {"summary": "Update Tag", "description": "Update a tag name using the create-new-delete-old approach", "operationId": "update_tag_api_tag__tag_name__put", "security": [{"HTTPBearer": []}], "parameters": [{"name": "tag_name", "in": "path", "required": true, "schema": {"type": "string", "title": "Tag Name"}}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": true, "title": "Tag Data"}}}}, "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}, "delete": {"summary": "Delete Tag", "description": "Delete a tag from DT", "operationId": "delete_tag_api_tag__tag_name__delete", "security": [{"HTTPBearer": []}], "parameters": [{"name": "tag_name", "in": "path", "required": true, "schema": {"type": "string", "title": "Tag Name"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/taxonomies/{taxonomy_id}": {"put": {"summary": "Update Taxonomy", "operationId": "update_taxonomy_api_taxonomies__taxonomy_id__put", "security": [{"HTTPBearer": []}], "parameters": [{"name": "taxonomy_id", "in": "path", "required": true, "schema": {"type": "string", "title": "Taxonomy Id"}}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Taxonomy"}}}}, "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Taxonomy"}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}, "delete": {"summary": "Delete Taxonomy", "operationId": "delete_taxonomy_api_taxonomies__taxonomy_id__delete", "security": [{"HTTPBearer": []}], "parameters": [{"name": "taxonomy_id", "in": "path", "required": true, "schema": {"type": "string", "title": "Taxonomy Id"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/taxonomies/reorder": {"put": {"summary": "Reorder Taxonomies", "description": "Reorder taxonomies based on the provided order", "operationId": "reorder_taxonomies_api_taxonomies_reorder_put", "requestBody": {"content": {"application/json": {"schema": {"items": {"$ref": "#/components/schemas/TaxonomyPriority"}, "type": "array", "title": "Taxonomy Order"}}}, "required": true}, "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}, "security": [{"HTTPBearer": []}]}}, "/api/project": {"get": {"summary": "Get Projects", "description": "Get projects from DT API with pagination", "operationId": "get_projects_api_project_get", "security": [{"HTTPBearer": []}], "parameters": [{"name": "page", "in": "query", "required": false, "schema": {"type": "integer", "default": 1, "title": "Page"}}, {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "default": 50, "title": "Limit"}}, {"name": "search", "in": "query", "required": false, "schema": {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Search"}}, {"name": "active_only", "in": "query", "required": false, "schema": {"anyOf": [{"type": "boolean"}, {"type": "null"}], "default": false, "title": "Active Only"}}, {"name": "excludeInactive", "in": "query", "required": false, "schema": {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Excludeinactive"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/project/count": {"get": {"summary": "Get Projects Count", "description": "Get total count of projects for pagination", "operationId": "get_projects_count_api_project_count_get", "security": [{"HTTPBearer": []}], "parameters": [{"name": "search", "in": "query", "required": false, "schema": {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Search"}}, {"name": "active_only", "in": "query", "required": false, "schema": {"anyOf": [{"type": "boolean"}, {"type": "null"}], "title": "Active Only"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/project{project_uuid}": {"delete": {"summary": "Delete Project", "description": "Delete a project from Dependency-Track", "operationId": "delete_project_api_project_project_uuid__delete", "security": [{"HTTPBearer": []}], "parameters": [{"name": "project_uuid", "in": "path", "required": true, "schema": {"type": "string", "title": "Project Uuid"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/project/{project_uuid}/activate": {"patch": {"summary": "Activate Project", "description": "Activate a project in Dependency-Track", "operationId": "activate_project_api_project__project_uuid__activate_patch", "security": [{"HTTPBearer": []}], "parameters": [{"name": "project_uuid", "in": "path", "required": true, "schema": {"type": "string", "title": "Project Uuid"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/project/{project_uuid}/deactivate": {"patch": {"summary": "Deactivate Project", "description": "Deactivate a project in Dependency-Track", "operationId": "deactivate_project_api_project__project_uuid__deactivate_patch", "security": [{"HTTPBearer": []}], "parameters": [{"name": "project_uuid", "in": "path", "required": true, "schema": {"type": "string", "title": "Project Uuid"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/project/{project_uuid}/refresh": {"put": {"summary": "Refresh Project", "description": "Refresh a project in Dependency-Track (trigger re-analysis)", "operationId": "refresh_project_api_project__project_uuid__refresh_put", "security": [{"HTTPBearer": []}], "parameters": [{"name": "project_uuid", "in": "path", "required": true, "schema": {"type": "string", "title": "Project Uuid"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/project-versions/{version_id}": {"delete": {"summary": "Delete Project Version", "description": "Delete a project version (remove version tag from project)", "operationId": "delete_project_version_api_project_versions__version_id__delete", "security": [{"HTTPBearer": []}], "parameters": [{"name": "version_id", "in": "path", "required": true, "schema": {"type": "string", "title": "Version Id"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/tag": {"get": {"summary": "Get Tags", "description": "Get all tags from DT with project counts and taxonomy information", "operationId": "get_tags_api_tag_get", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}}, "security": [{"HTTPBearer": []}]}, "post": {"summary": "Create Tag", "description": "Create a new tag in DT", "operationId": "create_tag_api_tag_post", "requestBody": {"content": {"application/json": {"schema": {"additionalProperties": true, "type": "object", "title": "Tag Data"}}}, "required": true}, "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}, "security": [{"HTTPBearer": []}]}}, "/api/tag/{tag_name}/project": {"get": {"summary": "Get Projects For Tag", "description": "Get all projects that have a specific tag", "operationId": "get_projects_for_tag_api_tag__tag_name__project_get", "security": [{"HTTPBearer": []}], "parameters": [{"name": "tag_name", "in": "path", "required": true, "schema": {"type": "string", "title": "Tag Name"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}, "post": {"summary": "Add Tag To Projects", "description": "Add a tag to multiple projects (bulk operation)", "operationId": "add_tag_to_projects_api_tag__tag_name__project_post", "security": [{"HTTPBearer": []}], "parameters": [{"name": "tag_name", "in": "path", "required": true, "schema": {"type": "string", "title": "Tag Name"}}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": true, "title": "Request"}}}}, "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}, "delete": {"summary": "Remove Tag From Projects", "description": "Remove a tag from multiple projects (bulk operation)", "operationId": "remove_tag_from_projects_api_tag__tag_name__project_delete", "security": [{"HTTPBearer": []}], "parameters": [{"name": "tag_name", "in": "path", "required": true, "schema": {"type": "string", "title": "Tag Name"}}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": true, "title": "Request"}}}}, "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/aggregate": {"get": {"summary": "Aggregate Security Data", "operationId": "aggregate_security_data_api_aggregate_get", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {"items": {"$ref": "#/components/schemas/SecurityNode"}, "type": "array", "title": "Response Aggregate Security Data Api Aggregate Get"}}}}}, "security": [{"HTTPBearer": []}]}}, "/api/dt-token": {"get": {"summary": "Get Dt Token", "description": "Get DT API token for frontend to use", "operationId": "get_dt_token_api_dt_token_get", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}}, "security": [{"HTTPBearer": []}]}}, "/health": {"get": {"summary": "Health Check", "description": "Health check endpoint for container orchestration", "operationId": "health_check_health_get", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}}}}, "/api/tree": {"get": {"summary": "Get Tree", "description": "Build and return taxonomy tree with aggregated project data", "operationId": "get_tree_api_tree_get", "security": [{"HTTPBearer": []}], "parameters": [{"name": "root_taxonomy", "in": "query", "required": false, "schema": {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Root Taxonomy"}}, {"name": "associative_mode", "in": "query", "required": false, "schema": {"type": "boolean", "default": false, "title": "Associative Mode"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/graph": {"get": {"summary": "Get Graph", "description": "Build and return taxonomy graph with nodes and edges", "operationId": "get_graph_api_graph_get", "security": [{"HTTPBearer": []}], "parameters": [{"name": "root_taxonomy", "in": "query", "required": false, "schema": {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Root Taxonomy"}}, {"name": "associative_mode", "in": "query", "required": false, "schema": {"type": "boolean", "default": false, "title": "Associative Mode"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}, "/api/v1/test": {"get": {"summary": "Test Proxy", "operationId": "test_proxy_api_v1_test_get", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}}}, "post": {"summary": "Test Proxy Post", "operationId": "test_proxy_post_api_v1_test_post", "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}}}}, "/api/v1/{path}": {"get": {"summary": "Proxy Dt Api Get", "operationId": "proxy_dt_api_get_api_v1__path__get", "security": [{"HTTPBearer": []}], "parameters": [{"name": "path", "in": "path", "required": true, "schema": {"type": "string", "title": "Path"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}, "post": {"summary": "Proxy Dt Api", "description": "Proxy API requests to DT API", "operationId": "proxy_dt_api_api_v1__path__post", "security": [{"HTTPBearer": []}], "parameters": [{"name": "path", "in": "path", "required": true, "schema": {"type": "string", "title": "Path"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}, "put": {"summary": "Proxy Dt Api", "description": "Proxy API requests to DT API", "operationId": "proxy_dt_api_api_v1__path__post", "security": [{"HTTPBearer": []}], "parameters": [{"name": "path", "in": "path", "required": true, "schema": {"type": "string", "title": "Path"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}, "delete": {"summary": "Proxy Dt Api", "description": "Proxy API requests to DT API", "operationId": "proxy_dt_api_api_v1__path__post", "security": [{"HTTPBearer": []}], "parameters": [{"name": "path", "in": "path", "required": true, "schema": {"type": "string", "title": "Path"}}], "responses": {"200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}}, "422": {"description": "Validation Error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}}}}}}}, "components": {"schemas": {"Body_login_auth_login_post": {"properties": {"username": {"type": "string", "title": "Username"}, "password": {"type": "string", "title": "Password"}}, "type": "object", "required": ["username", "password"], "title": "Body_login_auth_login_post"}, "HTTPValidationError": {"properties": {"detail": {"items": {"$ref": "#/components/schemas/ValidationError"}, "type": "array", "title": "Detail"}}, "type": "object", "title": "HTTPValidationError"}, "SecurityNode": {"properties": {"id": {"type": "string", "title": "Id"}, "name": {"type": "string", "title": "Name"}, "type": {"type": "string", "title": "Type"}, "parent_id": {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Parent Id"}, "children": {"items": {"$ref": "#/components/schemas/SecurityNode"}, "type": "array", "title": "Children", "default": []}, "vulnerabilities": {"type": "integer", "title": "Vulnerabilities", "default": 0}, "critical": {"type": "integer", "title": "Critical", "default": 0}, "high": {"type": "integer", "title": "High", "default": 0}, "medium": {"type": "integer", "title": "Medium", "default": 0}, "low": {"type": "integer", "title": "Low", "default": 0}, "inheritedRiskScore": {"type": "number", "title": "Inheritedriskscore", "default": 0.0}}, "type": "object", "required": ["id", "name", "type"], "title": "SecurityNode"}, "Tag": {"properties": {"name": {"type": "string", "title": "Name"}, "projectCount": {"type": "integer", "title": "Projectcount"}, "collectionProjectCount": {"type": "integer", "title": "Collectionprojectcount"}, "policyCount": {"type": "integer", "title": "Policycount"}, "notificationRuleCount": {"type": "integer", "title": "Notificationrulecount"}}, "type": "object", "required": ["name", "projectCount", "collectionProjectCount", "policyCount", "notificationRuleCount"], "title": "Tag"}, "Taxonomy": {"properties": {"id": {"type": "string", "title": "Id"}, "name": {"type": "string", "title": "Name"}, "regex_pattern": {"type": "string", "title": "Regex Pattern"}, "color": {"type": "string", "title": "Color", "default": "#ef4444"}, "priority": {"type": "integer", "title": "Priority"}, "relations": {"anyOf": [{"items": {"$ref": "#/components/schemas/TaxonomyRelation"}, "type": "array"}, {"type": "null"}], "title": "Relations"}, "associative": {"anyOf": [{"type": "boolean"}, {"type": "null"}], "title": "Associative"}}, "type": "object", "required": ["id", "name", "regex_pattern", "priority"], "title": "Taxonomy"}, "TaxonomyPriority": {"properties": {"id": {"type": "string", "title": "Id"}, "priority": {"type": "integer", "title": "Priority"}}, "type": "object", "required": ["id", "priority"], "title": "TaxonomyPriority"}, "TaxonomyRelation": {"properties": {"group": {"type": "string", "title": "Group"}, "targets": {"type": "string", "title": "Targets"}}, "type": "object", "required": ["group", "targets"], "title": "TaxonomyRelation"}, "ValidationError": {"properties": {"loc": {"items": {"anyOf": [{"type": "string"}, {"type": "integer"}]}, "type": "array", "title": "Location"}, "msg": {"type": "string", "title": "Message"}, "type": {"type": "string", "title": "Error Type"}, "input": {"title": "Input"}, "ctx": {"type": "object", "title": "Context"}}, "type": "object", "required": ["loc", "msg", "type"], "title": "ValidationError"}}, "securitySchemes": {"HTTPBearer": {"type": "http", "scheme": "bearer"}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "dt-xtras",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Login",
+        "description": "Authenticate with DT API and return JWT token",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login_auth_login_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout",
+        "description": "Logout endpoint - JWT tokens are stateless so client-side token removal is sufficient",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Api Health Check",
+        "description": "API health check with dependencies",
+        "operationId": "api_health_check_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxonomies": {
+      "get": {
+        "summary": "Get Taxonomies",
+        "operationId": "get_taxonomies_api_taxonomies_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Taxonomy"
+                  },
+                  "type": "array",
+                  "title": "Response Get Taxonomies Api Taxonomies Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Taxonomy",
+        "operationId": "create_taxonomy_api_taxonomies_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Taxonomy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Taxonomy"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/taxonomies/{taxonomy_id}/tag": {
+      "get": {
+        "summary": "Get Taxonomy Tags",
+        "description": "Get all tags that match a specific taxonomy pattern",
+        "operationId": "get_taxonomy_tags_api_taxonomies__taxonomy_id__tag_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "taxonomy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Taxonomy Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Tag"
+                  },
+                  "title": "Response Get Taxonomy Tags Api Taxonomies  Taxonomy Id  Tag Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tag/{tag_name}": {
+      "put": {
+        "summary": "Update Tag",
+        "description": "Update a tag name using the create-new-delete-old approach",
+        "operationId": "update_tag_api_tag__tag_name__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tag Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Tag Data"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Tag",
+        "description": "Delete a tag from DT",
+        "operationId": "delete_tag_api_tag__tag_name__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tag Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxonomies/{taxonomy_id}": {
+      "put": {
+        "summary": "Update Taxonomy",
+        "operationId": "update_taxonomy_api_taxonomies__taxonomy_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "taxonomy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Taxonomy Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Taxonomy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Taxonomy"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Taxonomy",
+        "operationId": "delete_taxonomy_api_taxonomies__taxonomy_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "taxonomy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Taxonomy Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxonomies/reorder": {
+      "put": {
+        "summary": "Reorder Taxonomies",
+        "description": "Reorder taxonomies based on the provided order",
+        "operationId": "reorder_taxonomies_api_taxonomies_reorder_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/TaxonomyPriority"
+                },
+                "type": "array",
+                "title": "Taxonomy Order"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/project": {
+      "get": {
+        "summary": "Get Projects",
+        "description": "Get projects from DT API with pagination",
+        "operationId": "get_projects_api_project_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "active_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": false,
+              "title": "Active Only"
+            }
+          },
+          {
+            "name": "excludeInactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Excludeinactive"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/project/count": {
+      "get": {
+        "summary": "Get Projects Count",
+        "description": "Get total count of projects for pagination",
+        "operationId": "get_projects_count_api_project_count_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "active_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/project{project_uuid}": {
+      "delete": {
+        "summary": "Delete Project",
+        "description": "Delete a project from Dependency-Track",
+        "operationId": "delete_project_api_project_project_uuid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/project/{project_uuid}/activate": {
+      "patch": {
+        "summary": "Activate Project",
+        "description": "Activate a project in Dependency-Track",
+        "operationId": "activate_project_api_project__project_uuid__activate_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/project/{project_uuid}/deactivate": {
+      "patch": {
+        "summary": "Deactivate Project",
+        "description": "Deactivate a project in Dependency-Track",
+        "operationId": "deactivate_project_api_project__project_uuid__deactivate_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/project/{project_uuid}/refresh": {
+      "put": {
+        "summary": "Refresh Project",
+        "description": "Refresh a project in Dependency-Track (trigger re-analysis)",
+        "operationId": "refresh_project_api_project__project_uuid__refresh_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/project/bulk-rename": {
+      "patch": {
+        "summary": "Bulk Rename Projects",
+        "description": "Rename multiple projects to a new name",
+        "operationId": "bulk_rename_projects_api_project_bulk_rename_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Rename Data"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/project-versions/{version_id}": {
+      "delete": {
+        "summary": "Delete Project Version",
+        "description": "Delete a project version (remove version tag from project)",
+        "operationId": "delete_project_version_api_project_versions__version_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tag": {
+      "get": {
+        "summary": "Get Tags",
+        "description": "Get all tags from DT with project counts and taxonomy information",
+        "operationId": "get_tags_api_tag_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Create Tag",
+        "description": "Create a new tag in DT",
+        "operationId": "create_tag_api_tag_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Tag Data"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/tag/{tag_name}/project": {
+      "get": {
+        "summary": "Get Projects For Tag",
+        "description": "Get all projects that have a specific tag",
+        "operationId": "get_projects_for_tag_api_tag__tag_name__project_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tag Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add Tag To Projects",
+        "description": "Add a tag to multiple projects (bulk operation)",
+        "operationId": "add_tag_to_projects_api_tag__tag_name__project_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tag Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove Tag From Projects",
+        "description": "Remove a tag from multiple projects (bulk operation)",
+        "operationId": "remove_tag_from_projects_api_tag__tag_name__project_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tag Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/aggregate": {
+      "get": {
+        "summary": "Aggregate Security Data",
+        "operationId": "aggregate_security_data_api_aggregate_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SecurityNode"
+                  },
+                  "type": "array",
+                  "title": "Response Aggregate Security Data Api Aggregate Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/dt-token": {
+      "get": {
+        "summary": "Get Dt Token",
+        "description": "Get DT API token for frontend to use",
+        "operationId": "get_dt_token_api_dt_token_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Health check endpoint for container orchestration",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tree": {
+      "get": {
+        "summary": "Get Tree",
+        "description": "Build and return taxonomy tree with aggregated project data (network/graph view)",
+        "operationId": "get_tree_api_tree_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "root_taxonomy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Root Taxonomy"
+            }
+          },
+          {
+            "name": "associative_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Associative Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tree/hierarchical": {
+      "get": {
+        "summary": "Get Hierarchical Tree",
+        "description": "Build and return hierarchical tree from hierarchical taxonomies only.\n\nUnlike the network tree, this creates distinct tree node instances per path context,\nensuring that region:eu under brand:qualcoz shows only qualcoz's bundles.",
+        "operationId": "get_hierarchical_tree_api_tree_hierarchical_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "root_taxonomy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Root Taxonomy"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HierarchicalTreeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/graph": {
+      "get": {
+        "summary": "Get Graph",
+        "description": "Build and return taxonomy graph with nodes and edges",
+        "operationId": "get_graph_api_graph_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "root_taxonomy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Root Taxonomy"
+            }
+          },
+          {
+            "name": "associative_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Associative Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test": {
+      "get": {
+        "summary": "Test Proxy",
+        "operationId": "test_proxy_api_v1_test_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Test Proxy Post",
+        "operationId": "test_proxy_post_api_v1_test_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/{path}": {
+      "get": {
+        "summary": "Proxy Dt Api Get",
+        "operationId": "proxy_dt_api_get_api_v1__path__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Proxy Dt Api",
+        "description": "Proxy API requests to DT API",
+        "operationId": "proxy_dt_api_api_v1__path__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Proxy Dt Api",
+        "description": "Proxy API requests to DT API",
+        "operationId": "proxy_dt_api_api_v1__path__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Proxy Dt Api",
+        "description": "Proxy API requests to DT API",
+        "operationId": "proxy_dt_api_api_v1__path__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "APIHealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "version",
+          "message"
+        ],
+        "title": "APIHealthResponse",
+        "description": "Response model for detailed API health check."
+      },
+      "Body_login_auth_login_post": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_login_auth_login_post"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "description": "Response model for health check."
+      },
+      "HierarchicalTreeResponse": {
+        "properties": {
+          "tree": {
+            "items": {
+              "$ref": "#/components/schemas/TreeNode"
+            },
+            "type": "array",
+            "title": "Tree"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tree"
+        ],
+        "title": "HierarchicalTreeResponse",
+        "description": "Response model for hierarchical tree endpoint."
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "token_type",
+          "username",
+          "permissions"
+        ],
+        "title": "LoginResponse",
+        "description": "Response model for successful login."
+      },
+      "LogoutResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "LogoutResponse",
+        "description": "Response model for logout."
+      },
+      "SecurityNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "taxonomy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxonomy"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityNode"
+            },
+            "type": "array",
+            "title": "Children",
+            "default": []
+          },
+          "projectsCount": {
+            "type": "integer",
+            "title": "Projectscount",
+            "default": 0
+          },
+          "projectUUIDs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Projectuuids",
+            "default": []
+          },
+          "vulnerabilities": {
+            "type": "integer",
+            "title": "Vulnerabilities",
+            "default": 0
+          },
+          "critical": {
+            "type": "integer",
+            "title": "Critical",
+            "default": 0
+          },
+          "high": {
+            "type": "integer",
+            "title": "High",
+            "default": 0
+          },
+          "medium": {
+            "type": "integer",
+            "title": "Medium",
+            "default": 0
+          },
+          "low": {
+            "type": "integer",
+            "title": "Low",
+            "default": 0
+          },
+          "inheritedRiskScore": {
+            "type": "number",
+            "title": "Inheritedriskscore",
+            "default": 0.0
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "associative": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associative"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "subtree": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtree"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "SecurityNode"
+      },
+      "Tag": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "projectCount": {
+            "type": "integer",
+            "title": "Projectcount"
+          },
+          "collectionProjectCount": {
+            "type": "integer",
+            "title": "Collectionprojectcount"
+          },
+          "policyCount": {
+            "type": "integer",
+            "title": "Policycount"
+          },
+          "notificationRuleCount": {
+            "type": "integer",
+            "title": "Notificationrulecount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "projectCount",
+          "collectionProjectCount",
+          "policyCount",
+          "notificationRuleCount"
+        ],
+        "title": "Tag"
+      },
+      "Taxonomy": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "regex_pattern": {
+            "type": "string",
+            "title": "Regex Pattern"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color",
+            "default": "#ef4444"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority"
+          },
+          "relations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TaxonomyRelation"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relations"
+          },
+          "associative": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associative"
+          },
+          "hierarchical": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hierarchical"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "regex_pattern",
+          "priority"
+        ],
+        "title": "Taxonomy"
+      },
+      "TaxonomyPriority": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "priority"
+        ],
+        "title": "TaxonomyPriority"
+      },
+      "TaxonomyRelation": {
+        "properties": {
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "targets": {
+            "type": "string",
+            "title": "Targets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "group",
+          "targets"
+        ],
+        "title": "TaxonomyRelation"
+      },
+      "TreeEdge": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relation"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "target"
+        ],
+        "title": "TreeEdge",
+        "description": "An edge in the taxonomy graph (network view)."
+      },
+      "TreeNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "taxonomy"
+          },
+          "taxonomy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxonomy"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/TreeNode"
+            },
+            "type": "array",
+            "title": "Children",
+            "default": []
+          },
+          "projectsCount": {
+            "type": "integer",
+            "title": "Projectscount",
+            "default": 0
+          },
+          "projectUUIDs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Projectuuids",
+            "default": []
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metrics",
+            "default": {}
+          },
+          "color": {
+            "type": "string",
+            "title": "Color",
+            "default": "#6b7280"
+          },
+          "subtree": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtree"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TreeNode",
+        "description": "A node in the taxonomy tree (hierarchical view)."
+      },
+      "TreeResponse": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityNode"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/TreeEdge"
+            },
+            "type": "array",
+            "title": "Edges"
+          },
+          "tree": {
+            "items": {
+              "$ref": "#/components/schemas/TreeNode"
+            },
+            "type": "array",
+            "title": "Tree"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nodes",
+          "edges",
+          "tree"
+        ],
+        "title": "TreeResponse",
+        "description": "Response model for network tree endpoint."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
