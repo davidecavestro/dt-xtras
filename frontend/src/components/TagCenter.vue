@@ -853,16 +853,18 @@
     </div>
   </div>
 
-  <!-- Confirmation Dialog -->
-  <ConfirmDialog
-    :show="showConfirmDialog"
-    :title="confirmDialogTitle"
-    :message="confirmDialogMessage"
-    :confirm-text="confirmDialogConfirmText"
-    :cancel-text="confirmDialogCancelText"
-    @confirm="handleConfirm"
-    @cancel="handleCancel"
-  />
+    <!-- Confirmation Dialog -->
+    <Modal
+      :show="showConfirmDialog"
+      :title="confirmDialogTitle"
+      :message="confirmDialogMessage"
+      confirm-text="Confirm"
+      cancel-text="Cancel"
+      :icon="AlertTriangle"
+      icon-color="red"
+      @confirm="handleConfirm"
+      @close="handleCancel"
+    />
 </template>
 
 <script>
@@ -875,8 +877,8 @@ import { useProjectStore } from '../stores/projects'
 import useToast from '../composables/useToast'
 import { createLogger } from '../utils/logger'
 import { useConfirmDialog } from '../composables/useConfirmDialog'
-import { RefreshCw, Edit2, Copy, Tag, Grid3X3, List, Square, Folder, Trash2 } from 'lucide-vue-next'
-import ConfirmDialog from './ConfirmDialog.vue'
+import { RefreshCw, Edit2, Copy, Tag, Grid3X3, List, Square, Folder, Trash2, AlertTriangle } from 'lucide-vue-next'
+import Modal from './Modal.vue'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { buildDTProjectUrl } from '../config.js'
 
@@ -899,7 +901,7 @@ export default {
     Folder,
     Trash2,
     RefreshCw,
-    ConfirmDialog
+    Modal
   },
   setup() {
     const logger = createLogger('tag-center')

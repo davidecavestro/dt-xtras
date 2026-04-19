@@ -2,6 +2,25 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Install Backend Deps",
+      "type": "shell",
+      "command": "./scripts/install-backend-deps.sh",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": [],
+      "detail": "Prepare backend service only",
+      "icon": {
+        "id": "tools"
+      }
+    },
+    {
       "label": "Start All Services",
       "type": "shell",
       "command": "./scripts/start-services.sh",
@@ -16,7 +35,9 @@
       },
       "problemMatcher": [],
       "detail": "Start both backend and frontend services",
-      "icon": "$(play)"
+      "icon": {
+        "id": "rocket"
+      }
     },
     {
       "label": "Start Backend Only",
@@ -33,7 +54,9 @@
       },
       "problemMatcher": [],
       "detail": "Start FastAPI backend service only",
-      "icon": "$(server)"
+      "icon": {
+        "id": "run-below"
+      }
     },
     {
       "label": "Start Frontend Only",
@@ -50,7 +73,9 @@
       },
       "problemMatcher": [],
       "detail": "Start Vue.js frontend service only",
-      "icon": "$(browser)"
+      "icon": {
+        "id": "run-above"
+      }
     },
     {
       "label": "Stop All Services",
@@ -67,7 +92,9 @@
       },
       "problemMatcher": [],
       "detail": "Stop all running services",
-      "icon": "$(stop)"
+      "icon": {
+        "id": "stop"
+      }
     },
     {
       "label": "Restart All Services",
@@ -84,7 +111,9 @@
       },
       "problemMatcher": [],
       "detail": "Stop and restart all DT extras services (DT, backend, frontend)",
-      "icon": "$(debug-restart)"
+      "icon": {
+        "id": "refresh"
+      }
     }
   ]
 }

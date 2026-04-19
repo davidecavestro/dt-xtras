@@ -1806,12 +1806,21 @@ class SimpleTaxonomyGraphBuilder:
         # Create nodes for all tags
         for tag in normalized_tags:
             if tag['taxonomy']:  # Only create nodes for tags with valid taxonomy
+                tag_metrics = tag.get('metrics', {})
                 nodes[tag['name']] = {
                     'id': tag['name'],
                     'name': tag['name'],
                     'taxonomy': tag['taxonomy']['id'],
                     'associative': tag['taxonomy']['associative'],
-                    'projectsCount': tag.get('projectsCount', 0)
+                    'projectsCount': tag.get('projectsCount', 0),
+                    'metrics': {
+                        'vulnerabilities': tag_metrics.get('vulnerabilities', 0),
+                        'critical': tag_metrics.get('critical', 0),
+                        'high': tag_metrics.get('high', 0),
+                        'medium': tag_metrics.get('medium', 0),
+                        'low': tag_metrics.get('low', 0),
+                        'inheritedRiskScore': tag_metrics.get('inheritedRiskScore', 0.0)
+                    }
                 }
 
         logger.info(f'Created {len(nodes)} nodes')
@@ -1974,13 +1983,21 @@ def build_tree_from_graph_data(nodes, edges):
             continue  # Skip this node
 
         # Include all non-associative nodes, even those without edges
+        node_metrics = node.get('metrics', {})
         node_map[node['id']] = {
             'id': node['id'],
             'name': node['name'],
             'type': 'taxonomy',
             'children': [],
-            'vulnerabilities': 0,
             'projectsCount': node.get('projectsCount', 0),
+            'metrics': {
+                'vulnerabilities': node_metrics.get('vulnerabilities', 0),
+                'critical': node_metrics.get('critical', 0),
+                'high': node_metrics.get('high', 0),
+                'medium': node_metrics.get('medium', 0),
+                'low': node_metrics.get('low', 0),
+                'inheritedRiskScore': node_metrics.get('inheritedRiskScore', 0.0)
+            }
         }
 
     # Build tree structure from edges
@@ -1991,20 +2008,54 @@ def build_tree_from_graph_data(nodes, edges):
         # Only add edge if both nodes exist
         if parent_node and child_node:
             parent_node['children'].append(child_node)
-            logger.info('Added edge: %s -> %s', edge.get('source'), edge.get('target'))
+            logger.info('Added edge: {} -> {}', edge.get('source'), edge.get('target'))
 
     # Find root nodes (nodes without incoming edges)
     for node_id, node_data in node_map.items():
         has_incoming_edge = node_id in all_target_ids
         if not has_incoming_edge:
             root_nodes_array.append(node_id)
-            logger.info('Found root node: %s %s', node_id, node_data['name'])
+            logger.info('Found root node: {} {}', node_id, node_data['name'])
 
     # If no root nodes found, use all available nodes as root (fallback)
     if len(root_nodes_array) == 0:
         logger.info('No root nodes found, using all nodes as roots')
         for node_id in node_map.keys():
             root_nodes_array.append(node_id)
+
+    # Aggregate metrics from children up to parents (post-order traversal)
+    def aggregate_subtree_metrics(node):
+        """Recursively aggregate metrics from all descendants into this node."""
+        total_metrics = dict(node['metrics'])  # Start with own metrics
+        total_projects = node['projectsCount']
+
+        for child in node.get('children', []):
+            child_totals = aggregate_subtree_metrics(child)
+            # Aggregate vulnerability counts
+            total_metrics['vulnerabilities'] += child_totals['vulnerabilities']
+            total_metrics['critical'] += child_totals['critical']
+            total_metrics['high'] += child_totals['high']
+            total_metrics['medium'] += child_totals['medium']
+            total_metrics['low'] += child_totals['low']
+            total_metrics['inheritedRiskScore'] += child_totals['inheritedRiskScore']
+            total_projects += child_totals['projectsCount']
+
+        # Store aggregated totals on the node
+        node['subtree'] = {
+            'projectsCount': total_projects,
+            'metrics': total_metrics
+        }
+
+        return {
+            'metrics': total_metrics,
+            'projectsCount': total_projects
+        }
+
+    # Run aggregation on all root nodes
+    for root_id in root_nodes_array:
+        root_node = node_map.get(root_id)
+        if root_node:
+            aggregate_subtree_metrics(root_node)
 
     # Return sorted tree nodes - nodes with children first, then leaves
     result = []
@@ -2084,13 +2135,34 @@ async def get_graph_data(dt_token: str, root_taxonomy: Optional[str], associativ
                     tag_taxonomy = taxonomy
                     break
 
-        # Add project count from aggregation
-        projects_count = len(project_tag_map.get(tag['name'], []))
+        # Add project count and vulnerability metrics from aggregation
+        tag_projects = project_tag_map.get(tag['name'], [])
+        projects_count = len(tag_projects)
+
+        # Aggregate vulnerability metrics from all projects with this tag
+        aggregated_metrics = {
+            'vulnerabilities': 0,
+            'critical': 0,
+            'high': 0,
+            'medium': 0,
+            'low': 0,
+            'inheritedRiskScore': 0.0
+        }
+        for project in tag_projects:
+            metrics = project.get('metrics', {})
+            if metrics:
+                aggregated_metrics['vulnerabilities'] += metrics.get('vulnerabilities', 0)
+                aggregated_metrics['critical'] += metrics.get('critical', 0)
+                aggregated_metrics['high'] += metrics.get('high', 0)
+                aggregated_metrics['medium'] += metrics.get('medium', 0)
+                aggregated_metrics['low'] += metrics.get('low', 0)
+                aggregated_metrics['inheritedRiskScore'] += metrics.get('inheritedRiskScore', 0.0)
 
         enriched_tags.append({
             'name': tag['name'],
             'taxonomy': tag_taxonomy,
-            'projectsCount': projects_count  # Use actual project count
+            'projectsCount': projects_count,  # Use actual project count
+            'metrics': aggregated_metrics  # Include aggregated vulnerability metrics
         })
 
     # Build graph

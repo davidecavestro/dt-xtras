@@ -14,6 +14,7 @@
         "8000",
         "--reload"
       ],
+      "preLaunchTask": "Install Backend Deps",
       "jinja": true,
       "justMyCode": false,
       "console": "integratedTerminal",
