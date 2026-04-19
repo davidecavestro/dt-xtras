@@ -477,13 +477,20 @@
     </div>
 
     <!-- Link Confirmation Modal -->
-    <div v-if="showLinkConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirm Link Action</h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
-          Are you sure you want to link {{ selectedTags.length }} tag(s) to {{ selectedProjects.length }} project(s)?
-        </p>
-        <div v-if="projectsToBeLinked.length > 0" class="mb-4 p-3 bg-green-50 dark:bg-green-900 rounded-md">
+    <Modal
+      :show="showLinkConfirmation"
+      title="Confirm Link Action"
+      :message="`Are you sure you want to link ${selectedTags.length} tag(s) to ${selectedProjects.length} project(s)?`"
+      :icon="Link"
+      icon-color="green"
+      confirm-text="Link"
+      cancel-text="Cancel"
+      :loading="loading"
+      @confirm="confirmLink"
+      @close="showLinkConfirmation = false"
+    >
+      <template #content>
+        <div v-if="projectsToBeLinked.length > 0" class="mt-4 p-3 bg-green-50 dark:bg-green-900 rounded-md">
           <p class="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
             Projects that will have tags added:
           </p>
@@ -494,32 +501,24 @@
             </li>
           </ul>
         </div>
-        <div class="flex justify-end space-x-3">
-          <button
-            @click="showLinkConfirmation = false"
-            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            @click="confirmLink"
-            :disabled="loading"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            Link
-          </button>
-        </div>
-      </div>
-    </div>
+      </template>
+    </Modal>
 
     <!-- Unlink Confirmation Modal -->
-    <div v-if="showUnlinkConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirm Unlink Action</h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
-          Are you sure you want to unlink {{ selectedTags.length }} tag(s) from {{ selectedProjects.length }} project(s)?
-        </p>
-        <div v-if="projectsToBeUnlinked.length > 0" class="mb-4 p-3 bg-red-50 dark:bg-red-900 rounded-md">
+    <Modal
+      :show="showUnlinkConfirmation"
+      title="Confirm Unlink Action"
+      :message="`Are you sure you want to unlink ${selectedTags.length} tag(s) from ${selectedProjects.length} project(s)?`"
+      :icon="Unlink"
+      icon-color="red"
+      confirm-text="Unlink"
+      cancel-text="Cancel"
+      :loading="loading"
+      @confirm="confirmUnlink"
+      @close="showUnlinkConfirmation = false"
+    >
+      <template #content>
+        <div v-if="projectsToBeUnlinked.length > 0" class="mt-4 p-3 bg-red-50 dark:bg-red-900 rounded-md">
           <p class="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
             Projects that will have tags removed:
           </p>
@@ -530,23 +529,8 @@
             </li>
           </ul>
         </div>
-        <div class="flex justify-end space-x-3">
-          <button
-            @click="showUnlinkConfirmation = false"
-            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            @click="confirmUnlink"
-            :disabled="loading"
-            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            Unlink
-          </button>
-        </div>
-      </div>
-    </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -560,6 +544,7 @@ import { useToast } from '../composables/useToast'
 import { X, Link, Unlink, RefreshCw, Folder } from 'lucide-vue-next'
 import { buildDTProjectUrl } from '../config.js'
 import { createLogger } from '../utils/logger'
+import Modal from './Modal.vue'
 
 export default {
   name: 'TagBulkActions',
@@ -568,7 +553,8 @@ export default {
     Link,
     Unlink,
     X,
-    Folder
+    Folder,
+    Modal
   },
   setup() {
     const logger = createLogger('ProjectBulkActions')
