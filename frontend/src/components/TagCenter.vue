@@ -749,7 +749,7 @@
             <button
               v-else
               @click="cloneTagFromBuilder"
-              :disabled="!canCloneTag"
+              :disabled="!generatedTag"
               class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               Clone Tag
@@ -901,6 +901,7 @@ export default {
     Folder,
     Trash2,
     RefreshCw,
+    AlertTriangle,
     Modal
   },
   setup() {
@@ -1422,7 +1423,15 @@ export default {
     }
 
     const cloneTagFromBuilder = async () => {
-      if (!canCreateTag.value || !generatedTag.value) {
+      if (!generatedTag.value) {
+        showError('Cannot clone tag', 'Generated tag name is empty')
+        return
+      }
+
+      // Validate against the original tag's taxonomy
+      const taxonomy = taxonomies.value.find(t => t.id === cloningTag.value?.taxonomy)
+      if (taxonomy && !new RegExp(taxonomy.regex_pattern).test(generatedTag.value)) {
+        showError('Invalid tag name', `Tag must match pattern: ${taxonomy.regex_pattern}`)
         return
       }
 

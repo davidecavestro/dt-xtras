@@ -3,7 +3,7 @@ trigger: glob
 globs: **/*(.vue|.js|.py)
 ---
 
-# Never catch exceptions unless explicitly prompted or confirmed
+# Never catch exceptions unless explicitly prompted or confirmed: prefer failing fast
 # Always use a logging system instead of raw System.out (no console.log, no print, no println)
 # Always check DT openapi at /workspace/docs/dt-openapi.json for backend api implementations
 # Be conservative: limit changes to just the needed ones, unless prompted otherwise
@@ -16,3 +16,5 @@ globs: **/*(.vue|.js|.py)
 # The Backend implements it's own api calling Dependency-Track under the hoods but also wraps Dependency-Track api when no additional logic is needed
 # The frontend should only consume the Backend api, never call Dependency-Track directly
 # The backend state is a local yaml file with taxonomies: all other data is persisted by Dependency-Track and the backend only exposes the data through it's own api
+# Never hardcode logic tied to specific tag names or currently defined taxonomies: it's dynamic data
+# When you need to access the backend during development, bu convention you can retrieve the auth token with `curl -s -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"username": "admin", "password": "password"}'` then use it on subsequent calls as header `Authorization: Bearer ...`

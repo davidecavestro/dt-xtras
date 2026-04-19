@@ -5,6 +5,7 @@
 # dt-xtras - Dependency-Track Extensions
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/davidecavestro/COVERAGE_GIST_ID/raw/dt-xtras-coverage.json)](https://github.com/davidecavestro/dt-xtras/actions/workflows/coverage.yml)
 [![GitHub Issues](https://img.shields.io/github/issues/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/issues)
 [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/pulls)
 [![GitHub Contributors](https://img.shields.io/github/contributors/davidecavestro/dt-xtras.svg)](https://github.com/davidecavestro/dt-xtras/graphs/contributors)

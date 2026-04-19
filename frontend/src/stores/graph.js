@@ -80,6 +80,19 @@ export const useGraphStore = defineStore('graph', () => {
       edges.value = response.data.edges || []
       treeData.value = response.data.tree || []
 
+      // Debug: Log first tree node to see if subtree/reachable exist
+      if (treeData.value.length > 0) {
+        const firstNode = treeData.value[0]
+        logger.info('First tree node:', {
+          name: firstNode.name,
+          hasSubtree: !!firstNode.subtree,
+          hasReachable: !!firstNode.reachable,
+          subtreeProjects: firstNode.subtree?.projectsCount,
+          reachableProjects: firstNode.reachable?.projectsCount,
+          projectsCount: firstNode.projectsCount
+        })
+      }
+
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
 
@@ -102,6 +115,45 @@ export const useGraphStore = defineStore('graph', () => {
   // Method for loading tag-based graphs (uses same backend endpoint)
   const loadTagGraph = async (params = {}) => {
     return await loadGraph(params)
+  }
+
+  // Load hierarchical tree from hierarchical taxonomies
+  const loadHierarchicalTree = async (params = {}) => {
+    if (loading.value) return
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const { default: axios } = await import('axios')
+
+      const queryParams = {
+        root_taxonomy: params.rootTaxonomy || rootTaxonomy.value
+      }
+
+      const response = await axios.get('/api/tree/hierarchical', { params: queryParams })
+
+      // Update state - hierarchical tree has no nodes/edges, just tree data
+      nodes.value = []
+      edges.value = []
+      treeData.value = response.data.tree || []
+
+      logger.info('Loaded hierarchical tree with {} roots', treeData.value.length)
+
+      lastUpdate.value = Date.now()
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to load hierarchical tree'
+      logger.error('Error loading hierarchical tree:', err)
+
+      nodes.value = []
+      edges.value = []
+      treeData.value = []
+
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
   const refreshGraph = async (params = {}) => {
@@ -232,6 +284,7 @@ export const useGraphStore = defineStore('graph', () => {
     // Methods
     loadGraph,
     loadTagGraph,
+    loadHierarchicalTree,
     refreshGraph,
     clearGraph,
     setRootTaxonomy,
