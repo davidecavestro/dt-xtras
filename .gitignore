@@ -8,3 +8,6 @@ backend/__pycache__/
 .devcontainer/dtrack_db_data/
 *.bak
 *_SUMMARY.md
+backend/tests/__pycache__/
+backend/.coverage
+backend/coverage.xml

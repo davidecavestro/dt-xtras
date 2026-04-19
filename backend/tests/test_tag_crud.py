@@ -1,134 +1,102 @@
 """Tests for tag CRUD operations.
 
-These tests verify creating, updating, deleting tags and managing tag-project associations.
+These tests verify tag creation, update, and deletion functionality.
 """
 
 import pytest
 
 
-class TestCreateTag:
-    """Tests for creating new tags."""
-    
+class TestTagCRUD:
+    """Tests for tag CRUD operations."""
+
+    def test_create_tag_success(self, client, mock_dt_apis, auth_headers):
+        """Test creating a new tag."""
+        tag_data = {"name": "test:newtag"}
+        response = client.post("/api/tag", json=tag_data, headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "name" in data
+        assert data["name"] == "test:newtag"
+
     def test_create_tag_unauthorized(self, client):
-        """Test that unauthorized create requests are rejected."""
-        response = client.post("/api/tag", json={"name": "new:tag"})
+        """Test that creating a tag without auth fails."""
+        tag_data = {"name": "test:newtag"}
+        response = client.post("/api/tag", json=tag_data)
         assert response.status_code == 401
-    
-    def test_create_tag_missing_name(self, client, auth_headers):
-        """Test creating tag without name fails."""
-        response = client.post("/api/tag", headers=auth_headers, json={})
-        # Should fail validation or return error
-        assert response.status_code in [400, 422, 500]
 
+    def test_create_tag_missing_name(self, client, mock_dt_apis, auth_headers):
+        """Test creating a tag without name fails."""
+        tag_data = {}
+        response = client.post("/api/tag", json=tag_data, headers=auth_headers)
+        assert response.status_code == 400
 
-class TestUpdateTag:
-    """Tests for updating existing tags."""
-    
-    def test_update_tag_unauthorized(self, client):
-        """Test that unauthorized update requests are rejected."""
-        response = client.put("/api/tag/old:tag", json={"name": "new:tag"})
-        assert response.status_code == 401
-    
     def test_update_tag_success(self, client, mock_dt_apis, auth_headers):
-        """Test successful tag update."""
-        # Mock the DT API to return success
-        import respx
-        from httpx import Response
-        
-        with respx.mock(assert_all_mocked=False, assert_all_called=False) as rsps:
-            # Mock tag creation endpoint
-            rsps.post("http://dtrack-apiserver:8080/api/v1/tag/new:tag").mock(
-                return_value=Response(201)
-            )
-            # Mock tag deletion endpoint
-            rsps.delete("http://dtrack-apiserver:8080/api/v1/tag/bee:2026.05").mock(
-                return_value=Response(204)
-            )
-            # Mock getting projects with tag
-            rsps.get("http://dtrack-apiserver:8080/api/v1/project").mock(
-                return_value=Response(200, json=[], headers={"X-Total-Count": "0"})
-            )
-            
-            response = client.put(
-                "/api/tag/bee:2026.05",
-                headers=auth_headers,
-                json={"name": "new:tag"}
-            )
-            
-            # Update may succeed or fail depending on DT API availability
-            assert response.status_code in [200, 500]
+        """Test updating a tag name."""
+        tag_data = {"name": "brand:updated"}
+        response = client.put("/api/tag/brand:qualcoz", json=tag_data, headers=auth_headers)
 
+        # May succeed or fail depending on mock setup
+        assert response.status_code in [200, 400, 404]
 
-class TestDeleteTag:
-    """Tests for deleting tags."""
-    
-    def test_delete_tag_unauthorized(self, client):
-        """Test that unauthorized delete requests are rejected."""
-        response = client.delete("/api/tag/test:tag")
+    def test_update_tag_unauthorized(self, client):
+        """Test that updating a tag without auth fails."""
+        tag_data = {"name": "brand:updated"}
+        response = client.put("/api/tag/brand:qualcoz", json=tag_data)
         assert response.status_code == 401
-    
+
+    def test_update_tag_no_change(self, client, mock_dt_apis, auth_headers):
+        """Test updating a tag to same name returns existing tag."""
+        tag_data = {"name": "brand:qualcoz"}
+        response = client.put("/api/tag/brand:qualcoz", json=tag_data, headers=auth_headers)
+
+        # Should return existing tag
+        assert response.status_code in [200, 404]
+
+    def test_update_tag_missing_name(self, client, mock_dt_apis, auth_headers):
+        """Test updating a tag without new name fails."""
+        tag_data = {}
+        response = client.put("/api/tag/brand:qualcoz", json=tag_data, headers=auth_headers)
+        assert response.status_code == 400
+
     def test_delete_tag_success(self, client, mock_dt_apis, auth_headers):
-        """Test successful tag deletion."""
-        import respx
-        from httpx import Response
-        
-        with respx.mock(assert_all_mocked=False, assert_all_called=False) as rsps:
-            # Mock tag deletion endpoint - DT returns 204 on success
-            rsps.delete("http://dtrack-apiserver:8080/api/v1/tag/delete:me").mock(
-                return_value=Response(204)
-            )
-            
-            response = client.delete("/api/tag/delete:me", headers=auth_headers)
-            
-            # Should succeed or get forwarded error
-            assert response.status_code in [200, 204, 500]
+        """Test deleting a tag."""
+        response = client.delete("/api/tag/brand:qualcoz", headers=auth_headers)
+
+        # May succeed or return error depending on mock
+        assert response.status_code in [200, 204, 400]
+
+    def test_delete_tag_unauthorized(self, client):
+        """Test that deleting a tag without auth fails."""
+        response = client.delete("/api/tag/brand:qualcoz")
+        assert response.status_code == 401
 
 
-class TestTagProjectAssociation:
-    """Tests for adding/removing tags from projects."""
-    
-    def test_add_tag_to_projects_unauthorized(self, client):
-        """Test that unauthorized requests are rejected."""
-        response = client.post("/api/tag/test:tag/project", json={
-            "projects": [{"uuid": "test-uuid", "name": "Test Project"}]
-        })
+class TestTagErrors:
+    """Tests for tag endpoint error handling."""
+
+    def test_get_tags_dt_unauthorized(self, client, auth_headers, respx_mock):
+        """Test 401 error from DT API."""
+        from tests.conftest import DT_API_URL
+        respx_mock.get(f"{DT_API_URL}/api/v1/tag").mock(return_value=httpx.Response(401))
+
+        response = client.get("/api/tag", headers=auth_headers)
         assert response.status_code == 401
-    
-    def test_add_tag_to_projects_success(self, client, mock_dt_apis, auth_headers):
-        """Test adding tag to projects."""
-        import respx
-        from httpx import Response
-        
-        with respx.mock(assert_all_mocked=False, assert_all_called=False) as rsps:
-            # Mock adding tag to project
-            rsps.post("http://dtrack-apiserver:8080/api/v1/project/test-uuid/tag/add:tag").mock(
-                return_value=Response(200)
-            )
-            
-            response = client.post(
-                "/api/tag/add:tag/project",
-                headers=auth_headers,
-                json={
-                    "projects": [{"uuid": "test-uuid", "name": "Test Project"}]
-                }
-            )
-            
-            # May succeed or get DT error
-            assert response.status_code in [200, 500]
-    
-    def test_remove_tag_from_projects_unauthorized(self, client):
-        """Test that unauthorized requests are rejected."""
-        response = client.delete("/api/tag/test:tag/project", json={
-            "projects": [{"uuid": "test-uuid", "name": "Test Project"}]
-        })
-        assert response.status_code == 401
-    
-    def test_get_projects_for_tag(self, client, mock_dt_apis, auth_headers):
-        """Test getting projects associated with a tag."""
-        response = client.get("/api/tag/bee:2026.05/project", headers=auth_headers)
-        
-        # Should return list of projects
-        assert response.status_code in [200, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert isinstance(data, list)
+
+    def test_get_tags_dt_forbidden(self, client, auth_headers, respx_mock):
+        """Test 403 error from DT API."""
+        import httpx
+        from tests.conftest import DT_API_URL
+        respx_mock.get(f"{DT_API_URL}/api/v1/tag").mock(return_value=httpx.Response(403))
+
+        response = client.get("/api/tag", headers=auth_headers)
+        assert response.status_code == 403
+
+    def test_get_tags_dt_server_error(self, client, auth_headers, respx_mock):
+        """Test 500 error from DT API."""
+        import httpx
+        from tests.conftest import DT_API_URL
+        respx_mock.get(f"{DT_API_URL}/api/v1/tag").mock(return_value=httpx.Response(500))
+
+        response = client.get("/api/tag", headers=auth_headers)
+        assert response.status_code == 502

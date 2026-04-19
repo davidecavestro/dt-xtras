@@ -153,13 +153,13 @@ def sample_dt_projects():
 def mock_dt_apis(mock_dt_token, sample_dt_tags, sample_dt_projects):
     """Mock all DT API endpoints."""
     with respx.mock(assert_all_mocked=False, assert_all_called=False) as respx_mock:
-        # Mock the tags endpoint
-        respx_mock.get("http://dtrack-apiserver:8080/api/v1/tag").mock(
+        # Mock the tags endpoint - support any query params
+        respx_mock.get(url__startswith="http://dtrack-apiserver:8080/api/v1/tag").mock(
             return_value=Response(200, json=sample_dt_tags)
         )
 
-        # Mock the projects endpoint
-        respx_mock.get("http://dtrack-apiserver:8080/api/v1/project").mock(
+        # Mock the projects endpoint - support any query params
+        respx_mock.get(url__startswith="http://dtrack-apiserver:8080/api/v1/project").mock(
             return_value=Response(200, json=sample_dt_projects, headers={"X-Total-Count": str(len(sample_dt_projects))})
         )
 
