@@ -35,8 +35,54 @@
           class="text-sm text-gray-900 dark:text-white"
           v-html="highlightedName"
         ></span>
-        <!-- Vulnerability Indicator -->
-        <div v-if="node.vulnerabilities > 0" class="ml-2">
+
+        <!-- Metrics: Projects Count -->
+        <div
+          v-if="getNodeMetrics(node).projectsCount > 0"
+          class="ml-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+          :title="`${getNodeMetrics(node).projectsCount} projects`"
+        >
+          <Package class="w-3 h-3" />
+          <span>{{ getNodeMetrics(node).projectsCount }}</span>
+        </div>
+
+        <!-- Metrics: Vulnerabilities by Severity -->
+        <div
+          v-if="getNodeMetrics(node).vulnerabilities > 0"
+          class="ml-2 flex items-center gap-1"
+        >
+          <span
+            v-if="getNodeMetrics(node).critical > 0"
+            class="px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+            :title="`${getNodeMetrics(node).critical} critical vulnerabilities`"
+          >
+            {{ getNodeMetrics(node).critical }}
+          </span>
+          <span
+            v-if="getNodeMetrics(node).high > 0"
+            class="px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
+            :title="`${getNodeMetrics(node).high} high vulnerabilities`"
+          >
+            {{ getNodeMetrics(node).high }}
+          </span>
+          <span
+            v-if="getNodeMetrics(node).medium > 0"
+            class="px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
+            :title="`${getNodeMetrics(node).medium} medium vulnerabilities`"
+          >
+            {{ getNodeMetrics(node).medium }}
+          </span>
+          <span
+            v-if="getNodeMetrics(node).low > 0"
+            class="px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+            :title="`${getNodeMetrics(node).low} low vulnerabilities`"
+          >
+            {{ getNodeMetrics(node).low }}
+          </span>
+        </div>
+
+        <!-- Legacy: Vulnerability Indicator (fallback for old data) -->
+        <div v-else-if="node.vulnerabilities > 0" class="ml-2">
           <div class="w-2 h-2 rounded-full" :class="getVulnColor(node.vulnerabilities)"></div>
         </div>
       </div>
@@ -132,6 +178,68 @@ export default {
       return 'bg-green-500 dark:bg-green-600'
     }
 
+    const getNodeMetrics = (node) => {
+      // Debug: Log node structure once per unique node
+      if (!node._logged) {
+        const result = node.reachable || node.subtree
+        logger.info('getNodeMetrics for', node.name, {
+          hasReachable: !!node.reachable,
+          hasSubtree: !!node.subtree,
+          reachableProjects: node.reachable?.projectsCount,
+          subtreeProjects: node.subtree?.projectsCount,
+          returning: result?.projectsCount || node.projectsCount || 0
+        })
+        node._logged = true
+      }
+      // Prefer reachable aggregated metrics (ancestors + descendants + self)
+      // This matches the Related Projects count in the dashboard
+      if (node.reachable?.metrics) {
+        return {
+          projectsCount: node.reachable.projectsCount || 0,
+          vulnerabilities: node.reachable.metrics.vulnerabilities || 0,
+          critical: node.reachable.metrics.critical || 0,
+          high: node.reachable.metrics.high || 0,
+          medium: node.reachable.metrics.medium || 0,
+          low: node.reachable.metrics.low || 0,
+          inheritedRiskScore: node.reachable.metrics.inheritedRiskScore || 0
+        }
+      }
+      // Fallback to subtree (descendants only)
+      if (node.subtree?.metrics) {
+        return {
+          projectsCount: node.subtree.projectsCount || 0,
+          vulnerabilities: node.subtree.metrics.vulnerabilities || 0,
+          critical: node.subtree.metrics.critical || 0,
+          high: node.subtree.metrics.high || 0,
+          medium: node.subtree.metrics.medium || 0,
+          low: node.subtree.metrics.low || 0,
+          inheritedRiskScore: node.subtree.metrics.inheritedRiskScore || 0
+        }
+      }
+      // Fallback to direct node metrics
+      if (node.metrics) {
+        return {
+          projectsCount: node.projectsCount || 0,
+          vulnerabilities: node.metrics.vulnerabilities || 0,
+          critical: node.metrics.critical || 0,
+          high: node.metrics.high || 0,
+          medium: node.metrics.medium || 0,
+          low: node.metrics.low || 0,
+          inheritedRiskScore: node.metrics.inheritedRiskScore || 0
+        }
+      }
+      // Legacy fallback for old data format
+      return {
+        projectsCount: node.projectsCount || 0,
+        vulnerabilities: node.vulnerabilities || 0,
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+        inheritedRiskScore: 0
+      }
+    }
+
     const getNodeIconColor = (node) => {
       logger.debug('getNodeIconColor called for node:', node);
 
@@ -187,6 +295,7 @@ export default {
       filteredChildren,
       highlightedName,
       getVulnColor,
+      getNodeMetrics,
       getNodeIconColor,
       handleSelect,
       handleToggle

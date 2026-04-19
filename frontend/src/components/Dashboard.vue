@@ -115,13 +115,53 @@
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Navigation Tree</h3>
-            <button
-              @click="clearSelection"
-              v-if="selectedTreeNode"
-              class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-            >
-              Clear Selection
-            </button>
+            <div class="flex items-center gap-2">
+              <!-- Tree Mode Toggle -->
+              <div class="flex bg-gray-100 dark:bg-gray-700 rounded">
+                <button
+                  @click="setTreeMode('network')"
+                  :class="treeMode === 'network' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
+                  class="px-2 py-1 text-xs rounded transition-colors"
+                  title="Network View (shared nodes)"
+                >
+                  <Share2 class="w-4 h-4" />
+                </button>
+                <button
+                  @click="setTreeMode('hierarchical')"
+                  :class="treeMode === 'hierarchical' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
+                  class="px-2 py-1 text-xs rounded transition-colors"
+                  title="Hierarchical View (distinct paths)"
+                >
+                  <GitBranch class="w-4 h-4" />
+                </button>
+              </div>
+              <!-- View Toggle -->
+              <div class="flex bg-gray-100 dark:bg-gray-700 rounded">
+                <button
+                  @click="treeViewMode = 'tree'"
+                  :class="treeViewMode === 'tree' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
+                  class="px-2 py-1 text-xs rounded transition-colors"
+                  title="Tree View"
+                >
+                  <ListIcon class="w-4 h-4" />
+                </button>
+                <button
+                  @click="treeViewMode = 'table'"
+                  :class="treeViewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
+                  class="px-2 py-1 text-xs rounded transition-colors"
+                  title="Table View"
+                >
+                  <Table class="w-4 h-4" />
+                </button>
+              </div>
+              <button
+                @click="clearSelection"
+                v-if="selectedTreeNode"
+                class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Clear
+              </button>
+            </div>
           </div>
           <input
             v-model="searchQuery"
@@ -135,7 +175,8 @@
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           </div>
 
-          <div v-else-if="treeData && treeData.length > 0" class="space-y-1" :key="treeData.length">
+          <!-- Tree View -->
+          <div v-else-if="treeViewMode === 'tree' && treeData && treeData.length > 0" class="space-y-1" :key="treeData.length">
             <TreeNode
               v-for="node in treeData"
               :key="node.id"
@@ -147,6 +188,19 @@
               @toggle="toggleTreeNode"
             />
           </div>
+
+          <!-- Table View -->
+          <div v-else-if="treeViewMode === 'table' && treeData && treeData.length > 0" :key="'table-' + treeData.length">
+            <TreeTable
+              :nodes="treeData"
+              :selected-node="selectedTreeNode"
+              :sort-by="treeSortBy"
+              :sort-desc="treeSortDesc"
+              @select="selectTreeNode"
+              @toggle="toggleTreeNode"
+            />
+          </div>
+
           <div v-else class="text-center py-4 text-gray-500 dark:text-gray-400">
             No tree data available
           </div>
@@ -402,10 +456,11 @@ import TreeNode from './TreeNode.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import StatusCell from './grid-cells/StatusCell.vue'
+import TreeTable from './TreeTable.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import VulnerabilityBar from './VulnerabilityBar.vue'
-import { AlertCircle, RefreshCw, Folder, FolderOpen, ListIcon, GridIcon, SquareIcon } from 'lucide-vue-next'
+import { AlertCircle, RefreshCw, Folder, FolderOpen, ListIcon, GridIcon, SquareIcon, Table, Share2, GitBranch } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import Pagination from './Pagination.vue'
 import ProjectCard from './ProjectCard.vue'
@@ -422,12 +477,16 @@ export default {
     ListIcon,
     GridIcon,
     SquareIcon,
+    Table,
+    Share2,
+    GitBranch,
     Vue3Datagrid,
     Pagination,
     ProjectCard,
     RiskScoreBadge,
     VulnerabilityBar,
     TreeNode,
+    TreeTable,
     TagsCell,
     DateCell,
     StatusCell,
@@ -511,6 +570,10 @@ export default {
     const treeData = ref([])
     const searchQuery = ref('')
     const selectedTreeNode = ref(null)
+    const treeViewMode = ref('tree') // 'tree' or 'table'
+    const treeSortBy = ref('name')
+    const treeSortDesc = ref(false)
+    const treeMode = ref('network') // 'network' or 'hierarchical'
 
 
     // Initialize data on component mount
@@ -525,6 +588,19 @@ export default {
 
     const setAssociativeMode = (isAssociative) => {
       graphStore.setAssociativeMode(isAssociative);
+    };
+
+    const setTreeMode = async (mode) => {
+      treeMode.value = mode;
+      // Reload tree with appropriate endpoint
+      if (mode === 'hierarchical') {
+        await graphStore.loadHierarchicalTree();
+      } else {
+        await graphStore.loadGraph({
+          rootTaxonomy: null,
+          associativeMode: associativeMode.value
+        });
+      }
     };
 
     const associativeMode = ref(true) // Default to associative mode like graph
@@ -891,15 +967,17 @@ export default {
 
     const refreshData = async () => {
       try {
+        // Load tree based on current mode
+        const treeLoader = treeMode.value === 'hierarchical'
+          ? graphStore.loadHierarchicalTree()
+          : graphStore.loadGraph({ rootTaxonomy: null, associativeMode: associativeMode.value });
+
         // Load all data in parallel for better performance
         const results = await Promise.all([
           projectStore.loadProjects(),
           tagStore.loadTags(),
           taxonomyStore.loadTaxonomies(),
-          graphStore.loadGraph({
-            rootTaxonomy: null,
-            treeData: [] // Declare treeData as an array
-          })
+          treeLoader
         ])
 
         // Build hierarchical tree structure from graph data
@@ -1033,6 +1111,11 @@ export default {
       searchQuery,
       selectedTreeNode,
       allReachableNodes,
+      treeViewMode,
+      treeSortBy,
+      treeSortDesc,
+      treeMode,
+      setTreeMode,
 
       // Project data
       relatedProjects,

@@ -1,5 +1,5 @@
 from fastapi import Request, status, Form, FastAPI, HTTPException, Depends, responses, Response
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, RootModel, field_validator
 from urllib.parse import quote as urlencode
 from fastapi.security import HTTPBasic, HTTPBearer, HTTPAuthorizationCredentials
 import httpx
@@ -135,6 +135,7 @@ class Taxonomy(BaseModel):
     priority: int
     relations: Optional[List[TaxonomyRelation]] = None
     associative: Optional[bool] = None
+    hierarchical: Optional[bool] = None  # If true, builds distinct tree nodes per path context
 
 class TaxonomyPriority(BaseModel):
     id: str
@@ -161,15 +162,22 @@ class DTProject(BaseModel):
 class SecurityNode(BaseModel):
     id: str
     name: str
-    type: str  # i.e. brand, region, bundle, project
+    type: Optional[str] = None  # i.e. brand, region, bundle, project
+    taxonomy: Optional[str] = None
     parent_id: Optional[str] = None
     children: List['SecurityNode'] = []
+    projectsCount: int = 0
+    projectUUIDs: List[str] = []
     vulnerabilities: int = 0
     critical: int = 0
     high: int = 0
     medium: int = 0
     low: int = 0
     inheritedRiskScore: float = 0.0
+    metrics: Optional[Dict[str, Any]] = None
+    associative: Optional[bool] = None
+    color: Optional[str] = None
+    subtree: Optional[Dict[str, Any]] = None
 
 class ProjectVersion(BaseModel):
     id: str
@@ -189,6 +197,86 @@ class ProjectVersion(BaseModel):
 
 # Update forward reference
 SecurityNode.model_rebuild()
+
+
+class TreeNode(BaseModel):
+    """A node in the taxonomy tree (hierarchical view)."""
+    id: str
+    name: str
+    type: str = "taxonomy"  # taxonomy or project
+    taxonomy: Optional[str] = None  # e.g., "brand", "region", "bundle_version"
+    children: List['TreeNode'] = []
+    projectsCount: int = 0
+    projectUUIDs: List[str] = []
+    metrics: Dict[str, Any] = {}
+    color: str = "#6b7280"
+    subtree: Optional[Dict[str, Any]] = None  # Aggregated metrics from children
+
+
+class TreeEdge(BaseModel):
+    """An edge in the taxonomy graph (network view)."""
+    source: str
+    target: str
+    relation: Optional[str] = None
+    id: Optional[str] = None
+
+
+class TreeResponse(BaseModel):
+    """Response model for network tree endpoint."""
+    nodes: List[SecurityNode]
+    edges: List[TreeEdge]
+    tree: List[TreeNode]
+
+
+class HierarchicalTreeResponse(BaseModel):
+    """Response model for hierarchical tree endpoint."""
+    tree: List[TreeNode]
+
+
+class LoginResponse(BaseModel):
+    """Response model for successful login."""
+    access_token: str
+    token_type: str
+    username: str
+    permissions: List[str]
+
+
+class LogoutResponse(BaseModel):
+    """Response model for logout."""
+    message: str
+
+
+class HealthResponse(BaseModel):
+    """Response model for health check."""
+    status: str
+
+
+class APIHealthResponse(BaseModel):
+    """Response model for detailed API health check."""
+    status: str
+    timestamp: str
+    version: str
+    message: str
+
+
+class SuccessResponse(BaseModel):
+    """Generic success response."""
+    message: str
+
+
+class TagListResponse(RootModel):
+    """Response model for tag list."""
+    root: List[Tag]
+
+
+class TagCloneRequest(BaseModel):
+    """Request model for cloning a tag."""
+    sourceTag: str
+    targetTag: str
+
+
+# Update forward references
+TreeNode.model_rebuild()
 
 # File operations
 def load_taxonomies() -> List[Taxonomy]:
@@ -235,7 +323,7 @@ def save_taxonomies(taxonomies: List[Taxonomy]):
         yaml.dump({"taxonomies": taxonomy_data}, f, default_flow_style=False)
 
 # Authentication endpoints
-@app.post("/auth/login")
+@app.post("/auth/login", response_model=LoginResponse)
 async def login(username: str = Form(...), password: str = Form(...)):
     """Authenticate with DT API and return JWT token"""
     try:
@@ -330,7 +418,7 @@ def require_edit_permissions(permissions: List[str] = Depends(get_user_permissio
         )
     return permissions
 
-@app.post("/auth/logout")
+@app.post("/auth/logout", response_model=LogoutResponse)
 async def logout():
     """Logout endpoint - JWT tokens are stateless so client-side token removal is sufficient"""
     return {"message": "Successfully logged out"}
@@ -381,9 +469,9 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
     if search:
         params["name"] = search  # DT uses 'name' parameter, not 'searchText'
 
-    logger.info(f"Making request to: {DT_API_URL}/api/v1/project")
-    logger.info(f"Headers: {headers}")
-    logger.info(f"Params: {params}")
+    # logger.info(f"Making request to: {DT_API_URL}/api/v1/project")
+    # logger.info(f"Headers: {headers}")
+    # logger.info(f"Params: {params}")
 
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)
@@ -441,7 +529,7 @@ async def get_dt_projects(dt_token: str, page: int = 1, limit: int = 50, search:
     # The field_validator in DTProject will handle tag conversion automatically
     return enriched_projects
 
-@app.get("/api/health")
+@app.get("/api/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
@@ -1371,6 +1459,85 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
 
         return tags_with_taxonomy
 
+
+async def fetch_all_tags(dt_token: str):
+    """Fetch all tags with their project UUIDs and metrics for tree building."""
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    # Fetch all tags with pagination
+    tags_response = []
+    page = 1
+    pageSize = 100
+    async with httpx.AsyncClient() as client:
+        while True:
+            response = await client.get(f"{DT_API_URL}/api/v1/tag?pageNumber={page}&pageSize={pageSize}", headers=headers)
+            response.raise_for_status()
+            if response.status_code != 200:
+                raise Exception(f"DT API returned status {response.status_code}: {response.text}")
+            page_response = response.json()
+            if not page_response or not isinstance(page_response, list):
+                break
+            tags_response.extend(page_response)
+            if len(page_response) < pageSize:
+                break
+            page += 1
+
+    # Fetch projects to get project-tag mapping
+    projects_response = await get_dt_projects(dt_token, limit=1000)
+
+    # Create project tag mapping
+    project_tag_map = {}
+    for project in projects_response:
+        if project.get('tags'):
+            for tag in project['tags']:
+                tag_name = tag if isinstance(tag, str) else tag.get('name', '')
+                if tag_name:
+                    if tag_name not in project_tag_map:
+                        project_tag_map[tag_name] = []
+                    project_tag_map[tag_name].append(project)
+
+    # Build enriched tags with project UUIDs and metrics
+    enriched_tags = []
+    for tag in tags_response:
+        tag_name = tag.get('name', '')
+        tag_projects = project_tag_map.get(tag_name, [])
+
+        # Aggregate metrics
+        aggregated_metrics = {
+            'vulnerabilities': 0,
+            'critical': 0,
+            'high': 0,
+            'medium': 0,
+            'low': 0,
+            'inheritedRiskScore': 0.0
+        }
+        for project in tag_projects:
+            metrics = project.get('metrics', {})
+            if metrics:
+                aggregated_metrics['vulnerabilities'] += metrics.get('vulnerabilities', 0)
+                aggregated_metrics['critical'] += metrics.get('critical', 0)
+                aggregated_metrics['high'] += metrics.get('high', 0)
+                aggregated_metrics['medium'] += metrics.get('medium', 0)
+                aggregated_metrics['low'] += metrics.get('low', 0)
+                aggregated_metrics['inheritedRiskScore'] += metrics.get('inheritedRiskScore', 0.0)
+
+        project_uuids = [p.get('uuid') for p in tag_projects if p.get('uuid')]
+
+        enriched_tags.append({
+            'name': tag_name,
+            'projectsCount': len(tag_projects),
+            'projectUUIDs': project_uuids,
+            'metrics': aggregated_metrics
+        })
+
+    logger.info('Fetched {} tags with project data', len(enriched_tags))
+    return enriched_tags
+
+
 @app.post("/api/tag")
 async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_request), permissions: List[str] = Depends(require_edit_permissions)):
     """Create a new tag in DT"""
@@ -1724,18 +1891,17 @@ async def get_dt_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         else:
             raise HTTPException(status_code=401, detail="No DT API token available")
 
-@app.get("/health")
+@app.get("/health", response_model=APIHealthResponse)
 async def health_check():
     """Health check endpoint for container orchestration"""
     return {
         "status": "healthy",
-        "service": "dt-xtras-backend",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now().isoformat(),
         "version": "1.0.0",
         "message": "dt-xtras API is running"
     }
 
-@app.get("/api/health")
+@app.get("/api/health", response_model=APIHealthResponse)
 async def api_health_check():
     """API health check with dependencies"""
     try:
@@ -1759,6 +1925,11 @@ class SimpleTaxonomyGraphBuilder:
         logger.info(f'Building graph with {len(tags)} tags and {len(taxonomies)} taxonomies')
         logger.info(f'Associative mode: {associative_mode}')
         logger.info(f'Root taxonomy: {root_taxonomy}')
+        # Debug: Check first tag
+        if tags:
+            first_tag = tags[0]
+            logger.info('First input tag: name={}, hasProjectUUIDs={}, uuids count={}',
+                       first_tag.get('name'), 'projectUUIDs' in first_tag, len(first_tag.get('projectUUIDs', [])))
 
         # Normalize all taxonomies to consistent structure
         normalized_taxonomies = {}
@@ -1795,7 +1966,9 @@ class SimpleTaxonomyGraphBuilder:
             normalized_tags.append({
                 'name': tag['name'],
                 'taxonomy': normalized_taxonomy,
-                'projectsCount': tag.get('projectsCount', 0)
+                'projectsCount': tag.get('projectsCount', 0),
+                'projectUUIDs': tag.get('projectUUIDs', []),
+                'metrics': tag.get('metrics', {})
             })
 
         # Use local variables instead of shared instance state
@@ -1813,6 +1986,7 @@ class SimpleTaxonomyGraphBuilder:
                     'taxonomy': tag['taxonomy']['id'],
                     'associative': tag['taxonomy']['associative'],
                     'projectsCount': tag.get('projectsCount', 0),
+                    'projectUUIDs': tag.get('projectUUIDs', []),  # Track unique project IDs
                     'metrics': {
                         'vulnerabilities': tag_metrics.get('vulnerabilities', 0),
                         'critical': tag_metrics.get('critical', 0),
@@ -1824,6 +1998,12 @@ class SimpleTaxonomyGraphBuilder:
                 }
 
         logger.info(f'Created {len(nodes)} nodes')
+        # Debug: Check first node structure
+        if nodes:
+            first_node = list(nodes.values())[0]
+            puuid_count = len(first_node.get('projectUUIDs', []))
+            logger.info('First node: name={}, projectsCount={}, projectUUIDs count={}',
+                       first_node['name'], first_node['projectsCount'], puuid_count)
 
         # Build edges based on mode
         if associative_mode:
@@ -1940,13 +2120,13 @@ class SimpleTaxonomyGraphBuilder:
         return ':'.join(values.values()) if values else None
 
 
-@app.get("/api/tree")
+@app.get("/api/tree", response_model=TreeResponse)
 async def get_tree(
     dt_token: str = Depends(get_dt_token_from_request),
     root_taxonomy: Optional[str] = None,
     associative_mode: bool = False
 ):
-    """Build and return taxonomy tree with aggregated project data"""
+    """Build and return taxonomy tree with aggregated project data (network/graph view)"""
 
     # Get graph data first
     graph_data = await get_graph_data(dt_token, root_taxonomy, associative_mode)
@@ -1963,6 +2143,210 @@ async def get_tree(
         "tree": tree_data
     }
 
+
+@app.get("/api/tree/hierarchical", response_model=HierarchicalTreeResponse)
+async def get_hierarchical_tree(
+    dt_token: str = Depends(get_dt_token_from_request),
+    root_taxonomy: Optional[str] = None
+):
+    """Build and return hierarchical tree from hierarchical taxonomies only.
+
+    Unlike the network tree, this creates distinct tree node instances per path context,
+    ensuring that region:eu under brand:qualcoz shows only qualcoz's bundles.
+    """
+    # Load taxonomies to find hierarchical ones
+    taxonomies = load_taxonomies()
+
+    # First, try taxonomies explicitly marked as hierarchical
+    hierarchical_taxonomies = [t for t in taxonomies if t.hierarchical]
+
+    # Fallback: use associative taxonomies with relations (they can build hierarchical trees)
+    if not hierarchical_taxonomies:
+        hierarchical_taxonomies = [
+            t for t in taxonomies
+            if t.associative and t.relations and len(t.relations) > 0
+        ]
+        if hierarchical_taxonomies:
+            logger.info('No explicit hierarchical taxonomies found, using {} associative taxonomies with relations',
+                       len(hierarchical_taxonomies))
+
+    if not hierarchical_taxonomies:
+        logger.warning('No hierarchical or associative taxonomies found, returning empty tree')
+        return {"nodes": [], "tree": []}
+
+    logger.info('Building hierarchical tree from {} taxonomies', len(hierarchical_taxonomies))
+
+    # Fetch all tags from Dependency-Track
+    all_tags = await fetch_all_tags(dt_token)
+
+    # Build hierarchical tree from site tags
+    tree_data = build_hierarchical_tree(all_tags, hierarchical_taxonomies, taxonomies)
+
+    return {"tree": tree_data}
+
+
+def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
+    """Build tree from hierarchical taxonomies with distinct node instances per path.
+
+    For site tags like 'site:brand:region:bundle', creates a tree where:
+    - brand:qualcoz -> region:eu -> bee:2026.05 (from site:qualcoz:eu:bee:2026.05)
+    - brand:y -> region:eu -> myapp:2.0.0 (from site:y:eu:myapp:2.0.0)
+
+    Each path is distinct, so region:eu under qualcoz only shows qualcoz's bundles.
+    """
+    # Build regex patterns for hierarchical taxonomies
+    hierarchical_patterns = []
+    for tax in hierarchical_taxonomies:
+        pattern = tax.regex_pattern if hasattr(tax, 'regex_pattern') else tax.get('regex_pattern', '')
+        if pattern:
+            hierarchical_patterns.append((tax, regex.compile(pattern)))
+
+    if not hierarchical_patterns:
+        return []
+
+    # Parse hierarchical tags and build path tree
+    # Key: path tuple (e.g., ('brand:qualcoz', 'region:eu', 'bundle:bee:2026.05'))
+    # Value: node data with metrics
+    path_nodes = {}  # (path_tuple) -> node_data
+
+    for tag in tags:
+        tag_name = tag.get('name', '')
+
+        # Check if tag matches any hierarchical taxonomy
+        for tax, pattern in hierarchical_patterns:
+            match = pattern.match(tag_name)
+            if match:
+                # Extract groups from match to build path
+                groups = match.groupdict()
+
+                # Build path from groups (ordered by pattern capture groups)
+                path_parts = []
+                for group_name in groups:
+                    group_value = groups[group_name]
+                    # Find taxonomy for this group to format the node id
+                    group_taxonomy = None
+                    for t in all_taxonomies:
+                        t_id = t.id if hasattr(t, 'id') else t.get('id')
+                        t_name = t.name if hasattr(t, 'name') else t.get('name', '')
+                        if t_id == group_name or t_name.lower() == group_name:
+                            group_taxonomy = t
+                            break
+
+                    if group_taxonomy:
+                        # Look up if there's a matching tag in all_tags (for leaf nodes like bundles)
+                        # If found, use the actual tag name; otherwise construct from taxonomy
+                        matching_tag = next((t for t in tags if t.get('name') == group_value), None)
+                        if matching_tag:
+                            node_id = group_value  # Use actual tag name (e.g., "bee:2026.05")
+                            # Store the matching tag so we can get its metrics
+                            path_parts.append((node_id, group_name, group_value, matching_tag))
+                        else:
+                            node_id = f"{group_name}:{group_value}"  # Construct ID (e.g., "brand:qualcoz")
+                            path_parts.append((node_id, group_name, group_value, tag))
+
+                if len(path_parts) >= 2:  # Need at least parent and child
+                    # Build tree structure from this path
+                    for i in range(len(path_parts) - 1):
+                        parent_id = path_parts[i][0]
+                        child_id = path_parts[i + 1][0]
+
+                        # Create parent node if not exists
+                        parent_path = tuple(p[0] for p in path_parts[:i+1])
+                        if parent_path not in path_nodes:
+                            path_nodes[parent_path] = create_hierarchical_node(
+                                path_parts[i], all_taxonomies, is_leaf=(i == len(path_parts) - 1)
+                            )
+
+                        # Create child node if not exists
+                        child_path = tuple(p[0] for p in path_parts[:i+2])
+                        if child_path not in path_nodes:
+                            path_nodes[child_path] = create_hierarchical_node(
+                                path_parts[i + 1], all_taxonomies, is_leaf=(i + 1 == len(path_parts) - 1)
+                            )
+
+                        # Link parent to child
+                        parent_node = path_nodes[parent_path]
+                        child_node = path_nodes[child_path]
+                        child_ids = [c['id'] for c in parent_node['children']]
+                        if child_node['id'] not in child_ids:
+                            parent_node['children'].append(child_node)
+
+                break  # Stop checking other patterns once matched
+
+    # Find root nodes (paths with single element)
+    root_nodes = []
+    for path, node in path_nodes.items():
+        if len(path) == 1:
+            root_nodes.append(node)
+
+    # Aggregate metrics up the tree
+    for root in root_nodes:
+        aggregate_hierarchical_metrics(root)
+
+    # Sort roots by name
+    root_nodes.sort(key=lambda n: n['name'])
+
+    logger.info('Built hierarchical tree with {} root nodes', len(root_nodes))
+    return root_nodes
+
+
+def create_hierarchical_node(path_part, all_taxonomies, is_leaf=False):
+    """Create a tree node from a path part."""
+    node_id, group_name, group_value, source_tag = path_part
+
+    # Find taxonomy for styling
+    taxonomy = None
+    for t in all_taxonomies:
+        t_id = t.id if hasattr(t, 'id') else t.get('id')
+        if t_id == group_name:
+            taxonomy = t
+            break
+
+    # Get taxonomy color
+    color = '#6b7280'
+    if taxonomy:
+        color = taxonomy.color if hasattr(taxonomy, 'color') else taxonomy.get('color', '#6b7280')
+
+    # Get metrics from source tag if this is a leaf node
+    metrics = source_tag.get('metrics', {}) if is_leaf else {}
+    project_count = source_tag.get('projectsCount', 0) if is_leaf else 0
+    project_uuids = set(source_tag.get('projectUUIDs', [])) if is_leaf else set()
+
+    return {
+        'id': node_id,
+        'name': node_id,
+        'type': 'taxonomy',
+        'taxonomy': group_name,
+        'children': [],
+        'projectsCount': project_count,
+        'projectUUIDs': list(project_uuids),
+        'metrics': metrics,
+        'color': color
+    }
+
+
+def aggregate_hierarchical_metrics(node):
+    """Recursively aggregate metrics from children up to parent."""
+    total_metrics = dict(node.get('metrics', {}))
+    total_uuids = set(node.get('projectUUIDs', []))
+
+    for child in node.get('children', []):
+        child_metrics = aggregate_hierarchical_metrics(child)
+        # Aggregate counts
+        for key in ['vulnerabilities', 'critical', 'high', 'medium', 'low', 'inheritedRiskScore']:
+            total_metrics[key] = total_metrics.get(key, 0) + child_metrics.get(key, 0)
+        total_uuids.update(child.get('projectUUIDs', []))
+
+    # Update node with aggregated totals
+    node['subtree'] = {
+        'projectsCount': len(total_uuids),
+        'projectUUIDs': list(total_uuids),
+        'metrics': total_metrics
+    }
+
+    return total_metrics
+
+
 def build_tree_from_graph_data(nodes, edges):
     """Build tree structure from graph nodes and edges with project aggregation"""
     if not nodes or not edges:
@@ -1977,6 +2361,14 @@ def build_tree_from_graph_data(nodes, edges):
     all_target_ids = set(edge.get('target') for edge in edges if edge.get('target'))
     all_source_ids = set(edge.get('source') for edge in edges if edge.get('source'))
 
+    # Debug: Check input nodes
+    if nodes:
+        first_input = nodes[0]
+        puuid_count = len(first_input.get('projectUUIDs', [])) if isinstance(first_input.get('projectUUIDs'), (list, set)) else 'N/A'
+        logger.info('build_tree_from_graph_data: first input node name={}, hasProjectUUIDs={}, pUUIDs type={}, pUUIDs count={}, projectsCount={}',
+                   first_input.get('name'), 'projectUUIDs' in first_input,
+                   type(first_input.get('projectUUIDs')).__name__, puuid_count, first_input.get('projectsCount', 0))
+
     for node in nodes:
         # Skip associative tag nodes
         if node.get('associative'):
@@ -1984,12 +2376,15 @@ def build_tree_from_graph_data(nodes, edges):
 
         # Include all non-associative nodes, even those without edges
         node_metrics = node.get('metrics', {})
+        project_uuids = node.get('projectUUIDs', [])
         node_map[node['id']] = {
             'id': node['id'],
             'name': node['name'],
             'type': 'taxonomy',
             'children': [],
+            'parent': None,  # Will be set when building edges
             'projectsCount': node.get('projectsCount', 0),
+            'projectUUIDs': set(project_uuids) if project_uuids is not None else set(),  # Use set for uniqueness
             'metrics': {
                 'vulnerabilities': node_metrics.get('vulnerabilities', 0),
                 'critical': node_metrics.get('critical', 0),
@@ -2008,6 +2403,7 @@ def build_tree_from_graph_data(nodes, edges):
         # Only add edge if both nodes exist
         if parent_node and child_node:
             parent_node['children'].append(child_node)
+            child_node['parent'] = parent_node  # Set parent reference
             logger.info('Added edge: {} -> {}', edge.get('source'), edge.get('target'))
 
     # Find root nodes (nodes without incoming edges)
@@ -2027,28 +2423,29 @@ def build_tree_from_graph_data(nodes, edges):
     def aggregate_subtree_metrics(node):
         """Recursively aggregate metrics from all descendants into this node."""
         total_metrics = dict(node['metrics'])  # Start with own metrics
-        total_projects = node['projectsCount']
+        total_uuids = set(node['projectUUIDs'])  # Track unique project UUIDs
 
         for child in node.get('children', []):
             child_totals = aggregate_subtree_metrics(child)
-            # Aggregate vulnerability counts
-            total_metrics['vulnerabilities'] += child_totals['vulnerabilities']
-            total_metrics['critical'] += child_totals['critical']
-            total_metrics['high'] += child_totals['high']
-            total_metrics['medium'] += child_totals['medium']
-            total_metrics['low'] += child_totals['low']
-            total_metrics['inheritedRiskScore'] += child_totals['inheritedRiskScore']
-            total_projects += child_totals['projectsCount']
+            # Aggregate vulnerability counts (access through metrics dict)
+            total_metrics['vulnerabilities'] += child_totals['metrics']['vulnerabilities']
+            total_metrics['critical'] += child_totals['metrics']['critical']
+            total_metrics['high'] += child_totals['metrics']['high']
+            total_metrics['medium'] += child_totals['metrics']['medium']
+            total_metrics['low'] += child_totals['metrics']['low']
+            total_metrics['inheritedRiskScore'] += child_totals['metrics']['inheritedRiskScore']
+            total_uuids.update(child_totals['projectUUIDs'])  # Merge unique UUIDs
 
         # Store aggregated totals on the node
         node['subtree'] = {
-            'projectsCount': total_projects,
+            'projectsCount': len(total_uuids),  # Unique project count
+            'projectUUIDs': list(total_uuids),  # Unique project IDs
             'metrics': total_metrics
         }
 
         return {
             'metrics': total_metrics,
-            'projectsCount': total_projects
+            'projectUUIDs': total_uuids
         }
 
     # Run aggregation on all root nodes
@@ -2056,6 +2453,62 @@ def build_tree_from_graph_data(nodes, edges):
         root_node = node_map.get(root_id)
         if root_node:
             aggregate_subtree_metrics(root_node)
+    logger.info('Subtree aggregation completed for %d root nodes', len(root_nodes_array))
+
+    # Second pass: compute reachable metrics (ancestors + descendants + self)
+    # This matches the frontend's findReachableTags behavior
+    def compute_reachable_metrics(node):
+        """Compute metrics for all reachable nodes (ancestors + descendants + self)."""
+        # First, recursively compute reachable for all children
+        for child in node.get('children', []):
+            compute_reachable_metrics(child)
+
+        # Start with this node's own direct projects and metrics
+        all_uuids = set(node.get('projectUUIDs', []))
+        all_metrics = dict(node['metrics']) if node.get('metrics') else {
+            'vulnerabilities': 0, 'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'inheritedRiskScore': 0
+        }
+
+        # Add all children's reachable sets (their full reachable graph)
+        for child in node.get('children', []):
+            child_reachable = child.get('reachable', {})
+            all_uuids.update(child_reachable.get('projectUUIDs', []))
+            child_metrics = child_reachable.get('metrics', {})
+            for key in ['vulnerabilities', 'critical', 'high', 'medium', 'low', 'inheritedRiskScore']:
+                all_metrics[key] += child_metrics.get(key, 0)
+
+        # Add all ancestor reachable sets (for cross-branch connections)
+        current = node
+        while current.get('parent'):
+            parent = current['parent']
+            parent_reachable = parent.get('reachable', parent.get('subtree', {}))
+            all_uuids.update(parent_reachable.get('projectUUIDs', []))
+            parent_metrics = parent_reachable.get('metrics', {})
+            for key in ['vulnerabilities', 'critical', 'high', 'medium', 'low', 'inheritedRiskScore']:
+                all_metrics[key] += parent_metrics.get(key, 0)
+            current = parent
+
+        node['reachable'] = {
+            'projectsCount': len(all_uuids),
+            'projectUUIDs': list(all_uuids),
+            'metrics': all_metrics
+        }
+
+    # Compute reachable for all root nodes
+    for root_id in root_nodes_array:
+        root_node = node_map.get(root_id)
+        if root_node:
+            compute_reachable_metrics(root_node)
+    logger.info('Reachable aggregation completed for %d root nodes', len(root_nodes_array))
+
+    # Clean up internal references before returning
+    for node in node_map.values():
+        node.pop('parent', None)  # Remove parent references
+        node.pop('projectUUIDs', None)  # Remove internal UUID sets
+        if 'subtree' in node:
+            node['subtree'].pop('projectUUIDs', None)  # Remove from subtree
+        if 'reachable' in node:
+            node['reachable'].pop('projectUUIDs', None)  # Remove from reachable
 
     # Return sorted tree nodes - nodes with children first, then leaves
     result = []
@@ -2071,7 +2524,17 @@ def build_tree_from_graph_data(nodes, edges):
 
     result.sort(key=sort_key)
 
-    logger.info('build_tree_from_graph_data: returning %d root nodes with children: %s',
+    # Debug: Check first few nodes for subtree/reachable
+    sample_nodes = result[:3]
+    for n in sample_nodes:
+        has_subtree = 'subtree' in n
+        has_reachable = 'reachable' in n
+        subtree_projects = n.get('subtree', {}).get('projectsCount', 'N/A')
+        reachable_projects = n.get('reachable', {}).get('projectsCount', 'N/A')
+        logger.info('Node {}: subtree={}, reachable={}, subtree_projects={}, reachable_projects={}',
+                    n['name'], has_subtree, has_reachable, subtree_projects, reachable_projects)
+
+    logger.info('build_tree_from_graph_data: returning {} root nodes with children: {}',
                 len(result),
                 [(n['name'], len(n['children'])) for n in result])
 
@@ -2158,10 +2621,14 @@ async def get_graph_data(dt_token: str, root_taxonomy: Optional[str], associativ
                 aggregated_metrics['low'] += metrics.get('low', 0)
                 aggregated_metrics['inheritedRiskScore'] += metrics.get('inheritedRiskScore', 0.0)
 
+        project_uuids = [p.get('uuid') for p in tag_projects if p.get('uuid')]
+        if tag['name'] == 'bee:2025.12':
+            logger.info('Enriching tag bee:2025.12: projects_count={}, uuids={}', projects_count, project_uuids)
         enriched_tags.append({
             'name': tag['name'],
             'taxonomy': tag_taxonomy,
             'projectsCount': projects_count,  # Use actual project count
+            'projectUUIDs': project_uuids,  # Track unique project IDs
             'metrics': aggregated_metrics  # Include aggregated vulnerability metrics
         })
 
