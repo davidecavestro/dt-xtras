@@ -15,6 +15,9 @@ import sys
 sys.path.insert(0, '/workspace/backend')
 from main import app
 
+# Export for test use
+DT_API_URL = "http://dtrack-apiserver:8080"
+
 
 @pytest.fixture
 def client():
