@@ -1,4 +1,5 @@
 import { createLogger } from './logger'
+import { createJsRegExp } from './taxonomyParser'
 
 export default class SimpleTaxonomyGraphBuilder {
   constructor() {
@@ -132,7 +133,8 @@ export default class SimpleTaxonomyGraphBuilder {
   }
 
   getTagValues (tag, taxonomy) {
-    const regex = new RegExp(taxonomy.regex_pattern);
+    const regex = createJsRegExp(taxonomy.regex_pattern);
+    if (!regex) return null;
     const match = regex.exec(tag.name);
     if (match && match.groups) {
       return match.groups;
@@ -153,12 +155,8 @@ export default class SimpleTaxonomyGraphBuilder {
     }
     // otherwise search
     const taxonomy = taxonomies.find(taxonomy => {
-      try {
-        const regex = new RegExp(taxonomy.regex_pattern);
-        return regex.test(tag.name);
-      } catch {
-        return false;
-      }
+      const regex = createJsRegExp(taxonomy.regex_pattern);
+      return regex ? regex.test(tag.name) : false;
     });
     this.tagTaxonomies.set(tag.name, taxonomy);
     return taxonomy;

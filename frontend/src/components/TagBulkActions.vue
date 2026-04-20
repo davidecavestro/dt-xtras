@@ -538,6 +538,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTaxonomyStore } from '../stores/taxonomies'
+import { createJsRegExp } from '../utils/taxonomyParser'
 import { useTagStore } from '../stores/tags'
 import { useProjectStore } from '../stores/projects'
 import { useToast } from '../composables/useToast'
@@ -721,7 +722,7 @@ export default {
         hasTaxonomy = taxonomies.value.find(taxonomy => {
           if (!taxonomy.regex_pattern) return false
           try {
-            return new RegExp(taxonomy.regex_pattern).test(tag.name)
+            return createJsRegExp(taxonomy.regex_pattern).test(tag.name)
           } catch (e) {
             return false
           }
@@ -774,7 +775,7 @@ export default {
         hasTaxonomy = taxonomies.value.find(taxonomy => {
           if (!taxonomy.regex_pattern) return false
           try {
-            return new RegExp(taxonomy.regex_pattern).test(tag.name)
+            return createJsRegExp(taxonomy.regex_pattern).test(tag.name)
           } catch (e) {
             return false
           }
@@ -798,7 +799,7 @@ export default {
       let hasTaxonomy = taxonomies.value.find(taxonomy => {
         if (!taxonomy.regex_pattern) return false
         try {
-          return new RegExp(taxonomy.regex_pattern).test(tagName)
+          return createJsRegExp(taxonomy.regex_pattern).test(tagName)
         } catch (e) {
           return false
         }

@@ -453,6 +453,7 @@ import { useTagStore } from '../stores/tags'
 import { useGraphStore } from '../stores/graph'
 import { useTaxonomyStore } from '../stores/taxonomies'
 import TreeNode from './TreeNode.vue'
+import { createJsRegExp } from '../utils/taxonomyParser'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import StatusCell from './grid-cells/StatusCell.vue'
@@ -510,15 +511,24 @@ export default {
     // Coordinated loading state - wait for all stores to be ready
     const isDataReady = computed(() => {
       try {
-        return (
-          !projectLoading.value &&
+        // Check if all loading states are complete
+        const allLoaded = !projectLoading.value &&
           !tagLoading.value &&
           !graphLoading.value &&
-          !taxonomiesLoading.value &&
-          projects.value && projects.value.length > 0 &&
-          nodes.value && nodes.value.length > 0 &&
-          edges.value && edges.value.length > 0
-        );
+          !taxonomiesLoading.value;
+
+        if (!allLoaded) return false;
+
+        // Check if we have projects data
+        const hasProjects = projects.value && projects.value.length > 0;
+
+        // Check for tree data (hierarchical mode has treeData but empty nodes/edges)
+        const hasTreeData = treeData.value && treeData.value.length > 0;
+        const hasGraphData = nodes.value && nodes.value.length > 0 &&
+                              edges.value && edges.value.length > 0;
+
+        // Data is ready if we have projects and either tree structure
+        return hasProjects && (hasTreeData || hasGraphData);
       } catch (err) {
         logger.warn('Error in isDataReady computed:', err);
         return false;
@@ -542,7 +552,10 @@ export default {
 
       // Try to find taxonomy sorted by priority by matching regex pattern
       return taxonomies.value
-        .filter(t => node.name.match(new RegExp(t.regex_pattern)))
+        .filter(t => {
+          const regex = createJsRegExp(t.regex_pattern)
+          return regex && node.name.match(regex)
+        })
         .sort((a, b) => a.priority - b.priority)[0]
     }
 
@@ -980,22 +993,17 @@ export default {
           treeLoader
         ])
 
-        // Build hierarchical tree structure from graph data
-        if (nodes.value && nodes.value.length > 0 &&
-            edges.value && edges.value.length > 0) {
+        // Sync tree data from store (works for both network and hierarchical modes)
+        try {
+          // Use tree data from backend (populated for both graph and hierarchical endpoints)
+          treeData.value = graphStore.treeData || [];
 
-          try {
-            // Use tree data from backend instead of client-side building
-            treeData.value = graphStore.treeData || [];
-
-            // Update all reachable nodes for computed property
+          // Update all reachable nodes for computed property
+          if (treeData.value.length > 0) {
             await updateAllReachableNodes();
-          } catch (treeErr) {
-            logger.error('Error building tree:', treeErr);
-            treeData.value = [];
           }
-        } else {
-          // Clear tree data if no nodes/edges available
+        } catch (treeErr) {
+          logger.error('Error building tree:', treeErr);
           treeData.value = [];
         }
       } catch (err) {

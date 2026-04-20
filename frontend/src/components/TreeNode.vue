@@ -107,16 +107,15 @@
 <script>
 import { computed } from 'vue'
 import { useTaxonomyStore } from '../stores/taxonomies'
+import { Folder, ChevronRight, ChevronDown, Tag, Hash, Globe, Layers } from 'lucide-vue-next'
 import { createLogger } from '../utils/logger'
-import { ChevronRight, FolderOpen as FolderIcon, Server, Package, Tag } from 'lucide-vue-next'
+import { createJsRegExp } from '../utils/taxonomyParser'
 
 export default {
   name: 'TreeNode',
   components: {
     ChevronRight,
-    FolderIcon,
-    Server,
-    Package,
+    FolderIcon: Folder,
     Tag
   },
   props: {
@@ -167,8 +166,13 @@ export default {
     const highlightedName = computed(() => {
       if (!props.searchQuery) return props.node.name
 
-      const regex = new RegExp(`(${props.searchQuery})`, 'gi')
-      return props.node.name.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800">$1</mark>')
+      try {
+        const regex = new RegExp(`(${props.searchQuery})`, 'gi')
+        return props.node.name.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800">$1</mark>')
+      } catch (e) {
+        // If search query has invalid regex chars, just return the original name
+        return props.node.name
+      }
     })
 
     const getVulnColor = (vulnCount) => {
@@ -252,14 +256,13 @@ export default {
         const matchingTaxonomy = taxonomies.find(taxonomy => {
           if (!taxonomy.regex_pattern) return false
 
-          // Create regex from pattern and test against node name
-          try {
-            const regex = new RegExp(taxonomy.regex_pattern)
-            return regex.test(node.name)
-          } catch (error) {
+          // Create regex from pattern (converting Python syntax to JavaScript)
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          if (!regex) {
             logger.warn('Invalid regex pattern:', taxonomy.regex_pattern);
             return false
           }
+          return regex.test(node.name)
         })
 
         logger.debug('Found matching taxonomy:', matchingTaxonomy);

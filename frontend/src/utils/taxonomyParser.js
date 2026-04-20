@@ -120,3 +120,32 @@ export const loadTagValuesForDropdowns = async (parts, selectedTaxonomy) => {
     })
   }
 }
+
+/**
+ * Converts Python-style regex pattern to JavaScript-compatible pattern.
+ * Mainly converts named capture groups: (?P<name>...) -> (?<name>...)
+ * @param {string} pattern - Python-style regex pattern
+ * @returns {string} JavaScript-compatible regex pattern
+ */
+export const toJsRegexPattern = (pattern) => {
+  if (!pattern) return pattern
+  // Convert Python's (?P<name>...) to JavaScript's (?<name>...)
+  return pattern.replace(/\(\?P</g, '(?<')
+}
+
+/**
+ * Creates a RegExp from a Python-style pattern.
+ * Converts the pattern to JavaScript syntax first.
+ * @param {string} pattern - Python-style regex pattern
+ * @param {string} flags - RegExp flags (optional)
+ * @returns {RegExp|null} JavaScript RegExp or null if invalid
+ */
+export const createJsRegExp = (pattern, flags = '') => {
+  if (!pattern) return null
+  try {
+    const jsPattern = toJsRegexPattern(pattern)
+    return new RegExp(jsPattern, flags)
+  } catch (error) {
+    return null
+  }
+}
