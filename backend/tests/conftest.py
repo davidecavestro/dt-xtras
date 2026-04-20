@@ -227,9 +227,8 @@ def temp_taxonomy_file(tmp_path, monkeypatch):
     with open(temp_file, 'w') as f:
         yaml.dump(test_taxonomies, f)
 
-    # Patch both modules
+    # Patch services module (main imports from services)
     monkeypatch.setattr(services, "TAXONOMIES_FILE", str(temp_file))
-    monkeypatch.setattr(main, "TAXONOMIES_FILE", str(temp_file))
 
     yield temp_file
 

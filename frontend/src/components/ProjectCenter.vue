@@ -307,6 +307,7 @@ import { useToast } from '../composables/useToast'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 import { useProjectStore } from '../stores/projects'
 import { useTaxonomyStore } from '../stores/taxonomies'
+import { createJsRegExp } from '../utils/taxonomyParser'
 
 export default {
   name: 'ProjectCenter',
@@ -548,11 +549,8 @@ export default {
       if (!hasTaxonomy) {
         hasTaxonomy = taxonomies.value.find(taxonomy => {
           if (!taxonomy.regex_pattern) return false
-          try {
-            return new RegExp(taxonomy.regex_pattern).test(tag.name)
-          } catch (e) {
-            return false
-          }
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          return regex ? regex.test(tag.name) : false
         })
       }
 
@@ -576,11 +574,8 @@ export default {
       if (!hasTaxonomy) {
         hasTaxonomy = taxonomies.value.find(taxonomy => {
           if (!taxonomy.regex_pattern) return false
-          try {
-            return new RegExp(taxonomy.regex_pattern).test(tag.name)
-          } catch (e) {
-            return false
-          }
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          return regex ? regex.test(tag.name) : false
         })
       }
 

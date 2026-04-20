@@ -260,6 +260,7 @@ import { useTaxonomyStore } from '../stores/taxonomies';
 import { useProjectStore } from '../stores/projects';
 import { useGraphStore } from '../stores/graph';
 import { createLogger } from '../utils/logger';
+import { createJsRegExp } from '../utils/taxonomyParser';
 
 // Register dagre extension
 cytoscape.use(dagre);
@@ -441,13 +442,13 @@ export default {
         const taxonomy = taxonomies.value?.find(t => t.id === node.taxonomy);
         let captureGroups = [];
         if (taxonomy && taxonomy.regex_pattern) {
-          try {
-            const regex = new RegExp(taxonomy.regex_pattern);
+          const regex = createJsRegExp(taxonomy.regex_pattern);
+          if (regex) {
             const match = regex.exec(node.id);
             if (match && match.groups) {
               captureGroups = Object.values(match.groups).filter(g => g); // Get all non-empty capture groups
             }
-          } catch (e) {
+          } else {
             logger.warn('Invalid regex pattern:', taxonomy.regex_pattern);
           }
         }

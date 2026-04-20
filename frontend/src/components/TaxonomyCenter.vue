@@ -442,6 +442,7 @@ import { Plus, Trash2, Edit2, Folder } from 'lucide-vue-next'
 import cytoscape from 'cytoscape'
 import { useToast } from '../composables/useToast'
 import { createLogger } from '../utils/logger'
+import { createJsRegExp } from '../utils/taxonomyParser'
 
 const { showSuccess, showError } = useToast()
 const logger = createLogger('tag-center')
@@ -625,30 +626,31 @@ const graphGroup = ref(null)
         return
       }
 
-      try {
-        const regex = new RegExp(editingTaxonomy.value.regex_pattern)
-        const match = testTags.value.match(regex)
-        if (match) {
-          regexTestResult.value = {
-            success: true,
-            match: match[0],
-            groups: match.slice(1),
-            message: 'Pattern matches!'
-          }
-        } else {
-          regexTestResult.value = {
-            success: false,
-            match: null,
-            groups: [],
-            message: 'Pattern does not match test string'
-          }
-        }
-      } catch (error) {
+      const regex = createJsRegExp(editingTaxonomy.value.regex_pattern)
+      if (!regex) {
         regexTestResult.value = {
           success: false,
           match: null,
           groups: [],
-          message: `Invalid regex: ${error.message}`
+          message: 'Invalid regex pattern (converted from Python syntax)'
+        }
+        return
+      }
+
+      const match = testTags.value.match(regex)
+      if (match) {
+        regexTestResult.value = {
+          success: true,
+          match: match[0],
+          groups: match.slice(1),
+          message: 'Pattern matches!'
+        }
+      } else {
+        regexTestResult.value = {
+          success: false,
+          match: null,
+          groups: [],
+          message: 'Pattern does not match test string'
         }
       }
     }

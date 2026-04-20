@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { parseRegExpLiteral } from 'regexpp'
 import { createLogger } from '../utils/logger'
+import { toJsRegexPattern, createJsRegExp } from '../utils/taxonomyParser'
 
 export const useTaxonomyStore = defineStore('taxonomies', () => {
   const logger = createLogger('taxonomies')
@@ -149,8 +150,11 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
   const parseTaxonomyPattern = (pattern, relations = []) => {
     const parts = []
 
+    // Convert Python-style pattern to JavaScript-style before parsing
+    const jsPattern = toJsRegexPattern(pattern)
+
     // Use regexpp to process the regex pattern in a semantic fashion
-    const ast = parseRegExpLiteral(`/${pattern}/`)
+    const ast = parseRegExpLiteral(`/${jsPattern}/`)
 
     // The 'alternatives' array contains the top-level branches of the regex
     const elements = ast.pattern.alternatives[0].elements
@@ -264,7 +268,14 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
 
           // Extract capture group values from target tags
           const captureGroupValues = new Set()
-          const targetRegex = new RegExp(targetTaxonomy.regex_pattern)
+          const targetRegex = createJsRegExp(targetTaxonomy.regex_pattern)
+
+          if (!targetRegex) {
+            logger.warn(`Invalid regex pattern for taxonomy ${targetTaxonomy.id}:`, targetTaxonomy.regex_pattern)
+            part.options = []
+            results.push({ part: part.name, options: [] })
+            continue
+          }
 
           targetTags.forEach(tag => {
             const match = tag.name.match(targetRegex)

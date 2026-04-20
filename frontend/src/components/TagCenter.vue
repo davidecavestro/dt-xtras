@@ -877,6 +877,7 @@ import { useProjectStore } from '../stores/projects'
 import useToast from '../composables/useToast'
 import { createLogger } from '../utils/logger'
 import { useConfirmDialog } from '../composables/useConfirmDialog'
+import { createJsRegExp } from '../utils/taxonomyParser'
 import { RefreshCw, Edit2, Copy, Tag, Grid3X3, List, Square, Folder, Trash2, AlertTriangle } from 'lucide-vue-next'
 import Modal from './Modal.vue'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
@@ -1079,7 +1080,7 @@ export default {
       const matchingTaxonomy = taxonomies.value.find(taxonomy => {
         try {
           // Use native RegExp for JS regex compatibility
-          const regex = new RegExp(taxonomy.regex_pattern)
+          const regex = createJsRegExp(taxonomy.regex_pattern)
           const matches = regex.test(tag)
           return matches
         } catch (error) {
@@ -1207,7 +1208,7 @@ export default {
               // Use the found taxonomy and proceed with the same logic
               const parts = taxonomyStore.parseTaxonomyPattern(taxonomyByName.regex_pattern, taxonomyByName.relations)
               await taxonomyStore.loadDropdownValues(parts, taxonomyByName, tagStore.tags)
-              const regex = new RegExp(taxonomyByName.regex_pattern)
+              const regex = createJsRegExp(taxonomyByName.regex_pattern)
               const match = tag.name.match(regex)
 
               if (match) {
@@ -1239,7 +1240,7 @@ export default {
             await taxonomyStore.loadDropdownValues(parts, taxonomy, tagStore.tags)
 
             // Parse the original tag to pre-populate values
-            const regex = new RegExp(taxonomy.regex_pattern)
+            const regex = createJsRegExp(taxonomy.regex_pattern)
             logger.info('🔧 Regex pattern:', taxonomy.regex_pattern)
             logger.info('🔧 Testing against tag:', tag.name)
             const match = tag.name.match(regex)
@@ -1430,7 +1431,7 @@ export default {
 
       // Validate against the original tag's taxonomy
       const taxonomy = taxonomies.value.find(t => t.id === cloningTag.value?.taxonomy)
-      if (taxonomy && !new RegExp(taxonomy.regex_pattern).test(generatedTag.value)) {
+      if (taxonomy && !createJsRegExp(taxonomy.regex_pattern).test(generatedTag.value)) {
         showError('Invalid tag name', `Tag must match pattern: ${taxonomy.regex_pattern}`)
         return
       }
@@ -1629,7 +1630,7 @@ export default {
     const canCreateTag = computed(() => {
       const taxonomy = taxonomies.value.find(t => t.id === selectedTaxonomy.value?.id)
       // check that generatedTag is compatible with the tag pattern
-      return generatedTag.value.length > 0 && taxonomy && new RegExp(taxonomy.regex_pattern).test(generatedTag.value)
+      return generatedTag.value.length > 0 && taxonomy && createJsRegExp(taxonomy.regex_pattern).test(generatedTag.value)
     })
 
     // Separate validation for clone tag that doesn't depend on selectedTaxonomy
@@ -1644,7 +1645,7 @@ export default {
       }
 
       // check that generatedTag is compatible with the tag pattern
-      return generatedTag.value.length > 0 && new RegExp(taxonomy.regex_pattern).test(generatedTag.value)
+      return generatedTag.value.length > 0 && createJsRegExp(taxonomy.regex_pattern).test(generatedTag.value)
     })
 
     // Separate validation for edit tag that doesn't depend on selectedTaxonomy
@@ -1659,7 +1660,7 @@ export default {
       }
 
       // check that generatedTag is compatible with the tag pattern
-      return generatedTag.value.length > 0 && new RegExp(taxonomy.regex_pattern).test(generatedTag.value)
+      return generatedTag.value.length > 0 && createJsRegExp(taxonomy.regex_pattern).test(generatedTag.value)
     })
 
     // Check if tag has capture groups (for showing simple vs advanced clone)
@@ -1680,7 +1681,7 @@ export default {
       try {
         // Find taxonomy that matches this tag pattern
         const matchingTaxonomy = taxonomies.value.find(taxonomy => {
-          const regex = new RegExp(taxonomy.regex_pattern)
+          const regex = createJsRegExp(taxonomy.regex_pattern)
           return regex.test(tag.name)
         })
 
@@ -1697,7 +1698,7 @@ export default {
         logger.info('🔧 Set selectedTaxonomy and editingTag')
 
         // Parse the tag using the taxonomy pattern to pre-populate fields
-        const regex = new RegExp(matchingTaxonomy.regex_pattern)
+        const regex = createJsRegExp(matchingTaxonomy.regex_pattern)
         const match = tag.name.match(regex)
 
         logger.info('🔧 Regex match result:', match)
