@@ -223,6 +223,21 @@ async def reorder_taxonomies(
     return {"message": "Taxonomies reordered successfully"}
 
 
+# Project endpoints
+
+@app.get("/api/project", response_model=List[DTProject])
+async def get_projects(
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None,
+    excludeInactive: Optional[str] = "false",
+    dt_token: str = Depends(get_dt_token_from_request)
+):
+    """Get projects from DT API with optional filtering"""
+    projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search, excludeInactive=excludeInactive)
+    return projects
+
+
 # Tag endpoints
 
 @app.get("/api/tag")
@@ -366,8 +381,54 @@ async def get_tree(
     associative_mode: bool = False
 ):
     """Build and return taxonomy tree with aggregated project data (network/graph view)"""
-    # Simplified - would call graph building logic from services
-    return {"nodes": [], "edges": [], "tree": []}
+    # Load taxonomies and build mock tree from tags
+    taxonomies = load_taxonomies()
+    tags = await get_all_tags(dt_token)
+
+    # Build simple tree from tags
+    nodes = []
+    edges = []
+    tree = []
+
+    for taxonomy in taxonomies:
+        # Find tags matching this taxonomy
+        import regex
+        pattern = regex.compile(taxonomy.regex_pattern)
+        taxonomy_tags = [t for t in tags if pattern.match(t.get('name', ''))]
+
+        if taxonomy_tags:
+            # Create taxonomy node
+            tax_node = {
+                "id": taxonomy.id,
+                "name": taxonomy.name,
+                "type": "taxonomy",
+                "taxonomy": taxonomy.id,
+                "children": [],
+                "projectsCount": sum(t.get('projectCount', 0) for t in taxonomy_tags),
+                "projectUUIDs": [],
+                "metrics": {},
+                "color": taxonomy.color
+            }
+
+            # Add child nodes for each tag
+            for tag in taxonomy_tags:
+                tag_node = {
+                    "id": tag.get('name'),
+                    "name": tag.get('name'),
+                    "type": "tag",
+                    "taxonomy": taxonomy.id,
+                    "children": [],
+                    "projectsCount": tag.get('projectCount', 0),
+                    "projectUUIDs": [],
+                    "metrics": {},
+                    "color": taxonomy.color
+                }
+                tax_node["children"].append(tag_node)
+
+            nodes.append(tax_node)
+            tree.append(tax_node)
+
+    return {"nodes": nodes, "edges": edges, "tree": tree}
 
 
 @app.get("/api/tree/hierarchical", response_model=HierarchicalTreeResponse)
@@ -383,7 +444,60 @@ async def get_hierarchical_tree(
         logger.warning('No hierarchical taxonomies found, returning empty tree')
         return {"tree": []}
 
-    return {"tree": []}
+    # Fetch all tags from DT
+    all_tags = await get_all_tags(dt_token)
+
+    # Build hierarchical tree
+    tree_data = build_hierarchical_tree(all_tags, hierarchical_taxonomies, taxonomies)
+
+    return {"tree": tree_data}
+
+
+def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
+    """Build tree from hierarchical taxonomies with distinct node instances per path."""
+    import regex
+
+    # Build regex patterns for hierarchical taxonomies
+    hierarchical_patterns = []
+    for tax in hierarchical_taxonomies:
+        pattern = tax.regex_pattern if hasattr(tax, 'regex_pattern') else tax.get('regex_pattern', '')
+        if pattern:
+            hierarchical_patterns.append((tax, regex.compile(pattern)))
+
+    if not hierarchical_patterns:
+        return []
+
+    # Parse hierarchical tags and build path tree
+    path_nodes = {}  # (path_tuple) -> node_data
+
+    for tag in tags:
+        tag_name = tag.get('name', '')
+
+        # Check if tag matches any hierarchical taxonomy
+        for tax, pattern in hierarchical_patterns:
+            match = pattern.match(tag_name)
+            if match:
+                # Extract groups from match
+                groups = match.groupdict()
+
+                # Build path from groups
+                for group_name, group_value in groups.items():
+                    path_key = f"{tax.id}:{group_value}"
+                    if path_key not in path_nodes:
+                        path_nodes[path_key] = {
+                            "id": path_key,
+                            "name": path_key,
+                            "type": "taxonomy",
+                            "taxonomy": tax.id,
+                            "children": [],
+                            "projectsCount": 0,
+                            "projectUUIDs": [],
+                            "metrics": {},
+                            "color": tax.color
+                        }
+
+    # Convert to tree structure
+    return list(path_nodes.values())
 
 
 # Health endpoints

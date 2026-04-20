@@ -7,7 +7,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && rm -rf /var/lib/apt/lists/*
 
 # create a venv to ease tooling work
-RUN
+RUN python3 -m venv /opt/venv && \
+    chown -R vscode:vscode /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Install Docker CLI
 RUN curl -fsSL https://get.docker.com | sh \
