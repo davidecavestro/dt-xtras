@@ -171,7 +171,67 @@ def mock_dt_apis(mock_dt_token, sample_dt_tags, sample_dt_projects):
             return_value=Response(200, text="mock-dt-jwt-token-12345")
         )
 
-        yield respx_mock
+        yield
+
+
+@pytest.fixture(autouse=True)
+def temp_taxonomy_file(tmp_path, monkeypatch):
+    """Use a temporary taxonomy file for tests to avoid modifying production data."""
+    import services
+    import main
+
+    # Create temp taxonomy file with test data
+    test_taxonomies = {
+        "taxonomies": [
+            {
+                "id": "brand",
+                "name": "Brand",
+                "regex_pattern": "^brand:(?P<brand>.+)$",
+                "color": "#3b82f6",
+                "priority": 1,
+                "hierarchical": True,
+                "relations": []
+            },
+            {
+                "id": "region",
+                "name": "Region",
+                "regex_pattern": "^region:(?P<region>.+)$",
+                "color": "#22c55e",
+                "priority": 2,
+                "hierarchical": True,
+                "relations": []
+            },
+            {
+                "id": "site",
+                "name": "Site",
+                "regex_pattern": "^site:(?P<site>.+)$",
+                "color": "#f59e0b",
+                "priority": 3,
+                "associative": True,
+                "relations": [{"group": "site", "targets": "brand,region"}]
+            },
+            {
+                "id": "bundle_version",
+                "name": "Bundle Version",
+                "regex_pattern": "^bundle:(?P<bundle>.+):(?P<version>.+)$",
+                "color": "#a855f7",
+                "priority": 4,
+                "hierarchical": True,
+                "relations": []
+            }
+        ]
+    }
+
+    temp_file = tmp_path / "test_taxonomies.yaml"
+    import yaml
+    with open(temp_file, 'w') as f:
+        yaml.dump(test_taxonomies, f)
+
+    # Patch both modules
+    monkeypatch.setattr(services, "TAXONOMIES_FILE", str(temp_file))
+    monkeypatch.setattr(main, "TAXONOMIES_FILE", str(temp_file))
+
+    yield temp_file
 
 
 @pytest.fixture

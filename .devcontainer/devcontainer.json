@@ -41,7 +41,10 @@
         "ms-azuretools.vscode-docker",
         "bradlc.vscode-tailwindcss",
         "ms-vscode.vscode-json"
-      ]
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/venv/bin/python"
+      }
     }
   }
 }
