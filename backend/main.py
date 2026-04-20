@@ -9,7 +9,7 @@ import httpx
 import regex
 from datetime import datetime
 from typing import Dict, Optional, List, Any
-from fastapi import Request, status, Form, FastAPI, HTTPException, Depends
+from fastapi import Request, status, Form, FastAPI, HTTPException, Depends, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -86,7 +86,7 @@ async def login(username: str = Form(...), password: str = Form(...)):
     """Authenticate with DT API and return JWT token"""
     try:
         dt_form_data = {'username': username, 'password': password}
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{DT_API_URL}/api/v1/user/login",
@@ -94,12 +94,12 @@ async def login(username: str = Form(...), password: str = Form(...)):
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
                 timeout=10.0
             )
-            
+
             if response.status_code == 200:
                 dt_jwt_token = response.text.strip()
                 dt_permissions = decode_jwt_permissions(dt_jwt_token)
                 jwt_token = create_jwt_token(username, dt_jwt_token, dt_permissions)
-                
+
                 return {
                     "access_token": jwt_token,
                     "token_type": "bearer",
@@ -147,7 +147,7 @@ async def logout():
 # Taxonomy CRUD endpoints
 
 @app.get("/api/taxonomies", response_model=List[Taxonomy])
-async def get_taxonomies():
+async def get_taxonomies(dt_token: str = Depends(get_dt_token_from_request)):
     return load_taxonomies()
 
 
@@ -156,21 +156,21 @@ async def get_taxonomy_tags(taxonomy_id: str, dt_token: str = Depends(get_dt_tok
     """Get all tags that match a specific taxonomy pattern"""
     taxonomies = load_taxonomies()
     taxonomy = next((t for t in taxonomies if t.id == taxonomy_id), None)
-    
+
     if not taxonomy:
         raise HTTPException(status_code=404, detail="Taxonomy not found")
-    
+
     tags_response = await get_all_tags(dt_token)
-    
+
     matching_tags = []
     pattern = taxonomy.regex_pattern
     js_pattern = regex.compile(pattern)
-    
+
     for tag in tags_response:
         tag_name = tag.get('name', '')
         if js_pattern.match(tag_name):
             matching_tags.append(tag)
-    
+
     return matching_tags
 
 
@@ -207,15 +207,18 @@ async def delete_taxonomy(taxonomy_id: str, permissions: List[str] = Depends(req
 
 
 @app.put("/api/taxonomies/reorder")
-async def reorder_taxonomies(taxonomy_order: List[TaxonomyPriority], permissions: List[str] = Depends(require_edit_permissions)):
+async def reorder_taxonomies(
+    taxonomy_order: List[TaxonomyPriority] = Body(...),
+    permissions: List[str] = Depends(require_edit_permissions)
+):
     """Reorder taxonomies based on the provided order"""
     taxonomies = load_taxonomies()
     order_map = {item.id: item.priority for item in taxonomy_order}
-    
+
     for taxonomy in taxonomies:
         if taxonomy.id in order_map:
             taxonomy.priority = order_map[taxonomy.id]
-    
+
     save_taxonomies(taxonomies)
     return {"message": "Taxonomies reordered successfully"}
 
@@ -230,40 +233,40 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers)
-        
+
         if response.status_code == 401:
             raise HTTPException(status_code=401, detail="DT API authentication failed")
         elif response.status_code == 403:
             raise HTTPException(status_code=403, detail="DT API access forbidden")
         elif response.status_code >= 500:
             raise HTTPException(status_code=502, detail=f"DT API server error: {response.status_code}")
-        
+
         response.raise_for_status()
         dt_tags = response.json()
-        
+
         taxonomies = load_taxonomies()
-        
+
         tags_with_taxonomy = []
         for dt_tag in dt_tags:
             tag_name = dt_tag.get('name', '')
             taxonomy_id = None
-            
+
             for taxonomy in taxonomies:
                 js_pattern = regex.compile(taxonomy.regex_pattern)
                 match = js_pattern.match(tag_name)
                 if match:
                     taxonomy_id = taxonomy.id
                     break
-            
+
             tags_with_taxonomy.append({
                 'name': tag_name,
                 'projectsCount': dt_tag.get('projectCount', 0),
                 'taxonomy': taxonomy_id
             })
-        
+
         return tags_with_taxonomy
 
 
@@ -273,38 +276,38 @@ async def update_tag(tag_name: str, tag_data: dict, permissions: List[str] = Dep
     new_name = tag_data.get('name', '').strip()
     if not new_name:
         raise HTTPException(status_code=400, detail="New tag name is required")
-    
+
     dt_token = get_dt_token_from_request(credentials)
-    
+
     if new_name == tag_name:
         existing_tag = await get_tag_by_name(tag_name, dt_token)
         if existing_tag:
             return existing_tag
         else:
             raise HTTPException(status_code=404, detail="Tag not found")
-    
+
     # Create new tag
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
-    
+
     async with httpx.AsyncClient() as client:
         await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[new_name], timeout=30.0)
-    
+
     # Get projects with old tag and migrate
     projects_with_old_tag = await get_projects_with_tag(dt_token, tag_name)
     if projects_with_old_tag:
         await add_projects_to_tag(dt_token, new_name, projects_with_old_tag)
         await remove_projects_from_tag(dt_token, tag_name, projects_with_old_tag)
-    
+
     # Delete old tag
     try:
         await delete_tag_from_dt(dt_token, tag_name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     updated_tag = await get_tag_by_name(new_name, dt_token)
     if updated_tag:
         return updated_tag
@@ -324,13 +327,13 @@ async def create_tag(tag_data: dict, dt_token: str = Depends(get_dt_token_from_r
     tag_name = tag_data.get('name')
     if not tag_name:
         raise HTTPException(status_code=400, detail="Tag name is required")
-    
+
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[tag_name], timeout=30.0)
         response.raise_for_status()
@@ -345,7 +348,7 @@ async def delete_tag(tag_name: str, dt_token: str = Depends(get_dt_token_from_re
         headers["Authorization"] = f"Bearer {dt_token}"
     elif DT_API_KEY:
         headers["X-Api-Key"] = DT_API_KEY
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.delete(f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0)
         if response.status_code in [200, 204]:
@@ -375,11 +378,11 @@ async def get_hierarchical_tree(
     """Build and return hierarchical tree from hierarchical taxonomies only"""
     taxonomies = load_taxonomies()
     hierarchical_taxonomies = [t for t in taxonomies if t.hierarchical]
-    
+
     if not hierarchical_taxonomies:
         logger.warning('No hierarchical taxonomies found, returning empty tree')
         return {"tree": []}
-    
+
     return {"tree": []}
 
 
