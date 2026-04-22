@@ -608,11 +608,15 @@ export default {
       // Reload tree with appropriate endpoint
       if (mode === 'hierarchical') {
         await graphStore.loadHierarchicalTree();
+        // Sync tree data from store
+        treeData.value = graphStore.treeData || [];
       } else {
         await graphStore.loadGraph({
           rootTaxonomy: null,
           associativeMode: associativeMode.value
         });
+        // Sync tree data from store
+        treeData.value = graphStore.treeData || [];
       }
     };
 

@@ -107,7 +107,7 @@
 <script>
 import { computed } from 'vue'
 import { useTaxonomyStore } from '../stores/taxonomies'
-import { Folder, ChevronRight, ChevronDown, Tag, Hash, Globe, Layers } from 'lucide-vue-next'
+import { Folder, ChevronRight, ChevronDown, Tag, Hash, Globe, Layers, Server, Package } from 'lucide-vue-next'
 import { createLogger } from '../utils/logger'
 import { createJsRegExp } from '../utils/taxonomyParser'
 
@@ -116,7 +116,9 @@ export default {
   components: {
     ChevronRight,
     FolderIcon: Folder,
-    Tag
+    Tag,
+    Server,
+    Package
   },
   props: {
     node: {
