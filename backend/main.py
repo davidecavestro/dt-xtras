@@ -593,10 +593,6 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
                     value = gen_groups[group_name]
                     path.append((target_tax, value))
 
-            # Add the hierarchical tag itself as the leaf
-            # Use the full tag name to avoid duplicate-looking names (e.g., site vs brand)
-            path.append((gen_tax, tag_name))
-
             if not path:
                 continue
 

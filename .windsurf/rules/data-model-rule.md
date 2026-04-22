@@ -52,3 +52,4 @@ site:y:eu:myapp:2.0.0
 # brand:y has a bundle bee:2026.05 on region:emea and myapp:2.0.0 on region:eu
 # On the Navigation Tree/Hierarchical mode in the Frontend of the application, the region:eu under site:qualcoz doesn't share any data with the region:eu under site:y
 # The Hierarchical data is computed on the backend as a tree whose paths are defined by the tags matching taxonomies having attribute "hierarchical" set to True. The taxonomy relations determine the tree nodes (tags matching other taxonomies, not necessarily hierarchical). Every relation target tag is a tree node, the first is the root, the second is its child, and so on.
+# The tag site:qualcoz:eu:bee:2026.05 generates a path qualcoz (the brand) -> eu (the region) -> bee:2026.05 (the bundle version, leaf of the tree)
