@@ -249,16 +249,19 @@ export default {
     const getNodeIconColor = (node) => {
       logger.debug('getNodeIconColor called for node:', node);
 
-      // For taxonomy nodes, use taxonomy color
+      // Use color from backend if available (hierarchical tree includes this)
+      if (node.color) {
+        return node.color
+      }
+
+      // For taxonomy nodes, use taxonomy color from store
       if (node.type === 'taxonomy') {
-        // Try to find taxonomy by matching node name with taxonomy patterns
         const { taxonomies } = taxonomyStore
 
-        // Find taxonomy that matches this node's pattern
+        // Find taxonomy by matching node name with taxonomy patterns
         const matchingTaxonomy = taxonomies.find(taxonomy => {
           if (!taxonomy.regex_pattern) return false
 
-          // Create regex from pattern (converting Python syntax to JavaScript)
           const regex = createJsRegExp(taxonomy.regex_pattern)
           if (!regex) {
             logger.warn('Invalid regex pattern:', taxonomy.regex_pattern);
@@ -274,15 +277,8 @@ export default {
         }
       }
 
-      // Default colors for different node types
-      let color;
-      switch (node.type) {
-        default:
-          color = '#8B5CF6' // purple-500 (for tags)
-          break
-      }
-      logger.debug('Using default color for node type', node.type, ':', color);
-      return color
+      // Default color
+      return '#8B5CF6' // purple-500
     }
 
     const handleSelect = () => {
