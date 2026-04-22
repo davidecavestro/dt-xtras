@@ -668,7 +668,7 @@ const graphGroup = ref(null)
         data: {
           id: taxonomy.id,
           label: taxonomy.name,
-          associative: taxonomy.associative || false,
+          hierarchical: taxonomy.hierarchical || false,
           priority: taxonomy.priority,
           relations: taxonomy.relations || [],
           color: taxonomy.color || '#3B82F6'
@@ -707,7 +707,7 @@ const graphGroup = ref(null)
             selector: 'node',
             style: {
               'shape': function(ele) {
-                return ele.data('associative') ? 'round-rectangle' : 'barrel';
+                return ele.data('hierarchical') ? 'round-rectangle' : 'barrel';
               },
               'background-color': 'data(color)',
               'color': function(ele) {

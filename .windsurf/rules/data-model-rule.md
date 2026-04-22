@@ -26,7 +26,7 @@ taxonomies:
   priority: 1
   regex_pattern: ^(?!(?:brand|region|bundle|cust|env|deploy):)(?<bundle_name>[\w-]+):(?<version>[\d\w\.-]+)$
   relations: []
-- associative: true
+- hierarchical: true
   color: '#42f057'
   id: site
   name: Site

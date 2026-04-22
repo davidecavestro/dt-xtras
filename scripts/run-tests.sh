@@ -9,6 +9,8 @@ cd "$BACKEND_DIR"
 echo "Running tests from: $(pwd)"
 echo "================================"
 
+pip install -r requirements.txt
+
 if [[ "$1" == "--coverage" ]]; then
     echo "Running tests with coverage..."
     python -m pytest -v --cov=main --cov-report=term-missing --cov-report=html:htmlcov

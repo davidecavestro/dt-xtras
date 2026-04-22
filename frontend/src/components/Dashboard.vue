@@ -620,7 +620,7 @@ export default {
       }
     };
 
-    const associativeMode = ref(true) // Default to associative mode like graph
+    const associativeMode = ref(true) // Default to hierarchical mode like graph
     const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
 
     // Uniform pagination constants

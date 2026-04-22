@@ -71,7 +71,7 @@ def sample_dt_projects():
             "name": "baz",
             "version": "1.0",
             "uuid": "16d4fb1c-19a0-4e37-b92b-bd3ce112dda3",
-            "tags": [{"name": "bee:2026.05"}],
+            "tags": [{"name": "site:qualcoz:eu:bee:2026.05"}],
             "metrics": {
                 "critical": 0,
                 "high": 1,
@@ -85,7 +85,7 @@ def sample_dt_projects():
             "name": "qux",
             "version": "1.0",
             "uuid": "24a5fc2d-20b1-4f48-c03c-ce4df223eeb4",
-            "tags": [{"name": "bee:2026.05"}],
+            "tags": [{"name": "site:qualcoz:eu:bee:2026.05"}],
             "metrics": {
                 "critical": 1,
                 "high": 0,
@@ -99,7 +99,10 @@ def sample_dt_projects():
             "name": "quux",
             "version": "1.0",
             "uuid": "32b6gd3e-31c2-5g59-d14d-df5eg334ffc5",
-            "tags": [{"name": "bee:2026.05"}, {"name": "myapp:1.0.0"}],
+            "tags": [
+                {"name": "site:qualcoz:eu:bee:2026.05"},
+                {"name": "site:qualcoz:eu:myapp:1.0.0"},
+            ],
             "metrics": {
                 "critical": 0,
                 "high": 0,
@@ -113,7 +116,7 @@ def sample_dt_projects():
             "name": "corge",
             "version": "1.0",
             "uuid": "44c7he4f-42d3-6h60-e25e-eg6fh445ggd6",
-            "tags": [{"name": "myapp:1.0.0"}],
+            "tags": [{"name": "site:qualcoz:eu:myapp:1.0.0"}],
             "metrics": {
                 "critical": 0,
                 "high": 1,

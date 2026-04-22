@@ -15,7 +15,9 @@ class TestNetworkTreeEndpoint:
         response = client.get("/api/tree")
         assert response.status_code == 401
 
-    def test_get_tree_success(self, client, mock_dt_apis, auth_headers, sample_dt_tags, sample_dt_projects):
+    def test_get_tree_success(
+        self, client, mock_dt_apis, auth_headers, sample_dt_tags, sample_dt_projects
+    ):
         """Test successful tree retrieval with mocked DT data."""
         response = client.get("/api/tree", headers=auth_headers)
 
@@ -48,6 +50,62 @@ class TestNetworkTreeEndpoint:
 
         # In associative mode, edges should connect tags through site relationships (if available)
         edges = data.get("edges") or []
+
+    def test_get_tree_has_metrics_and_projects(
+        self, client, mock_dt_apis, auth_headers, sample_dt_projects
+    ):
+        """Test that tree nodes include metrics and project counts with non-zero values."""
+        response = client.get("/api/tree", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        tree = data.get("tree", [])
+        nodes = data.get("nodes", [])
+
+        # Find the site:qualcoz:eu:bee:2026.05 tag node and verify it has aggregated metrics
+        # Debug: print node names to see what's available
+        node_names = [n.get("name") for n in nodes]
+        print(f"Available nodes: {node_names}")
+
+        bee_bundle = None
+        for node in nodes:
+            if node.get("name") == "site:qualcoz:eu:bee:2026.05":
+                bee_bundle = node
+                break
+
+        assert bee_bundle is not None, (
+            f"site:qualcoz:eu:bee:2026.05 node not found. "
+            f"Available nodes: {node_names}"
+        )
+        assert (
+            bee_bundle["projectsCount"] == 2
+        ), f"Expected 2 projects, got {bee_bundle['projectsCount']}"
+        assert len(bee_bundle["projectUUIDs"]) == 2, f"Expected 2 project UUIDs"
+        assert (
+            bee_bundle["metrics"]["critical"] == 1
+        ), f"Expected critical=1, got {bee_bundle['metrics']['critical']}"
+        assert (
+            bee_bundle["metrics"]["high"] == 1
+        ), f"Expected high=1, got {bee_bundle['metrics']['high']}"
+        assert (
+            bee_bundle["metrics"]["medium"] == 3
+        ), f"Expected medium=3, got {bee_bundle['metrics']['medium']}"
+        assert (
+            bee_bundle["metrics"]["low"] == 3
+        ), f"Expected low=3, got {bee_bundle['metrics']['low']}"
+
+        # Check that nodes have metrics
+        for node in nodes:
+            assert "metrics" in node
+            assert "projectsCount" in node
+            assert "projectUUIDs" in node
+
+        # Check that tree nodes have aggregated metrics
+        for node in tree:
+            assert "metrics" in node
+            assert "projectsCount" in node
+            assert "projectUUIDs" in node
         # Edges may be empty if no associative taxonomies exist
 
     def test_tree_metrics_aggregation(self, client, mock_dt_apis, auth_headers):
@@ -112,12 +170,16 @@ class TestHierarchicalTreeEndpoint:
             y_regions = [c.get("name") for c in y_brand.get("children", [])]
 
             if "region:eu" in qualcoz_regions:
-                qualcoz_eu = next(c for c in qualcoz["children"] if c.get("name") == "region:eu")
+                qualcoz_eu = next(
+                    c for c in qualcoz["children"] if c.get("name") == "region:eu"
+                )
                 # Verify qualcoz's eu has children
                 assert len(qualcoz_eu.get("children", [])) >= 0
 
             if "region:eu" in y_regions:
-                y_eu = next(c for c in y_brand["children"] if c.get("name") == "region:eu")
+                y_eu = next(
+                    c for c in y_brand["children"] if c.get("name") == "region:eu"
+                )
                 # Verify y's eu has children
                 assert len(y_eu.get("children", [])) >= 0
 
@@ -133,16 +195,39 @@ class TestHierarchicalTreeEndpoint:
         qualcoz = next((n for n in tree if n.get("name") == "brand:qualcoz"), None)
 
         if qualcoz:
-            qualcoz_eu = next((c for c in qualcoz.get("children", []) if c.get("name") == "region:eu"), None)
+            qualcoz_eu = next(
+                (
+                    c
+                    for c in qualcoz.get("children", [])
+                    if c.get("name") == "region:eu"
+                ),
+                None,
+            )
             if qualcoz_eu:
                 # Find bee bundle and verify metrics
-                bee_bundle = next((c for c in qualcoz_eu.get("children", []) if "bee" in c.get("name", "")), None)
+                bee_bundle = next(
+                    (
+                        c
+                        for c in qualcoz_eu.get("children", [])
+                        if "bee" in c.get("name", "")
+                    ),
+                    None,
+                )
                 if bee_bundle:
-                    # Verify bundle has expected fields
+                    # Verify bundle has expected fields and non-zero values
                     assert "projectsCount" in bee_bundle
                     assert "projectUUIDs" in bee_bundle
+                    assert "metrics" in bee_bundle
+                    assert (
+                        bee_bundle["projectsCount"] > 0
+                    ), f"Expected non-zero projectsCount, got {bee_bundle['projectsCount']}"
+                    assert (
+                        len(bee_bundle["projectUUIDs"]) > 0
+                    ), "Expected non-empty projectUUIDs"
 
-    def test_hierarchical_no_explicit_hierarchical_taxonomy(self, client, mock_dt_apis, auth_headers):
+    def test_hierarchical_no_explicit_hierarchical_taxonomy(
+        self, client, mock_dt_apis, auth_headers
+    ):
         """Test that endpoint works when no taxonomies have explicit hierarchical flag."""
         # The site taxonomy has associative=True but no hierarchical flag
         # It should still work by falling back to associative taxonomies
@@ -177,7 +262,9 @@ class TestTreeComparison:
             region_eu = region_eu_nodes[0]
             assert region_eu is not None
 
-    def test_hierarchical_separates_region_nodes(self, client, mock_dt_apis, auth_headers):
+    def test_hierarchical_separates_region_nodes(
+        self, client, mock_dt_apis, auth_headers
+    ):
         """Test that hierarchical tree creates distinct region nodes per path."""
         response = client.get("/api/tree/hierarchical", headers=auth_headers)
 
@@ -190,8 +277,22 @@ class TestTreeComparison:
         y_brand = next((n for n in tree if n.get("name") == "brand:y"), None)
 
         if qualcoz and y_brand:
-            qualcoz_eu = next((c for c in qualcoz.get("children", []) if c.get("name") == "region:eu"), None)
-            y_eu = next((c for c in y_brand.get("children", []) if c.get("name") == "region:eu"), None)
+            qualcoz_eu = next(
+                (
+                    c
+                    for c in qualcoz.get("children", [])
+                    if c.get("name") == "region:eu"
+                ),
+                None,
+            )
+            y_eu = next(
+                (
+                    c
+                    for c in y_brand.get("children", [])
+                    if c.get("name") == "region:eu"
+                ),
+                None,
+            )
 
             # They are distinct nodes (different subtrees)
             if qualcoz_eu and y_eu:

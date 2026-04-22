@@ -18,6 +18,6 @@ globs: **/*(.vue|.js|.py)
 # The backend state is a local yaml file with taxonomies: all other data is persisted by Dependency-Track and the backend only exposes the data through it's own api
 # Never hardcode logic tied to specific tag names or currently defined taxonomies: it's dynamic data
 # When you need to access the backend during development, bu convention you can retrieve the auth token with `curl -s -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"username": "admin", "password": "password"}'` then use it on subsequent calls as header `Authorization: Bearer ...`
-# The backend is splitted into separated into multiple fiels for separation of concerns: keep responsibilities separated
+# The backend is splitted into separated into multiple files for separation of concerns: keep responsibilities separated. Business logic is in services.py, models in models.py, auth in auth.py.
 # For regex always use `regexpp` at frontend and `regex` at backend
 # Never directly edit `taxonomies.yaml`: it's data and you don't have to "fix" it
