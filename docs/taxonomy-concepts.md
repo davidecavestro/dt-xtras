@@ -75,7 +75,7 @@ relations:
 - **Multiple Roots:** All tags from selected taxonomy become independent roots
 - **Graph Traversal:** Built by traversing underlying graph connections
 - **Cycle Prevention:** Visited tracking prevents infinite loops
-- **Associative Filtering:** Can hide associative taxonomies for cleaner views
+- **Associative Filtering:** Can hide hierarchical taxonomies for cleaner views
 
 **Example - Customer as Root:**
 ```

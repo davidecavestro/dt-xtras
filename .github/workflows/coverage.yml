@@ -47,6 +47,6 @@ jobs:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 609260f0e737a09ab2359c05e6289ea7
           filename: dt-xtras-coverage.json
-          label: coverage
+          label: backend coverage
           message: ${{ steps.coverage.outputs.coverage }}%
           color: ${{ steps.coverage.outputs.coverage > 80 && 'brightgreen' || steps.coverage.outputs.coverage > 60 && 'green' || steps.coverage.outputs.coverage > 40 && 'yellow' || 'red' }}

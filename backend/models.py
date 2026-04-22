@@ -24,10 +24,11 @@ class Taxonomy(BaseModel):
     id: str
     name: str
     regex_pattern: str
-    color: str = '#ef4444'  # Default color
+    color: str = "#ef4444"  # Default color
     priority: int
-    relations: Optional[List[TaxonomyRelation]] = None  # Must be array if present, not null
-    associative: Optional[bool] = None
+    relations: Optional[List[TaxonomyRelation]] = (
+        None  # Must be array if present, not null
+    )
     hierarchical: bool = False  # Mandatory boolean, default False
 
 
@@ -46,12 +47,15 @@ class DTProject(BaseModel):
     lastActivity: Optional[str] = None
     lastSbomUpload: Optional[str] = None
 
-    @field_validator('tags', mode='before')
+    @field_validator("tags", mode="before")
     @classmethod
     def convert_tags_to_strings(cls, v):
         """Convert tag objects to strings if needed"""
         if isinstance(v, list):
-            return [tag.get('name') if isinstance(tag, dict) and 'name' in tag else str(tag) for tag in v]
+            return [
+                tag.get("name") if isinstance(tag, dict) and "name" in tag else str(tag)
+                for tag in v
+            ]
         return v
 
 
@@ -61,7 +65,7 @@ class SecurityNode(BaseModel):
     type: Optional[str] = None  # i.e. brand, region, bundle, project
     taxonomy: Optional[str] = None
     parent_id: Optional[str] = None
-    children: List['SecurityNode'] = []
+    children: List["SecurityNode"] = []
     projectsCount: int = 0
     projectUUIDs: List[str] = []
     vulnerabilities: int = 0
@@ -71,7 +75,7 @@ class SecurityNode(BaseModel):
     low: int = 0
     inheritedRiskScore: float = 0.0
     metrics: Optional[Dict[str, Any]] = None
-    associative: Optional[bool] = None
+    hierarchical: Optional[bool] = None
     color: Optional[str] = None
     subtree: Optional[Dict[str, Any]] = None
 
@@ -88,22 +92,26 @@ class ProjectVersion(BaseModel):
     tags: List[str]
     metrics: Optional[Dict[str, Any]] = None
 
-    @field_validator('tags', mode='before')
+    @field_validator("tags", mode="before")
     @classmethod
     def convert_tags_to_strings(cls, v):
         """Convert tag objects to strings if needed"""
         if isinstance(v, list):
-            return [tag.get('name') if isinstance(tag, dict) and 'name' in tag else str(tag) for tag in v]
+            return [
+                tag.get("name") if isinstance(tag, dict) and "name" in tag else str(tag)
+                for tag in v
+            ]
         return v
 
 
 class TreeNode(BaseModel):
     """A node in the taxonomy tree (hierarchical view)."""
+
     id: str
     name: str
     type: str = "taxonomy"  # taxonomy or project
     taxonomy: Optional[str] = None  # e.g., "brand", "region", "bundle_version"
-    children: List['TreeNode'] = []
+    children: List["TreeNode"] = []
     projectsCount: int = 0
     projectUUIDs: List[str] = []
     metrics: Dict[str, Any] = {}
@@ -113,6 +121,7 @@ class TreeNode(BaseModel):
 
 class TreeEdge(BaseModel):
     """An edge in the taxonomy graph (network view)."""
+
     source: str
     target: str
     relation: Optional[str] = None
@@ -121,6 +130,7 @@ class TreeEdge(BaseModel):
 
 class TreeResponse(BaseModel):
     """Response model for network tree endpoint."""
+
     nodes: List[SecurityNode]
     edges: List[TreeEdge]
     tree: List[TreeNode]
@@ -128,11 +138,13 @@ class TreeResponse(BaseModel):
 
 class HierarchicalTreeResponse(BaseModel):
     """Response model for hierarchical tree endpoint."""
+
     tree: List[TreeNode]
 
 
 class LoginResponse(BaseModel):
     """Response model for successful login."""
+
     access_token: str
     token_type: str
     username: str
@@ -141,16 +153,19 @@ class LoginResponse(BaseModel):
 
 class LogoutResponse(BaseModel):
     """Response model for logout."""
+
     message: str
 
 
 class HealthResponse(BaseModel):
     """Response model for health check."""
+
     status: str
 
 
 class APIHealthResponse(BaseModel):
     """Response model for detailed API health check."""
+
     status: str
     timestamp: Optional[str] = None
     version: Optional[str] = None
@@ -161,16 +176,19 @@ class APIHealthResponse(BaseModel):
 
 class SuccessResponse(BaseModel):
     """Generic success response."""
+
     message: str
 
 
 class TagListResponse(RootModel):
     """Response model for tag list."""
+
     root: List[Tag]
 
 
 class TagCloneRequest(BaseModel):
     """Request model for cloning a tag."""
+
     sourceTag: str
     targetTag: str
 

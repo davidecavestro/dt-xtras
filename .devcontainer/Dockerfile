@@ -7,14 +7,14 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && rm -rf /var/lib/apt/lists/*
 
 # create a venv to ease tooling work
-RUN python3 -m venv /opt/venv && \
-    chown -R vscode:vscode /opt/venv && \
-    /opt/venv/bin/pip install --upgrade pip
-ENV PATH="/opt/venv/bin:$PATH"
+RUN python3 -m venv /home/vscode/opt/venv && \
+    chown -R vscode:vscode /home/vscode/opt/venv && \
+    /home/vscode/opt/venv/bin/pip install --upgrade pip
+ENV PATH="/home/vscode/opt/venv/bin:$PATH"
 
 # Ensure venv is activated by default for all shell sessions
-RUN echo 'export PATH="/opt/venv/bin:$PATH"' >> /home/vscode/.bashrc && \
-    echo 'export VIRTUAL_ENV=/opt/venv' >> /home/vscode/.bashrc
+RUN echo 'export PATH="/home/vscode/opt/venv/bin:$PATH"' >> /home/vscode/.bashrc && \
+    echo 'export VIRTUAL_ENV=/home/vscode/opt/venv' >> /home/vscode/.bashrc
 
 # Install Docker CLI
 RUN curl -fsSL https://get.docker.com | sh \

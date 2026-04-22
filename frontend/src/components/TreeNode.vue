@@ -222,8 +222,22 @@ export default {
           inheritedRiskScore: node.subtree.metrics.inheritedRiskScore || 0
         }
       }
-      // Fallback to direct node metrics
-      if (node.metrics) {
+      // Hierarchical tree format: direct metrics with severity counts
+      if (node.metrics && (node.metrics.critical !== undefined || node.metrics.high !== undefined)) {
+        const vulnCount = (node.metrics.critical || 0) + (node.metrics.high || 0) +
+                         (node.metrics.medium || 0) + (node.metrics.low || 0)
+        return {
+          projectsCount: node.projectsCount || 0,
+          vulnerabilities: vulnCount,
+          critical: node.metrics.critical || 0,
+          high: node.metrics.high || 0,
+          medium: node.metrics.medium || 0,
+          low: node.metrics.low || 0,
+          inheritedRiskScore: node.metrics.inheritedRiskScore || 0
+        }
+      }
+      // Network/graph tree format with vulnerabilities wrapper
+      if (node.metrics && node.metrics.vulnerabilities !== undefined) {
         return {
           projectsCount: node.projectsCount || 0,
           vulnerabilities: node.metrics.vulnerabilities || 0,

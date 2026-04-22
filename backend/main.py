@@ -456,9 +456,9 @@ async def get_tree(
     associative_mode: bool = False,
 ):
     """Build and return taxonomy tree with aggregated project data (network/graph view)"""
-    # Load taxonomies and build mock tree from tags
+    # Load taxonomies and fetch enriched tags with project UUIDs and metrics
     taxonomies = load_taxonomies()
-    tags = await get_all_tags(dt_token)
+    enriched_tags = await fetch_enriched_tags_for_tree(dt_token)
 
     # Build simple tree from tags
     nodes = []
@@ -470,9 +470,26 @@ async def get_tree(
         import regex
 
         pattern = regex.compile(taxonomy.regex_pattern)
-        taxonomy_tags = [t for t in tags if pattern.match(t.get("name", ""))]
+        taxonomy_tags = [t for t in enriched_tags if pattern.match(t.get("name", ""))]
 
         if taxonomy_tags:
+            # Aggregate metrics from all tags
+            agg_metrics = {
+                "critical": sum(
+                    t.get("metrics", {}).get("critical", 0) for t in taxonomy_tags
+                ),
+                "high": sum(t.get("metrics", {}).get("high", 0) for t in taxonomy_tags),
+                "medium": sum(
+                    t.get("metrics", {}).get("medium", 0) for t in taxonomy_tags
+                ),
+                "low": sum(t.get("metrics", {}).get("low", 0) for t in taxonomy_tags),
+            }
+
+            # Collect all project UUIDs
+            all_project_uuids = []
+            for t in taxonomy_tags:
+                all_project_uuids.extend(t.get("projectUUIDs", []))
+
             # Create taxonomy node
             tax_node = {
                 "id": taxonomy.id,
@@ -480,9 +497,9 @@ async def get_tree(
                 "type": "taxonomy",
                 "taxonomy": taxonomy.id,
                 "children": [],
-                "projectsCount": sum(t.get("projectCount", 0) for t in taxonomy_tags),
-                "projectUUIDs": [],
-                "metrics": {},
+                "projectsCount": len(set(all_project_uuids)),
+                "projectUUIDs": list(set(all_project_uuids)),
+                "metrics": agg_metrics,
                 "color": taxonomy.color,
             }
 
@@ -494,12 +511,13 @@ async def get_tree(
                     "type": "tag",
                     "taxonomy": taxonomy.id,
                     "children": [],
-                    "projectsCount": tag.get("projectCount", 0),
-                    "projectUUIDs": [],
-                    "metrics": {},
+                    "projectsCount": len(tag.get("projectUUIDs", [])),
+                    "projectUUIDs": tag.get("projectUUIDs", []),
+                    "metrics": tag.get("metrics", {}),
                     "color": taxonomy.color,
                 }
                 tax_node["children"].append(tag_node)
+                nodes.append(tag_node)
 
             nodes.append(tax_node)
             tree.append(tax_node)
@@ -512,21 +530,119 @@ async def get_hierarchical_tree(
     dt_token: str = Depends(get_dt_token_from_request),
     root_taxonomy: Optional[str] = None,
 ):
-    """Build and return hierarchical tree from hierarchical taxonomies only"""
+    """Build and return hierarchical tree from hierarchical taxonomies and associative taxonomies with relations"""
     taxonomies = load_taxonomies()
-    hierarchical_taxonomies = [t for t in taxonomies if t.hierarchical]
+    # Include both hierarchical taxonomies and associative taxonomies with relations
+    # Associative taxonomies like 'site' contain project data and define hierarchical paths via relations
+    hierarchical_taxonomies = [
+        t
+        for t in taxonomies
+        if t.hierarchical
+        or (getattr(t, "associative", False) and getattr(t, "relations", None))
+    ]
 
     if not hierarchical_taxonomies:
         logger.warning("No hierarchical taxonomies found, returning empty tree")
         return {"tree": []}
 
-    # Fetch all tags from DT
-    all_tags = await get_all_tags(dt_token)
+    # Fetch enriched tags with project UUIDs and metrics
+    enriched_tags = await fetch_enriched_tags_for_tree(dt_token)
 
     # Build hierarchical tree
-    tree_data = build_hierarchical_tree(all_tags, hierarchical_taxonomies, taxonomies)
+    tree_data = build_hierarchical_tree(
+        enriched_tags, hierarchical_taxonomies, taxonomies
+    )
 
     return {"tree": tree_data}
+
+
+async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
+    """Fetch all tags enriched with project UUIDs and vulnerability metrics."""
+    # Fetch all tags
+    tags = await get_all_tags(dt_token)
+    logger.info(f"Fetched {len(tags)} tags from DT")
+
+    # Fetch all projects to build tag-to-project mapping
+    from services import get_dt_projects
+
+    projects = await get_dt_projects(dt_token, limit=10000)
+    logger.info(f"Fetched {len(projects)} projects from DT")
+
+    # Build project tag mapping
+    project_tag_map = {}
+    for project in projects:
+        if project.get("tags"):
+            for tag in project["tags"]:
+                tag_name = tag if isinstance(tag, str) else tag.get("name", "")
+                if tag_name:
+                    if tag_name not in project_tag_map:
+                        project_tag_map[tag_name] = []
+                    project_tag_map[tag_name].append(project)
+
+    # Build a map of project -> site tags for filtering
+    # A "site tag" is one that starts with "site:"
+    project_site_tags = {}
+    for project in projects:
+        if project.get("tags"):
+            site_tags = []
+            for tag in project["tags"]:
+                tag_name = tag if isinstance(tag, str) else tag.get("name", "")
+                if tag_name and tag_name.startswith("site:"):
+                    site_tags.append(tag_name)
+            if site_tags:
+                project_site_tags[project.get("uuid")] = site_tags
+
+    logger.info(f"Built project_tag_map with {len(project_tag_map)} tag entries")
+
+    # Enrich tags with project UUIDs and aggregated metrics
+    enriched_tags = []
+    total_projects_found = 0
+    for tag in tags:
+        tag_name = tag.get("name", "")
+        tag_projects = project_tag_map.get(tag_name, [])
+
+        # For site tags, only count projects that have exactly 1 site tag
+        # to avoid double-counting projects with multiple site tags
+        if tag_name.startswith("site:"):
+            tag_projects = [
+                p
+                for p in tag_projects
+                if len(project_site_tags.get(p.get("uuid"), [])) == 1
+            ]
+
+        total_projects_found += len(tag_projects)
+
+        # Aggregate vulnerability metrics
+        aggregated_metrics = {
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0,
+        }
+
+        for project in tag_projects:
+            metrics = project.get("metrics", {})
+            if metrics:
+                aggregated_metrics["critical"] += metrics.get("critical", 0)
+                aggregated_metrics["high"] += metrics.get("high", 0)
+                aggregated_metrics["medium"] += metrics.get("medium", 0)
+                aggregated_metrics["low"] += metrics.get("low", 0)
+
+        project_uuids = [p.get("uuid") for p in tag_projects if p.get("uuid")]
+
+        enriched_tags.append(
+            {
+                "name": tag_name,
+                "projectsCount": len(tag_projects),
+                "projectUUIDs": project_uuids,
+                "metrics": aggregated_metrics,
+            }
+        )
+
+    logger.info(
+        f"Enriched {len(enriched_tags)} tags with {total_projects_found} total project associations"
+    )
+    return enriched_tags
 
 
 def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
@@ -577,21 +693,49 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             path = []  # List of (taxonomy, value) tuples
             gen_groups = gen_match.groupdict()
 
-            for relation in gen_tax.relations:
-                target_tax_id = (
-                    relation.targets
-                    if hasattr(relation.targets, "__getitem__")
-                    else relation.targets
-                )
-                if target_tax_id not in all_patterns:
-                    continue
-                target_tax = all_patterns[target_tax_id][0]
+            # Special handling for site taxonomy: parse colon-separated value
+            # Site format: site:{brand}:{region}:{bundle}:{version}
+            # e.g., site:qualcoz:eu:bee:2026.05 -> brand=qualcoz, region=eu, bundle=bee:2026.05
+            if gen_tax.id == "site" and "site" in gen_groups:
+                site_value = gen_groups["site"]
+                parts = site_value.split(":")
+                if len(parts) >= 4:
+                    brand_value = parts[0]
+                    region_value = parts[1]
+                    bundle_value = ":".join(parts[2:])  # e.g., "bee:2026.05"
 
-                # Get value from the group name specified in relation
-                group_name = getattr(relation, "group", target_tax_id)
-                if group_name in gen_groups:
-                    value = gen_groups[group_name]
-                    path.append((target_tax, value))
+                    # Build path: brand -> region -> bundle_version
+                    if "brand" in all_patterns:
+                        path.append((all_patterns["brand"][0], brand_value))
+                    if "region" in all_patterns:
+                        path.append((all_patterns["region"][0], region_value))
+                    if "bundle_version" in all_patterns:
+                        path.append((all_patterns["bundle_version"][0], bundle_value))
+            else:
+                # Standard handling for other taxonomies with relations
+                for relation in gen_tax.relations:
+                    # Handle comma-separated targets
+                    targets_str = (
+                        relation.targets
+                        if hasattr(relation.targets, "__getitem__")
+                        else relation.targets
+                    )
+                    # Split by comma if it's a string with multiple targets
+                    if isinstance(targets_str, str) and "," in targets_str:
+                        target_ids = [t.strip() for t in targets_str.split(",")]
+                    else:
+                        target_ids = [targets_str]
+
+                    for target_tax_id in target_ids:
+                        if target_tax_id not in all_patterns:
+                            continue
+                        target_tax = all_patterns[target_tax_id][0]
+
+                        # Get value from the group name specified in relation
+                        group_name = getattr(relation, "group", target_tax_id)
+                        if group_name in gen_groups:
+                            value = gen_groups[group_name]
+                            path.append((target_tax, value))
 
             if not path:
                 continue
@@ -599,6 +743,10 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             # Build/create nodes along the path
             current_node = None
             parent_key = None
+
+            # Get project UUIDs from the tag data
+            tag_project_uuids = tag.get("projectUUIDs", []) or []
+            tag_metrics = tag.get("metrics", {}) or {}
 
             for i, (tax, value) in enumerate(path):
                 node_key = (tax.id, value)
@@ -612,8 +760,13 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
                         "taxonomy": tax.id,
                         "children": [],
                         "projectsCount": 0,
-                        "projectUUIDs": [],
-                        "metrics": {},
+                        "projectUUIDs": set(),
+                        "metrics": {
+                            "critical": 0,
+                            "high": 0,
+                            "medium": 0,
+                            "low": 0,
+                        },
                         "color": tax.color,
                     }
                     node_cache[node_key] = node
@@ -628,7 +781,39 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
                             parent["children"].append(node)
 
                 current_node = node_cache[node_key]
+
+                # Aggregate project UUIDs at this node
+                current_node["projectUUIDs"].update(tag_project_uuids)
+
+                # Aggregate metrics from this tag
+                for severity in ["critical", "high", "medium", "low"]:
+                    if severity in tag_metrics:
+                        current_node["metrics"][severity] += tag_metrics[severity]
+
                 parent_key = node_key
+
+    # Post-process: aggregate metrics up the tree and convert sets to lists
+    def aggregate_node(node):
+        """Recursively aggregate project UUIDs and metrics from children."""
+        all_project_uuids = set(node.get("projectUUIDs", []))
+        all_metrics = dict(node.get("metrics", {}))
+
+        for child in node.get("children", []):
+            child_projects, child_metrics = aggregate_node(child)
+            all_project_uuids.update(child_projects)
+            for severity, count in child_metrics.items():
+                all_metrics[severity] = all_metrics.get(severity, 0) + count
+
+        # Convert set to list for JSON serialization
+        node["projectUUIDs"] = list(all_project_uuids)
+        node["projectsCount"] = len(all_project_uuids)
+        node["metrics"] = all_metrics
+
+        return all_project_uuids, all_metrics
+
+    # Aggregate each root and its descendants
+    for root in tree_roots.values():
+        aggregate_node(root)
 
     return list(tree_roots.values())
 

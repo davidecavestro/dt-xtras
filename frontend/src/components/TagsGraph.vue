@@ -15,13 +15,13 @@
           <div class="flex items-center space-x-2">
             <input
               type="radio"
-              id="associative-mode"
+              id="hierarchical-mode"
               v-model="associativeMode"
               :value="true"
               @change="updateVisualization"
               class="text-blue-600 focus:ring-blue-500"
             >
-            <label for="associative-mode" class="text-sm text-gray-700 dark:text-gray-300">Associative</label>
+            <label for="hierarchical-mode" class="text-sm text-gray-700 dark:text-gray-300">Associative</label>
 
             <input
               type="radio"
@@ -461,7 +461,7 @@ export default {
             label: `${taxonomyName}\n${captureGroups.length > 0 ? '\n' + captureGroups.join('\n') : ''}`, // Show taxonomy name and capture groups
             taxonomy: node.taxonomy,
             captureGroups: captureGroups,
-            associative: node.associative || false,
+            hierarchical: node.hierarchical || false,
             projectsCount: node.projectsCount || 0
           }
         };
@@ -485,7 +485,7 @@ export default {
             selector: 'node',
             style: {
               'shape': function(ele) {
-                return ele.data('associative') ? 'round-rectangle' : 'barrel';
+                return ele.data('hierarchical') ? 'round-rectangle' : 'barrel';
               },
               'background-color': function(ele) {
                 const colors = taxonomyColors.value;
@@ -512,7 +512,7 @@ export default {
               'text-wrap': 'wrap',
               'text-max-width': '120px',
               'width': function(ele) {
-                return ele.data('associative') ? '250px' : '180px';
+                return ele.data('hierarchical') ? '250px' : '180px';
               },
               'height': '80px',
               'padding': '10px'
@@ -566,7 +566,7 @@ export default {
         const node = evt.target;
         node.style({
           'width': function(ele) {
-            return ele.data('associative') ? '280px' : '180px';
+            return ele.data('hierarchical') ? '280px' : '180px';
           },
           'height': '80px',
           'font-size': '16px',
@@ -578,7 +578,7 @@ export default {
         const node = evt.target;
         node.style({
           'width': function(ele) {
-            return ele.data('associative') ? '250px' : '150px';
+            return ele.data('hierarchical') ? '250px' : '150px';
           },
           'height': '60px',
           'font-size': '14px',

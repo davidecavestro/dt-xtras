@@ -27,7 +27,7 @@ export default class SimpleTaxonomyGraphBuilder {
           id: tag.name,
           name: tag.name,
           taxonomy: taxonomy.id,
-          associative: taxonomy.associative || false,
+          hierarchical: taxonomy.hierarchical || false,
           projectsCount: tag.projectsCount || 0
         });
       }
@@ -60,7 +60,7 @@ export default class SimpleTaxonomyGraphBuilder {
         const captureGroups = this.getTagValues(tag, taxonomy);
         if (captureGroups && taxonomy.relations && taxonomy.relations.length > 0) {
           if (taxonomy.relations.length === Object.keys(captureGroups).length) {
-            associativeNodesToHide.add(tag.name); // mark associative tags to hide
+            associativeNodesToHide.add(tag.name); // mark hierarchical tags to hide
           }
           var groupRelations = taxonomy.relations;
           if (rootTaxonomy) {
@@ -94,7 +94,7 @@ export default class SimpleTaxonomyGraphBuilder {
       }
     });
 
-    // Filter out associative nodes
+    // Filter out hierarchical nodes
     const filteredNodes = new Map();
     this.nodes.forEach((node, nodeId) => {
       if (!associativeNodesToHide.has(nodeId)) {
@@ -105,7 +105,7 @@ export default class SimpleTaxonomyGraphBuilder {
   }
 
   buildNormalRelations(taxonomies, tags, rootTaxonomy) {
-    // the associative tags are visibile here
+    // the hierarchical tags are visibile here
     tags.forEach(tag => {
       const taxonomy = this.findTaxonomyForTag(tag, taxonomies);
       if (taxonomy) {

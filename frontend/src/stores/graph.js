@@ -42,9 +42,9 @@ export const useGraphStore = defineStore('graph', () => {
     return grouped
   })
 
-  // Find associative nodes
+  // Find hierarchical nodes
   const associativeNodes = computed(() =>
-    nodes.value.filter(node => node.associative)
+    nodes.value.filter(node => node.hierarchical)
   )
 
   // Find root nodes (nodes without incoming edges)
