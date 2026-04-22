@@ -12,7 +12,8 @@ from fastapi.testclient import TestClient
 
 # Import the FastAPI app
 import sys
-sys.path.insert(0, '/workspace/backend')
+
+sys.path.insert(0, "/workspace/backend")
 from main import app
 
 # Export for test use
@@ -35,6 +36,7 @@ def mock_dt_token():
 def mock_jwt_secret(monkeypatch):
     """Set a mock JWT secret for testing."""
     import main
+
     monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-for-testing-only")
     monkeypatch.setattr(main, "JWT_SECRET_KEY", "test-jwt-secret-for-testing-only")
     return "test-jwt-secret-for-testing-only"
@@ -76,8 +78,8 @@ def sample_dt_projects():
                 "medium": 2,
                 "low": 3,
                 "vulnerabilities": 6,
-                "inheritedRiskScore": 5.0
-            }
+                "inheritedRiskScore": 5.0,
+            },
         },
         {
             "name": "qux",
@@ -90,8 +92,8 @@ def sample_dt_projects():
                 "medium": 1,
                 "low": 0,
                 "vulnerabilities": 2,
-                "inheritedRiskScore": 3.0
-            }
+                "inheritedRiskScore": 3.0,
+            },
         },
         {
             "name": "quux",
@@ -104,8 +106,8 @@ def sample_dt_projects():
                 "medium": 0,
                 "low": 1,
                 "vulnerabilities": 1,
-                "inheritedRiskScore": 1.0
-            }
+                "inheritedRiskScore": 1.0,
+            },
         },
         {
             "name": "corge",
@@ -118,8 +120,8 @@ def sample_dt_projects():
                 "medium": 0,
                 "low": 0,
                 "vulnerabilities": 1,
-                "inheritedRiskScore": 2.0
-            }
+                "inheritedRiskScore": 2.0,
+            },
         },
         {
             "name": "grault",
@@ -132,8 +134,8 @@ def sample_dt_projects():
                 "medium": 1,
                 "low": 2,
                 "vulnerabilities": 3,
-                "inheritedRiskScore": 1.5
-            }
+                "inheritedRiskScore": 1.5,
+            },
         },
         {
             "name": "garply",
@@ -146,8 +148,8 @@ def sample_dt_projects():
                 "medium": 0,
                 "low": 0,
                 "vulnerabilities": 3,
-                "inheritedRiskScore": 8.0
-            }
+                "inheritedRiskScore": 8.0,
+            },
         },
     ]
 
@@ -162,13 +164,21 @@ def mock_dt_apis(mock_dt_token, sample_dt_tags, sample_dt_projects):
         )
 
         # Mock the projects endpoint - support any query params
-        respx_mock.get(url__startswith="http://dtrack-apiserver:8080/api/v1/project").mock(
-            return_value=Response(200, json=sample_dt_projects, headers={"X-Total-Count": str(len(sample_dt_projects))})
+        respx_mock.get(
+            url__startswith="http://dtrack-apiserver:8080/api/v1/project"
+        ).mock(
+            return_value=Response(
+                200,
+                json=sample_dt_projects,
+                headers={"X-Total-Count": str(len(sample_dt_projects))},
+            )
         )
 
-        # Mock the login endpoint
+        # Mock the login endpoint - return a valid JWT format token
+        # JWT with header {"alg":"none"}, payload {"sub":"admin","permissions":["VIEW_PORTFOLIO"]}, empty signature
+        mock_jwt = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsInBlcm1pc3Npb25zIjpbIlZJRVdfUE9SVEZPTElPIl19."
         respx_mock.post("http://dtrack-apiserver:8080/api/v1/user/login").mock(
-            return_value=Response(200, text="mock-dt-jwt-token-12345")
+            return_value=Response(200, text=mock_jwt)
         )
 
         yield
@@ -190,7 +200,7 @@ def temp_taxonomy_file(tmp_path, monkeypatch):
                 "color": "#3b82f6",
                 "priority": 1,
                 "hierarchical": True,
-                "relations": []
+                "relations": [],
             },
             {
                 "id": "region",
@@ -199,7 +209,7 @@ def temp_taxonomy_file(tmp_path, monkeypatch):
                 "color": "#22c55e",
                 "priority": 2,
                 "hierarchical": True,
-                "relations": []
+                "relations": [],
             },
             {
                 "id": "site",
@@ -208,7 +218,7 @@ def temp_taxonomy_file(tmp_path, monkeypatch):
                 "color": "#f59e0b",
                 "priority": 3,
                 "associative": True,
-                "relations": [{"group": "site", "targets": "brand,region"}]
+                "relations": [{"group": "site", "targets": "brand,region"}],
             },
             {
                 "id": "bundle_version",
@@ -217,14 +227,15 @@ def temp_taxonomy_file(tmp_path, monkeypatch):
                 "color": "#a855f7",
                 "priority": 4,
                 "hierarchical": True,
-                "relations": []
-            }
+                "relations": [],
+            },
         ]
     }
 
     temp_file = tmp_path / "test_taxonomies.yaml"
     import yaml
-    with open(temp_file, 'w') as f:
+
+    with open(temp_file, "w") as f:
         yaml.dump(test_taxonomies, f)
 
     # Patch services module (main imports from services)
@@ -240,7 +251,9 @@ def auth_token(client, mock_jwt_secret, mock_dt_apis):
     import main
 
     # Create token directly using the main module's function
-    token = main.create_jwt_token("admin", "mock-dt-token-12345", ["VIEW_PORTFOLIO", "PORTFOLIO_MANAGEMENT"])
+    token = main.create_jwt_token(
+        "admin", "mock-dt-token-12345", ["VIEW_PORTFOLIO", "PORTFOLIO_MANAGEMENT"]
+    )
     return token
 
 
