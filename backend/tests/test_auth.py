@@ -9,11 +9,10 @@ import pytest
 class TestAuthentication:
     """Tests for authentication endpoints."""
 
-    def test_login_success(self, client, mock_jwt_secret):
+    def test_login_success(self, client, mock_jwt_secret, mock_dt_apis):
         """Test successful login returns token."""
         response = client.post(
-            "/auth/login",
-            data={"username": "admin", "password": "password"}
+            "/auth/login", data={"username": "admin", "password": "password"}
         )
 
         assert response.status_code == 200
@@ -26,8 +25,7 @@ class TestAuthentication:
     def test_login_invalid_credentials(self, client, mock_jwt_secret):
         """Test login with invalid credentials fails."""
         response = client.post(
-            "/auth/login",
-            data={"username": "admin", "password": "wrongpassword"}
+            "/auth/login", data={"username": "admin", "password": "wrongpassword"}
         )
 
         # Should fail with either 401 (auth failure) or 500/503 (DT connection error)
@@ -35,19 +33,13 @@ class TestAuthentication:
 
     def test_login_missing_username(self, client, mock_jwt_secret):
         """Test login without username fails."""
-        response = client.post(
-            "/auth/login",
-            data={"password": "password"}
-        )
+        response = client.post("/auth/login", data={"password": "password"})
 
         assert response.status_code == 422
 
     def test_login_missing_password(self, client, mock_jwt_secret):
         """Test login without password fails."""
-        response = client.post(
-            "/auth/login",
-            data={"username": "admin"}
-        )
+        response = client.post("/auth/login", data={"username": "admin"})
 
         assert response.status_code == 422
 
@@ -67,8 +59,7 @@ class TestAuthentication:
     def test_protected_endpoint_with_invalid_token(self, client):
         """Test accessing protected endpoint with invalid token fails."""
         response = client.get(
-            "/api/tag",
-            headers={"Authorization": "Bearer invalid-token"}
+            "/api/tag", headers={"Authorization": "Bearer invalid-token"}
         )
 
         assert response.status_code == 401
