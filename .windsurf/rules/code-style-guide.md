@@ -20,3 +20,4 @@ globs: **/*(.vue|.js|.py)
 # When you need to access the backend during development, bu convention you can retrieve the auth token with `curl -s -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"username": "admin", "password": "password"}'` then use it on subsequent calls as header `Authorization: Bearer ...`
 # The backend is splitted into separated into multiple fiels for separation of concerns: keep responsibilities separated
 # For regex always use `regexpp` at frontend and `regex` at backend
+# Never directly edit `taxonomies.yaml`: it's data and you don't have to "fix" it
