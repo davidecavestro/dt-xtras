@@ -217,11 +217,15 @@ def temp_taxonomy_file(tmp_path, monkeypatch):
             {
                 "id": "site",
                 "name": "Site",
-                "regex_pattern": "^site:(?P<site>.+)$",
+                "regex_pattern": "^site:(?<brand>\\w+):(?<region>\\w+):(?<bundle_version>[\\w-]+:[\\d\\.]+)$",
                 "color": "#f59e0b",
                 "priority": 3,
-                "associative": True,
-                "relations": [{"group": "site", "targets": "brand,region"}],
+                "hierarchical": True,
+                "relations": [
+                    {"group": "brand", "targets": "brand"},
+                    {"group": "region", "targets": "region"},
+                    {"group": "bundle_version", "targets": "bundle_version"},
+                ],
             },
             {
                 "id": "bundle_version",

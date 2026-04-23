@@ -48,6 +48,7 @@ from services import (
     add_projects_to_tag,
     remove_projects_from_tag,
     delete_tag_from_dt,
+    build_hierarchical_tree,
     DT_API_URL,
     DT_API_KEY,
 )
@@ -530,16 +531,9 @@ async def get_hierarchical_tree(
     dt_token: str = Depends(get_dt_token_from_request),
     root_taxonomy: Optional[str] = None,
 ):
-    """Build and return hierarchical tree from hierarchical taxonomies and associative taxonomies with relations"""
+    """Build and return hierarchical tree from hierarchical taxonomies with relations"""
     taxonomies = load_taxonomies()
-    # Include both hierarchical taxonomies and associative taxonomies with relations
-    # Associative taxonomies like 'site' contain project data and define hierarchical paths via relations
-    hierarchical_taxonomies = [
-        t
-        for t in taxonomies
-        if t.hierarchical
-        or (getattr(t, "associative", False) and getattr(t, "relations", None))
-    ]
+    hierarchical_taxonomies = [t for t in taxonomies if t.hierarchical]
 
     if not hierarchical_taxonomies:
         logger.warning("No hierarchical taxonomies found, returning empty tree")
@@ -579,19 +573,6 @@ async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
                         project_tag_map[tag_name] = []
                     project_tag_map[tag_name].append(project)
 
-    # Build a map of project -> site tags for filtering
-    # A "site tag" is one that starts with "site:"
-    project_site_tags = {}
-    for project in projects:
-        if project.get("tags"):
-            site_tags = []
-            for tag in project["tags"]:
-                tag_name = tag if isinstance(tag, str) else tag.get("name", "")
-                if tag_name and tag_name.startswith("site:"):
-                    site_tags.append(tag_name)
-            if site_tags:
-                project_site_tags[project.get("uuid")] = site_tags
-
     logger.info(f"Built project_tag_map with {len(project_tag_map)} tag entries")
 
     # Enrich tags with project UUIDs and aggregated metrics
@@ -600,16 +581,6 @@ async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
     for tag in tags:
         tag_name = tag.get("name", "")
         tag_projects = project_tag_map.get(tag_name, [])
-
-        # For site tags, only count projects that have exactly 1 site tag
-        # to avoid double-counting projects with multiple site tags
-        if tag_name.startswith("site:"):
-            tag_projects = [
-                p
-                for p in tag_projects
-                if len(project_site_tags.get(p.get("uuid"), [])) == 1
-            ]
-
         total_projects_found += len(tag_projects)
 
         # Aggregate vulnerability metrics
@@ -643,179 +614,6 @@ async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
         f"Enriched {len(enriched_tags)} tags with {total_projects_found} total project associations"
     )
     return enriched_tags
-
-
-def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
-    """Build tree from hierarchical taxonomies with distinct node instances per path.
-
-    A tag matching a taxonomy with relations generates a path through related taxonomies.
-    Each tag in the path becomes a node in the tree.
-    """
-    import regex
-
-    # Build regex patterns for all taxonomies (for extracting values from tags)
-    all_patterns = {}
-    for tax in all_taxonomies:
-        pattern = (
-            tax.regex_pattern
-            if hasattr(tax, "regex_pattern")
-            else tax.get("regex_pattern", "")
-        )
-        if pattern:
-            all_patterns[tax.id] = (tax, regex.compile(pattern))
-
-    # Find taxonomies that have relations (these generate hierarchical paths)
-    path_generators = [
-        t for t in hierarchical_taxonomies if getattr(t, "relations", None)
-    ]
-
-    if not path_generators:
-        return []
-
-    # Build the tree: root nodes by path tuple
-    tree_roots = {}  # (brand_value, region_value, ...) -> root node
-    node_cache = {}  # (taxonomy_id, value) -> node (for deduplication)
-
-    for tag in tags:
-        tag_name = tag.get("name", "")
-
-        # Check if this tag matches a path-generating taxonomy
-        for gen_tax in path_generators:
-            if gen_tax.id not in all_patterns:
-                continue
-            gen_pattern = all_patterns[gen_tax.id][1]
-            gen_match = gen_pattern.match(tag_name)
-            if not gen_match:
-                continue
-
-            # Build the path: extract values from the hierarchical tag's match groups
-            # The group names in relations tell us which capture groups to use
-            path = []  # List of (taxonomy, value) tuples
-            gen_groups = gen_match.groupdict()
-
-            # Special handling for site taxonomy: parse colon-separated value
-            # Site format: site:{brand}:{region}:{bundle}:{version}
-            # e.g., site:qualcoz:eu:bee:2026.05 -> brand=qualcoz, region=eu, bundle=bee:2026.05
-            if gen_tax.id == "site" and "site" in gen_groups:
-                site_value = gen_groups["site"]
-                parts = site_value.split(":")
-                if len(parts) >= 4:
-                    brand_value = parts[0]
-                    region_value = parts[1]
-                    bundle_value = ":".join(parts[2:])  # e.g., "bee:2026.05"
-
-                    # Build path: brand -> region -> bundle_version
-                    if "brand" in all_patterns:
-                        path.append((all_patterns["brand"][0], brand_value))
-                    if "region" in all_patterns:
-                        path.append((all_patterns["region"][0], region_value))
-                    if "bundle_version" in all_patterns:
-                        path.append((all_patterns["bundle_version"][0], bundle_value))
-            else:
-                # Standard handling for other taxonomies with relations
-                for relation in gen_tax.relations:
-                    # Handle comma-separated targets
-                    targets_str = (
-                        relation.targets
-                        if hasattr(relation.targets, "__getitem__")
-                        else relation.targets
-                    )
-                    # Split by comma if it's a string with multiple targets
-                    if isinstance(targets_str, str) and "," in targets_str:
-                        target_ids = [t.strip() for t in targets_str.split(",")]
-                    else:
-                        target_ids = [targets_str]
-
-                    for target_tax_id in target_ids:
-                        if target_tax_id not in all_patterns:
-                            continue
-                        target_tax = all_patterns[target_tax_id][0]
-
-                        # Get value from the group name specified in relation
-                        group_name = getattr(relation, "group", target_tax_id)
-                        if group_name in gen_groups:
-                            value = gen_groups[group_name]
-                            path.append((target_tax, value))
-
-            if not path:
-                continue
-
-            # Build/create nodes along the path
-            current_node = None
-            parent_key = None
-
-            # Get project UUIDs from the tag data
-            tag_project_uuids = tag.get("projectUUIDs", []) or []
-            tag_metrics = tag.get("metrics", {}) or {}
-
-            for i, (tax, value) in enumerate(path):
-                node_key = (tax.id, value)
-                node_id = f"{tax.id}:{value}"
-
-                if node_key not in node_cache:
-                    node = {
-                        "id": node_id,
-                        "name": value,
-                        "type": "taxonomy",
-                        "taxonomy": tax.id,
-                        "children": [],
-                        "projectsCount": 0,
-                        "projectUUIDs": set(),
-                        "metrics": {
-                            "critical": 0,
-                            "high": 0,
-                            "medium": 0,
-                            "low": 0,
-                        },
-                        "color": tax.color,
-                    }
-                    node_cache[node_key] = node
-
-                    # If root level, add to tree_roots
-                    if i == 0:
-                        tree_roots[node_id] = node
-                    # Otherwise, add as child to parent
-                    elif parent_key in node_cache:
-                        parent = node_cache[parent_key]
-                        if node not in parent["children"]:
-                            parent["children"].append(node)
-
-                current_node = node_cache[node_key]
-
-                # Aggregate project UUIDs at this node
-                current_node["projectUUIDs"].update(tag_project_uuids)
-
-                # Aggregate metrics from this tag
-                for severity in ["critical", "high", "medium", "low"]:
-                    if severity in tag_metrics:
-                        current_node["metrics"][severity] += tag_metrics[severity]
-
-                parent_key = node_key
-
-    # Post-process: aggregate metrics up the tree and convert sets to lists
-    def aggregate_node(node):
-        """Recursively aggregate project UUIDs and metrics from children."""
-        all_project_uuids = set(node.get("projectUUIDs", []))
-        all_metrics = dict(node.get("metrics", {}))
-
-        for child in node.get("children", []):
-            child_projects, child_metrics = aggregate_node(child)
-            all_project_uuids.update(child_projects)
-            for severity, count in child_metrics.items():
-                all_metrics[severity] = all_metrics.get(severity, 0) + count
-
-        # Convert set to list for JSON serialization
-        node["projectUUIDs"] = list(all_project_uuids)
-        node["projectsCount"] = len(all_project_uuids)
-        node["metrics"] = all_metrics
-
-        return all_project_uuids, all_metrics
-
-    # Aggregate each root and its descendants
-    for root in tree_roots.values():
-        aggregate_node(root)
-
-    return list(tree_roots.values())
 
 
 # Health endpoints
