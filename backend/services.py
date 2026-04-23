@@ -276,7 +276,7 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
 
     Logic:
     1. ALL tags matching ANY taxonomy appear in the tree
-    2. Tags matching non-hierarchical taxonomies are standalone roots
+    2. Tags matching non-hierarchical taxonomies are standalone roots if not implied by relations from tags matching hierarchical taxonomies
     3. Tags matching hierarchical taxonomies with relations build parent-child PATHS
     4. A node aggregates: its own projects + all projects from its subtree
     """
@@ -301,25 +301,45 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
     # node_cache: (taxonomy_id, value) -> node
     node_cache = {}
 
-    def get_or_create_node(tax, value, color):
+    def get_or_create_node(tax, value, tag, color):
         """Get existing node or create new one."""
         node_key = (tax.id, value)
         if node_key in node_cache:
             return node_cache[node_key]
 
         node = {
-            "id": f"{tax.id}:{value}",
+            "id": (tag or {}).get("name", f"{tax.id}:{value}"),
             "name": value,
             "type": "taxonomy",
             "taxonomy": tax.id,
             "children": [],
             "projectsCount": 0,
             "projectUUIDs": set(),
-            "metrics": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+            "metrics": (tag or {}).get(
+                "metrics", {"critical": 0, "high": 0, "medium": 0, "low": 0}
+            ),
             "color": color,
         }
         node_cache[node_key] = node
         return node
+
+    # Build lookup: (taxonomy_id, value) -> tag with projects/metrics
+    tag_lookup = {}  # (taxonomy_id, value) -> tag
+    for tag in tags:
+        tag_name = tag.get("name", "")
+        for tax in all_taxonomies:
+            if tax.id not in all_patterns:
+                continue
+            pattern = all_patterns[tax.id][1]
+            match = pattern.match(tag_name)
+            if match:
+                groups = match.groupdict()
+                # get the whole tag_name in case of multiple groups, otherwise get the first group
+                value = (
+                    tag_name if len(groups) > 1 else next(iter(groups.values()), None)
+                )
+                if value:
+                    tag_lookup[(tax.id, value)] = tag
 
     # Track which nodes are children (not roots)
     child_nodes = set()
@@ -327,8 +347,6 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
     # PASS 1: Build paths from hierarchical taxonomies with relations
     for tag in tags:
         tag_name = tag.get("name", "")
-        tag_projects = set(tag.get("projectUUIDs", []))
-        tag_metrics = tag.get("metrics", {}) or {}
 
         # Check if tag matches any path-generating taxonomy
         for gen_tax in path_generators:
@@ -368,7 +386,9 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             # Create nodes along path and link them
             parent_node = None
             for i, (tax, value) in enumerate(path):
-                node = get_or_create_node(tax, value, tax.color)
+                # Find the actual tag for this taxonomy/value and use its data
+                path_tag = tag_lookup.get((tax.id, value))
+                node = get_or_create_node(tax, value, path_tag, tax.color)
 
                 # Mark as child if not root of path
                 if i > 0:
@@ -378,16 +398,18 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
                 if parent_node and node not in parent_node["children"]:
                     parent_node["children"].append(node)
 
-                # Aggregate tag's projects/metrics at this node
-                node["projectUUIDs"].update(tag_projects)
-                for severity in ["critical", "high", "medium", "low"]:
-                    if severity in tag_metrics:
-                        node["metrics"][severity] += tag_metrics[severity]
+                if path_tag:
+                    path_projects = set(path_tag.get("projectUUIDs", []))
+                    path_metrics = path_tag.get("metrics", {}) or {}
+                    node["projectUUIDs"].update(path_projects)
+                    for severity in ["critical", "high", "medium", "low"]:
+                        if severity in path_metrics:
+                            node["metrics"][severity] += path_metrics[severity]
 
                 parent_node = node
 
     # PASS 2: Create standalone roots for tags matching non-hierarchical taxonomies
-    # or hierarchical taxonomies without relations
+    # BUT not implied by hierarchical tag relations
     for tag in tags:
         tag_name = tag.get("name", "")
         tag_projects = set(tag.get("projectUUIDs", []))
@@ -398,14 +420,20 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             if tax.id not in all_patterns:
                 continue
 
-            pattern = all_patterns[tax.id][1]
+            the_tax = all_patterns[tax.id]
+
+            if the_tax[0].hierarchical:
+                # hierarchical tags are path roots
+                continue
+
+            pattern = the_tax[1]
             match = pattern.match(tag_name)
             if not match:
                 continue
 
             # Extract value from first capture group
             groups = match.groupdict()
-            value = next(iter(groups.values()), None) if groups else None
+            value = tag_name if len(groups) > 1 else next(iter(groups.values()), None)
 
             if not value:
                 continue
@@ -421,7 +449,8 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
                         node["metrics"][severity] += tag_metrics[severity]
             else:
                 # Create as standalone root
-                node = get_or_create_node(tax, value, tax.color)
+                tag_data = tag_lookup.get((tax.id, value))
+                node = get_or_create_node(tax, value, tag_data, tax.color)
                 node["projectUUIDs"] = tag_projects
                 node["metrics"] = dict(tag_metrics)
 
