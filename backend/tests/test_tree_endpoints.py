@@ -42,13 +42,13 @@ class TestNetworkTreeEndpoint:
                 assert "brand:y" in node_names
 
     def test_get_tree_with_associative_mode(self, client, mock_dt_apis, auth_headers):
-        """Test tree with associative mode enabled."""
+        """Test tree with associative edges mode enabled."""
         response = client.get("/api/tree?associative_mode=true", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
 
-        # In associative mode, edges should connect tags through site relationships (if available)
+        # In associative edges mode, edges connect related taxonomy nodes
         edges = data.get("edges") or []
 
     def test_get_tree_has_metrics_and_projects(
@@ -78,10 +78,11 @@ class TestNetworkTreeEndpoint:
             f"site:qualcoz:eu:bee:2026.05 node not found. "
             f"Available nodes: {node_names}"
         )
+        # 3 projects have this tag: baz, qux, quux
         assert (
-            bee_bundle["projectsCount"] == 2
-        ), f"Expected 2 projects, got {bee_bundle['projectsCount']}"
-        assert len(bee_bundle["projectUUIDs"]) == 2, f"Expected 2 project UUIDs"
+            bee_bundle["projectsCount"] == 3
+        ), f"Expected 3 projects, got {bee_bundle['projectsCount']}"
+        assert len(bee_bundle["projectUUIDs"]) == 3, f"Expected 3 project UUIDs"
         assert (
             bee_bundle["metrics"]["critical"] == 1
         ), f"Expected critical=1, got {bee_bundle['metrics']['critical']}"
@@ -91,9 +92,10 @@ class TestNetworkTreeEndpoint:
         assert (
             bee_bundle["metrics"]["medium"] == 3
         ), f"Expected medium=3, got {bee_bundle['metrics']['medium']}"
+        # Metrics: baz(low=3) + qux(low=0) + quux(low=1) = 4
         assert (
-            bee_bundle["metrics"]["low"] == 3
-        ), f"Expected low=3, got {bee_bundle['metrics']['low']}"
+            bee_bundle["metrics"]["low"] == 4
+        ), f"Expected low=4, got {bee_bundle['metrics']['low']}"
 
         # Check that nodes have metrics
         for node in nodes:
@@ -106,7 +108,7 @@ class TestNetworkTreeEndpoint:
             assert "metrics" in node
             assert "projectsCount" in node
             assert "projectUUIDs" in node
-        # Edges may be empty if no associative taxonomies exist
+        # Edges connect taxonomy nodes based on shared project tags
 
     def test_tree_metrics_aggregation(self, client, mock_dt_apis, auth_headers):
         """Test that metrics are properly aggregated up the tree."""
@@ -228,9 +230,8 @@ class TestHierarchicalTreeEndpoint:
     def test_hierarchical_no_explicit_hierarchical_taxonomy(
         self, client, mock_dt_apis, auth_headers
     ):
-        """Test that endpoint works when no taxonomies have explicit hierarchical flag."""
-        # The site taxonomy has associative=True but no hierarchical flag
-        # It should still work by falling back to associative taxonomies
+        """Test that endpoint works with hierarchical taxonomies."""
+        # The site taxonomy has hierarchical=True with relations defining the tree structure
         response = client.get("/api/tree/hierarchical", headers=auth_headers)
 
         assert response.status_code == 200

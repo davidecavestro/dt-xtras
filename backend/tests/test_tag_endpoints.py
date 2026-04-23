@@ -52,7 +52,12 @@ class TestTagEndpoints:
         data = response.json()
 
         # Find a bundle tag that should have projects
-        bundle_tags = [t for t in data if ":" in t["name"] and not t["name"].startswith(("brand:", "region:", "site:"))]
+        bundle_tags = [
+            t
+            for t in data
+            if ":" in t["name"]
+            and not t["name"].startswith(("brand:", "region:", "site:"))
+        ]
 
         for tag in bundle_tags:
             # Should have project count field
@@ -93,8 +98,8 @@ class TestTaxonomyEndpoints:
         assert "bundle_version" in taxonomy_ids
         assert "site" in taxonomy_ids
 
-        # Site taxonomy should be associative
+        # Site taxonomy should be hierarchical with relations
         site_tax = next((t for t in data if t["id"] == "site"), None)
         assert site_tax is not None
-        assert site_tax.get("associative") is True
+        assert site_tax.get("hierarchical") is True
         assert len(site_tax.get("relations", [])) > 0
