@@ -660,6 +660,106 @@ async def get_hierarchical_tree(
     return {"tree": tree_data}
 
 
+# Proxy endpoints for DT API
+@app.get("/api/v1/test")
+async def test_proxy():
+    return {"message": "Proxy is working"}
+
+
+@app.post("/api/v1/test")
+async def test_proxy_post(request: Request):
+    return {"message": "Proxy POST working", "method": request.method}
+
+
+@app.api_route("/api/v1/{path:path}", methods=["GET"])
+async def proxy_dt_api_get(
+    path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)
+):
+    logger.info(f"Proxy GET request: /api/v1/{path}")
+
+    # Prepare headers for DT API
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    # Forward query parameters
+    params = dict(request.query_params)
+
+    target_url = f"{DT_API_URL}/api/v1/{path}"
+    logger.info(f"GET Target URL: {target_url}")
+    logger.info(f"GET Request headers: {headers}")
+    logger.info(f"GET Request params: {params}")
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{DT_API_URL}/api/v1/{path}", headers=headers, params=params
+        )
+
+        logger.info(f"GET DT API Response status: {response.status_code}")
+        logger.info(f"GET DT API Response headers: {dict(response.headers)}")
+        if response.status_code == 405:
+            logger.info(f"GET 405 Method Not Allowed for {path} - check DT API docs")
+
+        # Return response with same status and headers
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=dict(response.headers),
+        )
+
+
+@app.api_route("/api/v1/{path:path}", methods=["POST", "PUT", "DELETE"])
+async def proxy_dt_api(
+    path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)
+):
+    """Proxy API requests to DT API"""
+    data = await request.body()
+    logger.info(f"Proxy {request.method} request: /api/v1/{path}")
+
+    # copy headers from the request
+    # headers = {}
+    # for key, value in request.headers.items():
+    #    headers[key] = value
+    headers = {"Content-Type": "application/json"}
+
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    params = dict(request.query_params)
+
+    target_url = f"{DT_API_URL}/api/v1/{path}"
+    logger.info(f"Target URL: {target_url}")
+    logger.info(f"Request headers: {headers}")
+
+    async with httpx.AsyncClient() as client:
+        response = await client.request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            params=params,
+            content=data,
+        )
+
+    logger.info(f"DT API Response status: {response.status_code}")
+    logger.info(f"DT API Response headers: {dict(response.headers)}")
+
+    # Handle specific authentication errors
+    if response.status_code == 401:
+        logger.info("DT API returned 401 Unauthorized - token is invalid or expired")
+        return Response(
+            content=b'{"detail": "DT API authentication failed. Please check your credentials or login again."}',
+            status_code=401,
+            headers={"Content-Type": "application/json"},
+        )
+    content = (response.content,)
+    status_code = (response.status_code,)
+    headers = dict(response.headers)
+
+
 async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
     """Fetch all tags enriched with project UUIDs and vulnerability metrics."""
     # Fetch all tags

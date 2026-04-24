@@ -913,8 +913,8 @@ const graphGroup = ref(null)
     })
 
     const canCreateTag = computed(() => {
-      const result = tagBuilderParts.value.every(part =>
-        part.type === 'static' || part.type === 'group' || (part.value && part.value.trim())
+      const result = tagBuilderParts.value.filter( part => ['text', 'dropdown'].includes(part.type)).every(part =>
+        part.value && part.value.trim()
       )
       logger.info('Debug canCreateTag:', {
         tagBuilderParts: tagBuilderParts.value,
