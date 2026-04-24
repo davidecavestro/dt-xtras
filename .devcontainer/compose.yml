@@ -33,6 +33,9 @@ services:
       - ALPINE_DATABASE_DRIVER=org.postgresql.Driver
       - ALPINE_DATABASE_USERNAME=dtrack
       - ALPINE_DATABASE_PASSWORD=dtrack
+    volumes:
+      - ./dtrack_data:/data
+      - ./dtrack_tmp:/tmp
     depends_on:
       dtrack-db:
         condition: service_healthy
