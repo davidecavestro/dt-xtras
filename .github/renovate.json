@@ -1,3 +1,7 @@
 {
-  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"]
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "rebaseWhen": "behind-base-branch"
 }
