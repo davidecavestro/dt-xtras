@@ -1,27 +1,35 @@
 taxonomies:
-  - id: "customer"
-    name: "Customer"
-    regex_pattern: '^cust:(?P<id>\w+)$'
-    priority: 1
-
-  - id: "env"
-    name: "Environment"
-    regex_pattern: '^env:(?P<env_type>\w+)$'
-    priority: 2
-
-  - id: "deploy"
-    name: "Deployment"
-    regex_pattern: '^deploy:(?P<env>\w+):(?P<customer>cust:\w+):(?P<product_version>[\w-]+:[\d\.]+)$'
-    priority: 3
-    relations:
-      - group: "env"
-        targets: "env"
-      - group: "customer"
-        targets: "customer"
-      - group: "product_version"
-        targets: "product_version"
-
-  - id: "product_version"
-    name: "Product Version"
-    regex_pattern: '^(?!(?:env|cust|deploy):)(?P<product_name>[\w-]+):(?P<version>[\d\w\.-]+)$'
-    priority: 4
+- hierarchical: false
+  color: '#ff0000'
+  id: brand
+  name: Brand
+  priority: 1
+  regex_pattern: ^brand:(?P<value>.+)$
+  relations: []
+- hierarchical: false
+  color: '#b942f0'
+  id: region
+  name: Region
+  priority: 1
+  regex_pattern: ^region:(?<id>\w+)$
+  relations: []
+- hierarchical: false
+  color: '#42bcf0'
+  id: bundle_version
+  name: Bundle version
+  priority: 1
+  regex_pattern: ^(?!(?:brand|region|bundle|cust|env|deploy):)(?<bundle_name>[\w-]+):(?<version>[\d\w\.-]+)$
+  relations: []
+- hierarchical: true
+  color: '#42f057'
+  id: site
+  name: Site
+  priority: 1
+  regex_pattern: ^site:(?<brand>\w+):(?<region>\w+):(?<bundle_version>[\w-]+:[\d\.]+)$
+  relations:
+  - group: brand
+    targets: brand
+  - group: region
+    targets: region
+  - group: bundle_version
+    targets: bundle_version
