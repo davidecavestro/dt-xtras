@@ -93,7 +93,7 @@ jobs:
           echo "Frontend Coverage: $COVERAGE%"
 
       - name: "Update backend test status badge"
-        uses: "schneegans/dynamic-badges-action@v1.8.0"
+        uses: "schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501" # v1.8.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 609260f0e737a09ab2359c05e6289ea7
@@ -103,7 +103,7 @@ jobs:
           color: ${{ steps.backend_test_status.outputs.status == 'OK' && 'brightgreen' || 'red' }}
 
       - name: "Update backend coverage badge"
-        uses: "schneegans/dynamic-badges-action@v1.8.0"
+        uses: "schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501" # v1.8.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 609260f0e737a09ab2359c05e6289ea7
@@ -113,7 +113,7 @@ jobs:
           color: ${{ steps.backend_coverage.outputs.coverage > 80 && 'brightgreen' || steps.backend_coverage.outputs.coverage > 60 && 'green' || steps.backend_coverage.outputs.coverage > 40 && 'yellow' || 'red' }}
 
       - name: "Update frontend test status badge"
-        uses: "schneegans/dynamic-badges-action@v1.8.0"
+        uses: "schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501" # v1.8.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 609260f0e737a09ab2359c05e6289ea7
@@ -123,7 +123,7 @@ jobs:
           color: ${{ steps.frontend_test_status.outputs.status == 'OK' && 'brightgreen' || 'red' }}
 
       - name: "Update frontend coverage badge"
-        uses: "schneegans/dynamic-badges-action@v1.8.0"
+        uses: "schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501" # v1.8.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 609260f0e737a09ab2359c05e6289ea7
