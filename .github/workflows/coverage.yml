@@ -26,7 +26,7 @@ jobs:
       - name: "Set up Node.js"
         uses: "actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f" # v6
         with:
-          node-version: "18"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: "frontend/package-lock.json"
 
@@ -41,9 +41,22 @@ jobs:
           npm ci
 
       - name: "Run backend tests and generate coverage"
+        id: backend_tests
         run: |
           cd backend
           python -m pytest . --cov=main --cov-report=term --cov-report=json:coverage.json
+
+      - name: "Extract backend test status"
+        id: backend_test_status
+        if: always()
+        run: |
+          if [ "${{ steps.backend_tests.outcome }}" == "success" ]; then
+            echo "status=OK" >> $GITHUB_OUTPUT
+            echo "Backend Tests: OK"
+          else
+            echo "status=KO" >> $GITHUB_OUTPUT
+            echo "Backend Tests: KO"
+          fi
 
       - name: "Extract backend coverage percentage"
         id: backend_coverage
@@ -54,19 +67,42 @@ jobs:
           echo "Backend Coverage: $COVERAGE%"
 
       - name: "Run frontend tests and generate coverage"
+        id: frontend_tests
         run: |
           cd frontend
-          npm run test:run -- --coverage --reporter=json --reporter=json-summary
+          npm run test:run -- --coverage --reporter=json
+
+      - name: "Extract frontend test status"
+        id: frontend_test_status
+        if: always()
+        run: |
+          if [ "${{ steps.frontend_tests.outcome }}" == "success" ]; then
+            echo "status=OK" >> $GITHUB_OUTPUT
+            echo "Frontend Tests: OK"
+          else
+            echo "status=KO" >> $GITHUB_OUTPUT
+            echo "Frontend Tests: KO"
+          fi
 
       - name: "Extract frontend coverage percentage"
         id: frontend_coverage
         run: |
           cd frontend
-          COVERAGE=$(node -e "const data=require('./coverage/coverage-summary.json'); console.log(Math.round(data.total.lines.pct))")
+          COVERAGE=$(node -e "const data=require('./coverage/coverage-final.json'); let totalStmts=0, coveredStmts=0; Object.values(data).forEach(f=>{if(f.s){const stmts=Object.values(f.s); totalStmts+=stmts.length; coveredStmts+=stmts.filter(v=>v>0).length;}}); console.log(Math.round((coveredStmts/totalStmts)*100))")
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
           echo "Frontend Coverage: $COVERAGE%"
 
-      - name: "Update backend README badge"
+      - name: "Update backend test status badge"
+        uses: "schneegans/dynamic-badges-action@v1.8.0"
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 609260f0e737a09ab2359c05e6289ea7
+          filename: dt-xtras-backend-tests.json
+          label: backend tests
+          message: ${{ steps.backend_test_status.outputs.status }}
+          color: ${{ steps.backend_test_status.outputs.status == 'OK' && 'brightgreen' || 'red' }}
+
+      - name: "Update backend coverage badge"
         uses: "schneegans/dynamic-badges-action@v1.8.0"
         with:
           auth: ${{ secrets.GIST_SECRET }}
@@ -76,7 +112,17 @@ jobs:
           message: ${{ steps.backend_coverage.outputs.coverage }}%
           color: ${{ steps.backend_coverage.outputs.coverage > 80 && 'brightgreen' || steps.backend_coverage.outputs.coverage > 60 && 'green' || steps.backend_coverage.outputs.coverage > 40 && 'yellow' || 'red' }}
 
-      - name: "Update frontend README badge"
+      - name: "Update frontend test status badge"
+        uses: "schneegans/dynamic-badges-action@v1.8.0"
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 609260f0e737a09ab2359c05e6289ea7
+          filename: dt-xtras-frontend-tests.json
+          label: frontend tests
+          message: ${{ steps.frontend_test_status.outputs.status }}
+          color: ${{ steps.frontend_test_status.outputs.status == 'OK' && 'brightgreen' || 'red' }}
+
+      - name: "Update frontend coverage badge"
         uses: "schneegans/dynamic-badges-action@v1.8.0"
         with:
           auth: ${{ secrets.GIST_SECRET }}
