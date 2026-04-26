@@ -24,13 +24,9 @@ TAXONOMIES_FILE = os.getenv("TAXONOMIES_FILE", "../data/taxonomies.yaml")
 def load_taxonomies() -> List[Taxonomy]:
     """Load taxonomies from YAML file"""
     if not os.path.exists(TAXONOMIES_FILE):
-        example_file = os.path.join(
-            os.path.dirname(TAXONOMIES_FILE), "taxonomies.example.yaml"
-        )
+        example_file = os.path.join(os.path.dirname(TAXONOMIES_FILE), "taxonomies.example.yaml")
         if os.path.exists(example_file):
-            logger.info(
-                f"No taxonomies file found at {TAXONOMIES_FILE}, copying from example template"
-            )
+            logger.info(f"No taxonomies file found at {TAXONOMIES_FILE}, copying from example template")
             import shutil
 
             shutil.copy2(example_file, TAXONOMIES_FILE)
@@ -115,9 +111,7 @@ async def get_dt_projects(
         params["name"] = search
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0
-        )
+        response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)
         logger.info(f"DT API response status: {response.status_code}")
         response.raise_for_status()
 
@@ -136,12 +130,8 @@ async def get_dt_projects(
             if isinstance(last_bom_import, (int, float)):
                 from datetime import datetime
 
-                enriched_project["lastActivity"] = datetime.fromtimestamp(
-                    last_bom_import / 1000
-                ).isoformat()
-                enriched_project["lastSbomUpload"] = datetime.fromtimestamp(
-                    last_bom_import / 1000
-                ).isoformat()
+                enriched_project["lastActivity"] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
+                enriched_project["lastSbomUpload"] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
             else:
                 enriched_project["lastActivity"] = str(last_bom_import)
                 enriched_project["lastSbomUpload"] = str(last_bom_import)
@@ -150,9 +140,7 @@ async def get_dt_projects(
             if isinstance(created, (int, float)):
                 from datetime import datetime
 
-                enriched_project["lastActivity"] = datetime.fromtimestamp(
-                    created / 1000
-                ).isoformat()
+                enriched_project["lastActivity"] = datetime.fromtimestamp(created / 1000).isoformat()
             else:
                 enriched_project["lastActivity"] = str(created)
         else:
@@ -175,9 +163,7 @@ async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
     params = {"pageNumber": str(page), "pageSize": str(limit)}
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{DT_API_URL}/api/v1/tag", headers=headers, params=params, timeout=30.0
-        )
+        response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers, params=params, timeout=30.0)
         response.raise_for_status()
         tags = response.json()
 
@@ -193,9 +179,7 @@ async def get_projects_with_tag(dt_token: str, tag_name: str) -> List[Dict]:
         headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{DT_API_URL}/api/v1/project/tag/{tag_name}", headers=headers, timeout=30.0
-        )
+        response = await client.get(f"{DT_API_URL}/api/v1/project/tag/{tag_name}", headers=headers, timeout=30.0)
         response.raise_for_status()
         return response.json()
 
@@ -209,9 +193,7 @@ async def get_tag_by_name(tag_name: str, dt_token: str) -> Optional[Dict]:
         headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0
-        )
+        response = await client.get(f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0)
         if response.status_code == 200:
             return response.json()
         return None
@@ -264,9 +246,7 @@ async def delete_tag_from_dt(dt_token: str, tag_name: str):
         headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
-        response = await client.delete(
-            f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0
-        )
+        response = await client.delete(f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0)
         if response.status_code not in [200, 204]:
             raise ValueError(f"Failed to delete tag: {response.text}")
 
@@ -285,18 +265,12 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
     # Build regex patterns for all taxonomies
     all_patterns = {}
     for tax in all_taxonomies:
-        pattern = (
-            tax.regex_pattern
-            if hasattr(tax, "regex_pattern")
-            else tax.get("regex_pattern", "")
-        )
+        pattern = tax.regex_pattern if hasattr(tax, "regex_pattern") else tax.get("regex_pattern", "")
         if pattern:
             all_patterns[tax.id] = (tax, regex.compile(pattern))
 
     # Find hierarchical taxonomies with relations (these define paths)
-    path_generators = [
-        t for t in hierarchical_taxonomies if getattr(t, "relations", None)
-    ]
+    path_generators = [t for t in hierarchical_taxonomies if getattr(t, "relations", None)]
 
     # node_cache: (taxonomy_id, value) -> node
     node_cache = {}
@@ -315,9 +289,7 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             "children": [],
             "projectsCount": 0,
             "projectUUIDs": set(),
-            "metrics": (tag or {}).get(
-                "metrics", {"critical": 0, "high": 0, "medium": 0, "low": 0}
-            ),
+            "metrics": {"critical": 0, "high": 0, "medium": 0, "low": 0},
             "color": color,
         }
         node_cache[node_key] = node
@@ -335,14 +307,21 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             if match:
                 groups = match.groupdict()
                 # get the whole tag_name in case of multiple groups, otherwise get the first group
-                value = (
-                    tag_name if len(groups) > 1 else next(iter(groups.values()), None)
-                )
+                value = tag_name if len(groups) > 1 else next(iter(groups.values()), None) if groups else None
+
+                # For non-hierarchical taxonomies, also store cleaned value
+                if value and not tax.hierarchical and ":" in value:
+                    clean_value = value.split(":")[-1]
+                    tag_lookup[(tax.id, clean_value)] = tag
+
                 if value:
                     tag_lookup[(tax.id, value)] = tag
 
     # Track which nodes are children (not roots)
     child_nodes = set()
+
+    # Track which nodes have already received their initial metrics
+    nodes_with_initial_metrics = set()
 
     # PASS 1: Build paths from hierarchical taxonomies with relations
     for tag in tags:
@@ -363,18 +342,12 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             path = []  # List of (taxonomy, value) tuples
 
             for relation in gen_tax.relations:
-                target_tax_id = (
-                    relation.targets
-                    if hasattr(relation, "targets")
-                    else relation.get("targets")
-                )
+                target_tax_id = relation.targets if hasattr(relation, "targets") else relation.get("targets")
                 if target_tax_id not in all_patterns:
                     continue
 
                 target_tax = all_patterns[target_tax_id][0]
-                group_name = getattr(relation, "group", None) or relation.get(
-                    "group", target_tax_id
-                )
+                group_name = getattr(relation, "group", None) or relation.get("group", target_tax_id)
 
                 if group_name in gen_groups:
                     value = gen_groups[group_name]
@@ -386,25 +359,36 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             # Create nodes along path and link them
             parent_node = None
             for i, (tax, value) in enumerate(path):
+                # For non-hierarchical taxonomies, extract clean value without hierarchical context
+                if not tax.hierarchical and ":" in value:
+                    clean_value = value.split(":")[-1]
+                else:
+                    clean_value = value
+
                 # Find the actual tag for this taxonomy/value and use its data
-                path_tag = tag_lookup.get((tax.id, value))
-                node = get_or_create_node(tax, value, path_tag, tax.color)
+                path_tag = tag_lookup.get((tax.id, clean_value))
+                node = get_or_create_node(tax, clean_value, path_tag, tax.color)
 
                 # Mark as child if not root of path
                 if i > 0:
-                    child_nodes.add((tax.id, value))
+                    child_nodes.add((tax.id, clean_value))
 
                 # Link to parent
                 if parent_node and node not in parent_node["children"]:
                     parent_node["children"].append(node)
 
+                node_key = (tax.id, clean_value)
                 if path_tag:
                     path_projects = set(path_tag.get("projectUUIDs", []))
                     path_metrics = path_tag.get("metrics", {}) or {}
-                    node["projectUUIDs"].update(path_projects)
-                    for severity in ["critical", "high", "medium", "low"]:
-                        if severity in path_metrics:
-                            node["metrics"][severity] += path_metrics[severity]
+
+                    # Only add metrics if this node hasn't received its initial metrics yet
+                    if node_key not in nodes_with_initial_metrics:
+                        node["projectUUIDs"].update(path_projects)
+                        for severity in ["critical", "high", "medium", "low"]:
+                            if severity in path_metrics:
+                                node["metrics"][severity] += path_metrics[severity]
+                        nodes_with_initial_metrics.add(node_key)
 
                 parent_node = node
 
@@ -433,20 +417,30 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
 
             # Extract value from first capture group
             groups = match.groupdict()
-            value = tag_name if len(groups) > 1 else next(iter(groups.values()), None)
+            raw_value = tag_name if len(groups) > 1 else next(iter(groups.values()), None) if groups else None
+
+            # For non-hierarchical taxonomies, use cleaned value
+            if not tax.hierarchical and raw_value and ":" in raw_value:
+                value = raw_value.split(":")[-1]
+            else:
+                value = raw_value
 
             if not value:
                 continue
 
             node_key = (tax.id, value)
 
-            # If already created as part of a path, just add the data
+            # If already created as part of a path, only add new projects
             if node_key in node_cache:
                 node = node_cache[node_key]
-                node["projectUUIDs"].update(tag_projects)
-                for severity in ["critical", "high", "medium", "low"]:
-                    if severity in tag_metrics:
-                        node["metrics"][severity] += tag_metrics[severity]
+                existing_projects = set(node["projectUUIDs"])
+                new_projects = tag_projects - existing_projects
+                if new_projects:
+                    node["projectUUIDs"].update(new_projects)
+                    # Only add metrics for new projects
+                    for severity in ["critical", "high", "medium", "low"]:
+                        if severity in tag_metrics:
+                            node["metrics"][severity] += tag_metrics[severity]
             else:
                 # Create as standalone root
                 tag_data = tag_lookup.get((tax.id, value))
@@ -479,7 +473,5 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             aggregate_node(node)
             tree_roots.append(node)
 
-    logger.info(
-        f"Tree complete: {len(tree_roots)} roots, {len(node_cache)} total nodes"
-    )
+    logger.info(f"Tree complete: {len(tree_roots)} roots, {len(node_cache)} total nodes")
     return tree_roots

@@ -13,7 +13,7 @@ pip install -r requirements.txt
 
 if [[ "$1" == "--coverage" ]]; then
     echo "Running tests with coverage..."
-    python -m pytest -v --cov=main --cov-report=term-missing --cov-report=html:htmlcov
+    python -m pytest -v --cov=. --cov-report=term-missing --cov-report=html:htmlcov
     echo ""
     echo "Coverage report generated at: backend/htmlcov/index.html"
 else
