@@ -26,6 +26,8 @@ enabling both direct categorization and inferred labeling through graph-based re
 Bulk actions provide a way to activate/deactivate/delete multiple projects at once, and to
 apply/remove/clone tags for multiple projects at once.
 
+![Dashboard Screenshot](docs/dashboard-screenshot.png)
+
 ### Rationale
 
 The project was created to address the need for more flexible project organization and classification in Dependency-Track.
