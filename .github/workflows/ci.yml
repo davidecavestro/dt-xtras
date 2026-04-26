@@ -58,7 +58,7 @@ jobs:
       - name: "Run backend tests with coverage"
         run: |
           cd backend
-          python -m pytest . -v --cov=main --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=40
+          python -m pytest . -v --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=70
 
       - name: "Upload coverage report"
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

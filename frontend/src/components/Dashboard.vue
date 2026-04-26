@@ -1002,6 +1002,11 @@ export default {
           // Use tree data from backend (populated for both graph and hierarchical endpoints)
           treeData.value = graphStore.treeData || [];
 
+          // Automatically expand all nodes for better UX
+          if (treeData.value.length > 0) {
+            expandAll(treeData.value);
+          }
+
           // Update all reachable nodes for computed property
           if (treeData.value.length > 0) {
             await updateAllReachableNodes();
