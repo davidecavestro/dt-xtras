@@ -107,6 +107,7 @@ export default {
 
     const metrics = computed(() => {
       const node = props.node
+      // Prefer reachable aggregated metrics (ancestors + descendants + self)
       if (node.reachable?.metrics) {
         return {
           projectsCount: node.reachable.projectsCount || 0,
@@ -116,6 +117,7 @@ export default {
           low: node.reachable.metrics.low || 0
         }
       }
+      // Fallback to subtree (descendants only)
       if (node.subtree?.metrics) {
         return {
           projectsCount: node.subtree.projectsCount || 0,
@@ -125,6 +127,27 @@ export default {
           low: node.subtree.metrics.low || 0
         }
       }
+      // Hierarchical tree format: direct metrics with severity counts
+      if (node.metrics && (node.metrics.critical !== undefined || node.metrics.high !== undefined)) {
+        return {
+          projectsCount: node.projectsCount || 0,
+          critical: node.metrics.critical || 0,
+          high: node.metrics.high || 0,
+          medium: node.metrics.medium || 0,
+          low: node.metrics.low || 0
+        }
+      }
+      // Network/graph tree format with vulnerabilities wrapper
+      if (node.metrics && node.metrics.vulnerabilities !== undefined) {
+        return {
+          projectsCount: node.projectsCount || 0,
+          critical: node.metrics.critical || 0,
+          high: node.metrics.high || 0,
+          medium: node.metrics.medium || 0,
+          low: node.metrics.low || 0
+        }
+      }
+      // Legacy fallback
       return {
         projectsCount: node.projectsCount || 0,
         critical: 0,

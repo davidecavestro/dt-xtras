@@ -586,7 +586,7 @@ export default {
     const treeViewMode = ref('tree') // 'tree' or 'table'
     const treeSortBy = ref('name')
     const treeSortDesc = ref(false)
-    const treeMode = ref('network') // 'network' or 'hierarchical'
+    const treeMode = ref('hierarchical') // 'network' or 'hierarchical'
 
 
     // Initialize data on component mount

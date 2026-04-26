@@ -58,6 +58,7 @@ export default {
   emits: ['select', 'toggle'],
   setup(props) {
     const getNodeMetrics = (node) => {
+      // Prefer reachable aggregated metrics (ancestors + descendants + self)
       if (node.reachable?.metrics) {
         return {
           projectsCount: node.reachable.projectsCount || 0,
@@ -68,6 +69,7 @@ export default {
           low: node.reachable.metrics.low || 0
         }
       }
+      // Fallback to subtree (descendants only)
       if (node.subtree?.metrics) {
         return {
           projectsCount: node.subtree.projectsCount || 0,
@@ -78,6 +80,31 @@ export default {
           low: node.subtree.metrics.low || 0
         }
       }
+      // Hierarchical tree format: direct metrics with severity counts
+      if (node.metrics && (node.metrics.critical !== undefined || node.metrics.high !== undefined)) {
+        const vulnCount = (node.metrics.critical || 0) + (node.metrics.high || 0) +
+                         (node.metrics.medium || 0) + (node.metrics.low || 0)
+        return {
+          projectsCount: node.projectsCount || 0,
+          vulnerabilities: vulnCount,
+          critical: node.metrics.critical || 0,
+          high: node.metrics.high || 0,
+          medium: node.metrics.medium || 0,
+          low: node.metrics.low || 0
+        }
+      }
+      // Network/graph tree format with vulnerabilities wrapper
+      if (node.metrics && node.metrics.vulnerabilities !== undefined) {
+        return {
+          projectsCount: node.projectsCount || 0,
+          vulnerabilities: node.metrics.vulnerabilities || 0,
+          critical: node.metrics.critical || 0,
+          high: node.metrics.high || 0,
+          medium: node.metrics.medium || 0,
+          low: node.metrics.low || 0
+        }
+      }
+      // Legacy fallback
       return {
         projectsCount: node.projectsCount || 0,
         vulnerabilities: 0,
@@ -92,6 +119,13 @@ export default {
       const nodes = [...(props.nodes || [])]
 
       const sortFn = (a, b) => {
+        // Prioritize nodes with children over leaf nodes
+        const aHasChildren = a.children && a.children.length > 0
+        const bHasChildren = b.children && b.children.length > 0
+
+        if (aHasChildren && !bHasChildren) return -1
+        if (!aHasChildren && bHasChildren) return 1
+
         const metricsA = getNodeMetrics(a)
         const metricsB = getNodeMetrics(b)
 
