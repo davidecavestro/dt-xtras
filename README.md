@@ -64,7 +64,7 @@ Combine environments, customers, and product versions:
 - `myapp:1.0.0` → Product version classification: MYAPP version 1.0.0
 - `deploy:acme:prod:myapp:1.0.0` → Customer ACME Inc + Environment PROD + Product MYAPP version 1.0.0
 
-In the example above, the tag `deploy:acmeinc:prod:myapp:1.0.0` provides all projects tagged as `myapp:1.0.0` with the following classifications:
+In the example above, the tag `deploy:acme:prod:myapp:1.0.0` provides all projects tagged as `myapp:1.0.0` with the following classifications:
 - Customer: ACME Inc
 - Environment: PROD
 - Product: MYAPP
