@@ -26,9 +26,7 @@ class Taxonomy(BaseModel):
     regex_pattern: str
     color: str = "#ef4444"  # Default color
     priority: int
-    relations: Optional[List[TaxonomyRelation]] = (
-        None  # Must be array if present, not null
-    )
+    relations: Optional[List[TaxonomyRelation]] = None  # Must be array if present, not null
     hierarchical: bool = False  # Mandatory boolean, default False
 
 
@@ -37,11 +35,15 @@ class TaxonomyPriority(BaseModel):
     priority: int
 
 
+class Tag(BaseModel):
+    name: str
+
+
 class DTProject(BaseModel):
     uuid: str
     name: str
     version: Optional[str] = None
-    tags: List[str]
+    tags: List[Tag]
     metrics: Optional[Dict[str, Any]] = None
     active: Optional[bool] = True
     lastActivity: Optional[str] = None
@@ -49,11 +51,11 @@ class DTProject(BaseModel):
 
     @field_validator("tags", mode="before")
     @classmethod
-    def convert_tags_to_strings(cls, v):
-        """Convert tag objects to strings if needed"""
+    def convert_tags_to_objects(cls, v):
+        """Convert tag strings to objects if needed"""
         if isinstance(v, list):
             return [
-                tag.get("name") if isinstance(tag, dict) and "name" in tag else str(tag)
+                Tag(name=tag.get("name")) if isinstance(tag, dict) and "name" in tag else Tag(name=str(tag))
                 for tag in v
             ]
         return v
@@ -97,10 +99,7 @@ class ProjectVersion(BaseModel):
     def convert_tags_to_strings(cls, v):
         """Convert tag objects to strings if needed"""
         if isinstance(v, list):
-            return [
-                tag.get("name") if isinstance(tag, dict) and "name" in tag else str(tag)
-                for tag in v
-            ]
+            return [tag.get("name") if isinstance(tag, dict) and "name" in tag else str(tag) for tag in v]
         return v
 
 

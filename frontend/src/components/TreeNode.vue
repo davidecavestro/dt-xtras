@@ -153,7 +153,7 @@ export default {
     })
 
     const isSelected = computed(() => {
-      return props.selectedNode?.id === props.node.id
+      return props.selectedNode === props.node
     })
 
     const filteredChildren = computed(() => {
