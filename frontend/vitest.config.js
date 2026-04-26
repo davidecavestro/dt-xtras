@@ -6,6 +6,18 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/utils/__tests__/**/*.test.js'],
-    globals: true
+    exclude: ['node_modules', 'dist'],
+    globals: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'dist/',
+        '**/*.test.js',
+        '**/*.config.js',
+        'src/main.js'
+      ]
+    }
   }
 })

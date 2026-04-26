@@ -23,30 +23,65 @@ jobs:
           cache: "pip"
           cache-dependency-path: "backend/requirements.txt"
 
-      - name: "Install dependencies"
+      - name: "Set up Node.js"
+        uses: "actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f" # v6
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+
+      - name: "Install backend dependencies"
         run: |
           cd backend
           pip install -r requirements.txt
 
-      - name: "Run tests and generate coverage"
+      - name: "Install frontend dependencies"
+        run: |
+          cd frontend
+          npm ci
+
+      - name: "Run backend tests and generate coverage"
         run: |
           cd backend
           python -m pytest . --cov=main --cov-report=term --cov-report=json:coverage.json
 
-      - name: "Extract coverage percentage"
-        id: coverage
+      - name: "Extract backend coverage percentage"
+        id: backend_coverage
         run: |
           cd backend
           COVERAGE=$(python -c "import json; data=json.load(open('coverage.json')); print(round(data['totals']['percent_covered']))")
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
-          echo "Coverage: $COVERAGE%"
+          echo "Backend Coverage: $COVERAGE%"
 
-      - name: "Update README badge"
+      - name: "Run frontend tests and generate coverage"
+        run: |
+          cd frontend
+          npm run test:run -- --coverage --reporter=json --reporter=json-summary
+
+      - name: "Extract frontend coverage percentage"
+        id: frontend_coverage
+        run: |
+          cd frontend
+          COVERAGE=$(node -e "const data=require('./coverage/coverage-summary.json'); console.log(Math.round(data.total.lines.pct))")
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "Frontend Coverage: $COVERAGE%"
+
+      - name: "Update backend README badge"
         uses: "schneegans/dynamic-badges-action@v1.8.0"
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 609260f0e737a09ab2359c05e6289ea7
-          filename: dt-xtras-coverage.json
+          filename: dt-xtras-backend-coverage.json
           label: backend coverage
-          message: ${{ steps.coverage.outputs.coverage }}%
-          color: ${{ steps.coverage.outputs.coverage > 80 && 'brightgreen' || steps.coverage.outputs.coverage > 60 && 'green' || steps.coverage.outputs.coverage > 40 && 'yellow' || 'red' }}
+          message: ${{ steps.backend_coverage.outputs.coverage }}%
+          color: ${{ steps.backend_coverage.outputs.coverage > 80 && 'brightgreen' || steps.backend_coverage.outputs.coverage > 60 && 'green' || steps.backend_coverage.outputs.coverage > 40 && 'yellow' || 'red' }}
+
+      - name: "Update frontend README badge"
+        uses: "schneegans/dynamic-badges-action@v1.8.0"
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 609260f0e737a09ab2359c05e6289ea7
+          filename: dt-xtras-frontend-coverage.json
+          label: frontend coverage
+          message: ${{ steps.frontend_coverage.outputs.coverage }}%
+          color: ${{ steps.frontend_coverage.outputs.coverage > 80 && 'brightgreen' || steps.frontend_coverage.outputs.coverage > 60 && 'green' || steps.frontend_coverage.outputs.coverage > 40 && 'yellow' || 'red' }}

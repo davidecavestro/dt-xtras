@@ -251,7 +251,7 @@ async def delete_tag_from_dt(dt_token: str, tag_name: str):
             raise ValueError(f"Failed to delete tag: {response.text}")
 
 
-def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
+def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies, root_taxonomy=None):
     """Build hierarchical tree from tags.
 
     Logic:
@@ -260,7 +260,7 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
     3. Tags matching hierarchical taxonomies with relations build parent-child PATHS
     4. A node aggregates: its own projects + all projects from its subtree
     """
-    logger.info(f"Building tree: {len(tags)} tags, {len(all_taxonomies)} taxonomies")
+    logger.info(f"Building tree: {len(tags)} tags, {len(all_taxonomies)} taxonomies, root_taxonomy={root_taxonomy}")
 
     # Build regex patterns for all taxonomies
     all_patterns = {}
@@ -508,7 +508,9 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
     for node_key, node in node_cache.items():
         if node_key not in child_nodes:
             aggregate_node(node)
-            tree_roots.append(node)
+            # Filter by root_taxonomy if specified
+            if root_taxonomy is None or node["taxonomy"] == root_taxonomy:
+                tree_roots.append(node)
 
     logger.info(f"Tree complete: {len(tree_roots)} roots, {len(node_cache)} total nodes")
     return tree_roots
