@@ -21,3 +21,4 @@ globs: **/*(.vue|.js|.py)
 # The backend is splitted into separated into multiple files for separation of concerns: keep responsibilities separated. Business logic is in services.py, models in models.py, auth in auth.py.
 # For regex always use `regexpp` at frontend and `regex` at backend
 # Never directly edit `taxonomies.yaml`: it's data and you don't have to "fix" it
+# Add comments to code when it is written for a specific purpose, to prevent accidentally removing it as optimization
