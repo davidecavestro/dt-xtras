@@ -317,6 +317,14 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
                 if value:
                     tag_lookup[(tax.id, value)] = tag
 
+        # Also store hierarchical tags by their full name for direct lookup
+        for tax in all_taxonomies:
+            if tax.hierarchical and tax.id in all_patterns:
+                pattern = all_patterns[tax.id][1]
+                match = pattern.match(tag_name)
+                if match:
+                    tag_lookup[(tax.id, tag_name)] = tag
+
     # Track which nodes are children (not roots)
     child_nodes = set()
 
@@ -342,7 +350,7 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
 
             # Build path from relations
             gen_groups = gen_match.groupdict()
-            path = []  # List of (taxonomy, value) tuples
+            path = []  # List of (taxonomy, value, target_tag) tuples
 
             for relation in gen_tax.relations:
                 target_tax_id = relation.targets if hasattr(relation, "targets") else relation.get("targets")
@@ -363,9 +371,8 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
 
             # Create nodes along path and link them
             parent_node = None
-            for i, (tax, value, tag) in enumerate(path):
+            for i, (tax, value, target_tag) in enumerate(path):
                 clean_value = value
-                processed_tags.add(tag.get("name"))
 
                 # Find the actual tag for this taxonomy/value and use its data
                 path_tag = tag_lookup.get((tax.id, clean_value))
@@ -392,7 +399,24 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
                                 node["metrics"][severity] += path_metrics[severity]
                         nodes_with_initial_metrics.add(node_key)
 
+                # If this is the last node in the path (leaf), propagate the
+                # hierarchical tag's metrics to it
+                if i == len(path) - 1:
+                    # Get the hierarchical tag by its full name
+                    hierarchical_tag = tag_lookup.get((gen_tax.id, tag_name))
+                    if hierarchical_tag:
+                        tag_projects = set(hierarchical_tag.get("projectUUIDs", []))
+                        tag_metrics = hierarchical_tag.get("metrics", {}) or {}
+                        node["projectUUIDs"].update(tag_projects)
+                        for severity in ["critical", "high", "medium", "low"]:
+                            if severity in tag_metrics:
+                                node["metrics"][severity] += tag_metrics[severity]
+
                 parent_node = node
+
+            # Mark the hierarchical tag itself as processed to prevent
+            # creating it as a standalone node in PASS 2
+            processed_tags.add(tag_name)
 
     # PASS 2: Create standalone roots for tags matching non-hierarchical taxonomies
     # BUT not implied by hierarchical tag relations
@@ -402,6 +426,19 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             continue
         tag_projects = set(tag.get("projectUUIDs", []))
         tag_metrics = tag.get("metrics", {}) or {}
+
+        # Skip if this tag matches a hierarchical taxonomy (it's already processed in PASS 1)
+        for tax in all_taxonomies:
+            if tax.hierarchical and tax.id in all_patterns:
+                pattern = all_patterns[tax.id][1]
+                if pattern.match(tag_name):
+                    # This is a hierarchical tag, skip it
+                    processed_tags.add(tag_name)
+                    break
+
+        # Skip if already marked as processed
+        if tag_name in processed_tags:
+            continue
 
         # Find which taxonomies this tag matches
         for tax in all_taxonomies:

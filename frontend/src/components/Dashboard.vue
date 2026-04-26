@@ -467,6 +467,7 @@ import Pagination from './Pagination.vue'
 import ProjectCard from './ProjectCard.vue'
 import NameCell from './grid-cells/NameCell.vue'
 import { createLogger } from '../utils/logger'
+import { findReachableTags } from '../utils/treeTraversal'
 
 export default {
   name: 'Dashboard',
@@ -791,68 +792,6 @@ export default {
       return distribution
     })
 
-    // Helper function to find reachable tags using tree structure
-    const findReachableTags = (startNodeId) => {
-      logger.info('findReachableTags called with startNodeId:', startNodeId);
-      logger.info('treeData available:', !!treeData.value, 'length:', treeData.value?.length);
-
-      if (!startNodeId || !treeData.value || treeData.value.length === 0) return new Set()
-
-      const visited = new Set()
-      const queue = [startNodeId]
-      const reachableTags = new Set()
-
-      // Helper function to find node in tree
-      const findNodeInTree = (nodes, nodeId) => {
-        for (const node of nodes) {
-          if (node.id === nodeId) return node
-          if (node.children && node.children.length > 0) {
-            const found = findNodeInTree(node.children, nodeId)
-            if (found) return found
-          }
-        }
-        return null
-      }
-
-      while (queue.length > 0) {
-        const currentId = queue.shift()
-        if (visited.has(currentId)) continue
-
-        visited.add(currentId)
-        reachableTags.add(currentId)
-
-        // Find the current node in the tree
-        const currentNode = findNodeInTree(treeData.value, currentId)
-        if (currentNode && currentNode.children) {
-          // Add all children to queue (downward traversal)
-          currentNode.children.forEach(child => {
-            if (!visited.has(child.id)) {
-              queue.push(child.id)
-            }
-          })
-        }
-
-        // Also find parent nodes (upward traversal)
-        const findParent = (nodes, targetId, parent = null) => {
-          for (const node of nodes) {
-            if (node.id === targetId) return parent
-            if (node.children && node.children.length > 0) {
-              const found = findParent(node.children, targetId, node)
-              if (found) return found
-            }
-          }
-          return null
-        }
-
-        const parentNode = findParent(treeData.value, currentId)
-        if (parentNode && !visited.has(parentNode.id)) {
-          queue.push(parentNode.id)
-        }
-      }
-
-      logger.info('findReachableTags returning:', Array.from(reachableTags));
-      return reachableTags
-    }
 
     // Tree building function using taxonomy data
     const buildTreeFromTaxonomies = (taxonomies) => {
@@ -916,7 +855,7 @@ export default {
           return projects.value || []
         }
 
-        const reachableNodes = findReachableTags(selectedTreeNode.value?.id)
+        const reachableNodes = findReachableTags(selectedTreeNode.value?.id, treeData.value)
 
         return (projects.value || []).filter(project => {
           if (!project || !project.tags || project.tags.length === 0) {
@@ -940,7 +879,7 @@ export default {
       // Get all root nodes and find all reachable nodes from them
       if (rootNodes.value && rootNodes.value.length > 0) {
         rootNodes.value.forEach(rootNode => {
-          const reachable = findReachableTags(rootNode.id)
+          const reachable = findReachableTags(rootNode.id, treeData.value)
           reachable.forEach(nodeId => allReachable.add(nodeId))
         })
       }
@@ -1159,7 +1098,6 @@ export default {
       selectTreeNode,
       toggleTreeNode,
       clearSelection,
-      findReachableTags,
       setAssociativeMode,
       buildTreeFromTaxonomies,
       updateAllReachableNodes,
