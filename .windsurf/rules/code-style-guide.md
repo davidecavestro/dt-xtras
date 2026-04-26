@@ -22,3 +22,4 @@ globs: **/*(.vue|.js|.py)
 # For regex always use `regexpp` at frontend and `regex` at backend
 # Never directly edit `taxonomies.yaml`: it's data and you don't have to "fix" it
 # Add comments to code when it is written for a specific purpose, to prevent accidentally removing it as optimization
+# Tests are your friends, write tests asserting every specific condition you have to fix, so that this remains verified over time
