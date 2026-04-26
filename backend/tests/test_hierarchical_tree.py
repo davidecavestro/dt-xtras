@@ -98,3 +98,80 @@ def test_bee_2026_04_double_counting():
 
     # There should be no standalone nodes since they're properly handled in hierarchical paths
     assert len(standalone_bee_nodes) == 0, f"Should have no standalone nodes, got {len(standalone_bee_nodes)}"
+
+
+def test_multi_capture_taxonomy_node_name():
+    """Test that nodes from multi-capture taxonomies display full tag name, not just extracted value."""
+
+    # Mock taxonomies - bee taxonomy has multiple capture groups (brand and version)
+    taxonomies = [
+        MockTaxonomy(
+            "bee",
+            r"^(?P<brand>[^:]+):(?P<version>.+)$",
+            hierarchical=False,
+            color="#FF0000",
+        ),
+    ]
+
+    # Mock tags - bee:2026.04 should display as "bee:2026.04", not just "2026.04"
+    tags = [
+        {
+            "name": "bee:2026.04",
+            "projectUUIDs": ["proj1"],
+            "metrics": {"critical": 1, "high": 0, "medium": 0, "low": 0},
+        },
+    ]
+
+    # Build the tree
+    tree = build_hierarchical_tree(tags, taxonomies, taxonomies)
+
+    # Find the bee node
+    bee_node = None
+    for node in tree:
+        if node["taxonomy"] == "bee":
+            bee_node = node
+            break
+
+    assert bee_node is not None, "bee node should exist in tree"
+
+    # The node name should be the full tag name "bee:2026.04", not just "2026.04"
+    assert bee_node["name"] == "bee:2026.04", f"Expected node name 'bee:2026.04', got '{bee_node['name']}'"
+    assert bee_node["id"] == "bee:2026.04", f"Expected node id 'bee:2026.04', got '{bee_node['id']}'"
+
+
+def test_single_capture_taxonomy_node_name():
+    """Test that nodes from single-capture non-hierarchical taxonomies display cleaned value."""
+
+    # Mock taxonomies - version taxonomy has single capture group
+    taxonomies = [
+        MockTaxonomy(
+            "version",
+            r"^(?P<version>.+)$",
+            hierarchical=False,
+            color="#00FF00",
+        ),
+    ]
+
+    # Mock tags - bee:2026.04 should display as "2026.04" (cleaned) for single-capture taxonomy
+    tags = [
+        {
+            "name": "bee:2026.04",
+            "projectUUIDs": ["proj1"],
+            "metrics": {"critical": 1, "high": 0, "medium": 0, "low": 0},
+        },
+    ]
+
+    # Build the tree
+    tree = build_hierarchical_tree(tags, taxonomies, taxonomies)
+
+    # Find the version node
+    version_node = None
+    for node in tree:
+        if node["taxonomy"] == "version":
+            version_node = node
+            break
+
+    assert version_node is not None, "version node should exist in tree"
+
+    # The node name should be the cleaned value "2026.04", not the full "bee:2026.04"
+    assert version_node["name"] == "2026.04", f"Expected node name '2026.04', got '{version_node['name']}'"

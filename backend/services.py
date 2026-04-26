@@ -323,6 +323,9 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
     # Track which nodes have already received their initial metrics
     nodes_with_initial_metrics = set()
 
+    # Track processed tags
+    processed_tags = set()
+
     # PASS 1: Build paths from hierarchical taxonomies with relations
     for tag in tags:
         tag_name = tag.get("name", "")
@@ -351,19 +354,18 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
 
                 if group_name in gen_groups:
                     value = gen_groups[group_name]
-                    path.append((target_tax, value))
+                    #  find target_tax tag whose named capture group matches
+                    target_tag = tag_lookup.get((target_tax.id, value))
+                    path.append((target_tax, value, target_tag))
 
             if not path:
                 continue
 
             # Create nodes along path and link them
             parent_node = None
-            for i, (tax, value) in enumerate(path):
-                # For non-hierarchical taxonomies, extract clean value without hierarchical context
-                if not tax.hierarchical and ":" in value:
-                    clean_value = value.split(":")[-1]
-                else:
-                    clean_value = value
+            for i, (tax, value, tag) in enumerate(path):
+                clean_value = value
+                processed_tags.add(tag.get("name"))
 
                 # Find the actual tag for this taxonomy/value and use its data
                 path_tag = tag_lookup.get((tax.id, clean_value))
@@ -396,6 +398,8 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
     # BUT not implied by hierarchical tag relations
     for tag in tags:
         tag_name = tag.get("name", "")
+        if tag_name in processed_tags:
+            continue
         tag_projects = set(tag.get("projectUUIDs", []))
         tag_metrics = tag.get("metrics", {}) or {}
 
@@ -419,11 +423,7 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies):
             groups = match.groupdict()
             raw_value = tag_name if len(groups) > 1 else next(iter(groups.values()), None) if groups else None
 
-            # For non-hierarchical taxonomies, use cleaned value
-            if not tax.hierarchical and raw_value and ":" in raw_value:
-                value = raw_value.split(":")[-1]
-            else:
-                value = raw_value
+            value = raw_value
 
             if not value:
                 continue
