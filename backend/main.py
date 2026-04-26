@@ -60,9 +60,7 @@ app = FastAPI(title="dt-xtras", version="alpha-1")
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
 cors_origins = cors_origins_env.split(",") if cors_origins_env else ["*"]
 cors_allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
-cors_allow_methods = os.getenv(
-    "CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,PATCH,OPTIONS"
-).split(",")
+cors_allow_methods = os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,PATCH,OPTIONS").split(",")
 cors_allow_headers = os.getenv("CORS_ALLOW_HEADERS", "*").split(",")
 
 app.add_middleware(
@@ -186,9 +184,7 @@ async def get_taxonomies(dt_token: str = Depends(get_dt_token_from_request)):
 
 
 @app.get("/api/taxonomies/{taxonomy_id}/tag")
-async def get_taxonomy_tags(
-    taxonomy_id: str, dt_token: str = Depends(get_dt_token_from_request)
-):
+async def get_taxonomy_tags(taxonomy_id: str, dt_token: str = Depends(get_dt_token_from_request)):
     """Get all tags that match a specific taxonomy pattern"""
     taxonomies = load_taxonomies()
     taxonomy = next((t for t in taxonomies if t.id == taxonomy_id), None)
@@ -211,14 +207,10 @@ async def get_taxonomy_tags(
 
 
 @app.post("/api/taxonomies", response_model=Taxonomy)
-async def create_taxonomy(
-    taxonomy: Taxonomy, permissions: List[str] = Depends(require_edit_permissions)
-):
+async def create_taxonomy(taxonomy: Taxonomy, permissions: List[str] = Depends(require_edit_permissions)):
     taxonomies = load_taxonomies()
     if any(t.id == taxonomy.id for t in taxonomies):
-        raise HTTPException(
-            status_code=400, detail="Taxonomy with this ID already exists"
-        )
+        raise HTTPException(status_code=400, detail="Taxonomy with this ID already exists")
     taxonomies.append(taxonomy)
     save_taxonomies(taxonomies)
     return taxonomy
@@ -240,9 +232,7 @@ async def update_taxonomy(
 
 
 @app.delete("/api/taxonomies/{taxonomy_id}")
-async def delete_taxonomy(
-    taxonomy_id: str, permissions: List[str] = Depends(require_edit_permissions)
-):
+async def delete_taxonomy(taxonomy_id: str, permissions: List[str] = Depends(require_edit_permissions)):
     taxonomies = load_taxonomies()
     index = next((i for i, t in enumerate(taxonomies) if t.id == taxonomy_id), None)
     if index is None:
@@ -281,9 +271,7 @@ async def get_projects(
     dt_token: str = Depends(get_dt_token_from_request),
 ):
     """Get projects from DT API with optional filtering"""
-    projects = await get_dt_projects(
-        dt_token, page=page, limit=limit, search=search, excludeInactive=excludeInactive
-    )
+    projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search, excludeInactive=excludeInactive)
     return projects
 
 
@@ -307,9 +295,7 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
         elif response.status_code == 403:
             raise HTTPException(status_code=403, detail="DT API access forbidden")
         elif response.status_code >= 500:
-            raise HTTPException(
-                status_code=502, detail=f"DT API server error: {response.status_code}"
-            )
+            raise HTTPException(status_code=502, detail=f"DT API server error: {response.status_code}")
 
         response.raise_for_status()
         dt_tags = response.json()
@@ -368,9 +354,7 @@ async def update_tag(
         headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
-        await client.put(
-            f"{DT_API_URL}/api/v1/tag", headers=headers, json=[new_name], timeout=30.0
-        )
+        await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[new_name], timeout=30.0)
 
     # Get projects with old tag and migrate
     projects_with_old_tag = await get_projects_with_tag(dt_token, tag_name)
@@ -415,9 +399,7 @@ async def create_tag(
         headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
-        response = await client.put(
-            f"{DT_API_URL}/api/v1/tag", headers=headers, json=[tag_name], timeout=30.0
-        )
+        response = await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[tag_name], timeout=30.0)
         response.raise_for_status()
         return {"name": tag_name, "message": "Tag created successfully"}
 
@@ -436,21 +418,15 @@ async def delete_tag(
         headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
-        response = await client.delete(
-            f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0
-        )
+        response = await client.delete(f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0)
         if response.status_code in [200, 204]:
             return {"message": "Tag deleted successfully"}
         else:
-            raise HTTPException(
-                status_code=response.status_code, detail="Failed to delete tag"
-            )
+            raise HTTPException(status_code=response.status_code, detail="Failed to delete tag")
 
 
 @app.get("/api/tag/{tag_name}/project")
-async def get_projects_with_tag_endpoint(
-    tag_name: str, dt_token: str = Depends(get_dt_token_from_request)
-):
+async def get_projects_with_tag_endpoint(tag_name: str, dt_token: str = Depends(get_dt_token_from_request)):
     """Get all projects that have a specific tag"""
     projects = await get_projects_with_tag(dt_token, tag_name)
     return projects
@@ -487,9 +463,7 @@ async def add_tag_to_projects(
         project_response.raise_for_status()
         current_project = project_response.json()
 
-    return {
-        "message": f"Successfully added tag '{tag_name}' to {len(projects)} projects"
-    }
+    return {"message": f"Successfully added tag '{tag_name}' to {len(projects)} projects"}
 
 
 @app.delete("/api/tag/{tag_name}/project")
@@ -527,11 +501,7 @@ async def remove_tag_from_projects(
 
             # Remove specified tag from existing tags
             current_tags = current_project.get("tags", [])
-            if (
-                isinstance(current_tags, list)
-                and current_tags
-                and isinstance(current_tags[0], dict)
-            ):
+            if isinstance(current_tags, list) and current_tags and isinstance(current_tags[0], dict):
                 tag_names = [tag.get("name", "") for tag in current_tags]
             else:
                 tag_names = current_tags if isinstance(current_tags, list) else []
@@ -548,13 +518,9 @@ async def remove_tag_from_projects(
                 json=update_data,
                 timeout=30.0,
             )
-            logger.info(
-                f"Successfully removed tag '{tag_name}' from project {project_uuid}"
-            )
+            logger.info(f"Successfully removed tag '{tag_name}' from project {project_uuid}")
 
-    return {
-        "message": f"Successfully removed tag '{tag_name}' from {len(projects)} projects"
-    }
+    return {"message": f"Successfully removed tag '{tag_name}' from {len(projects)} projects"}
 
 
 # Tree endpoints (simplified - full implementation would include graph building)
@@ -586,13 +552,9 @@ async def get_tree(
         if taxonomy_tags:
             # Aggregate metrics from all tags
             agg_metrics = {
-                "critical": sum(
-                    t.get("metrics", {}).get("critical", 0) for t in taxonomy_tags
-                ),
+                "critical": sum(t.get("metrics", {}).get("critical", 0) for t in taxonomy_tags),
                 "high": sum(t.get("metrics", {}).get("high", 0) for t in taxonomy_tags),
-                "medium": sum(
-                    t.get("metrics", {}).get("medium", 0) for t in taxonomy_tags
-                ),
+                "medium": sum(t.get("metrics", {}).get("medium", 0) for t in taxonomy_tags),
                 "low": sum(t.get("metrics", {}).get("low", 0) for t in taxonomy_tags),
             }
 
@@ -649,13 +611,22 @@ async def get_hierarchical_tree(
         logger.warning("No hierarchical taxonomies found, returning empty tree")
         return {"tree": []}
 
+    # If root_taxonomy is specified, ensure it's included in hierarchical_taxonomies
+    # but don't filter out other hierarchical taxonomies as they may be needed for relations
+    if root_taxonomy:
+        root_tax = next((t for t in taxonomies if t.id == root_taxonomy), None)
+        if not root_tax:
+            logger.warning(f"Root taxonomy '{root_taxonomy}' not found")
+            return {"tree": []}
+        if not root_tax.hierarchical:
+            logger.warning(f"Root taxonomy '{root_taxonomy}' is not hierarchical")
+            return {"tree": []}
+
     # Fetch enriched tags with project UUIDs and metrics
     enriched_tags = await fetch_enriched_tags_for_tree(dt_token)
 
     # Build hierarchical tree
-    tree_data = build_hierarchical_tree(
-        enriched_tags, hierarchical_taxonomies, taxonomies
-    )
+    tree_data = build_hierarchical_tree(enriched_tags, hierarchical_taxonomies, taxonomies, root_taxonomy)
 
     return {"tree": tree_data}
 
@@ -672,9 +643,7 @@ async def test_proxy_post(request: Request):
 
 
 @app.api_route("/api/v1/{path:path}", methods=["GET"])
-async def proxy_dt_api_get(
-    path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)
-):
+async def proxy_dt_api_get(path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
     logger.info(f"Proxy GET request: /api/v1/{path}")
 
     # Prepare headers for DT API
@@ -693,9 +662,7 @@ async def proxy_dt_api_get(
     logger.info(f"GET Request params: {params}")
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{DT_API_URL}/api/v1/{path}", headers=headers, params=params
-        )
+        response = await client.get(f"{DT_API_URL}/api/v1/{path}", headers=headers, params=params)
 
         logger.info(f"GET DT API Response status: {response.status_code}")
         logger.info(f"GET DT API Response headers: {dict(response.headers)}")
@@ -711,9 +678,7 @@ async def proxy_dt_api_get(
 
 
 @app.api_route("/api/v1/{path:path}", methods=["POST", "PUT", "DELETE"])
-async def proxy_dt_api(
-    path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)
-):
+async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
     """Proxy API requests to DT API"""
     data = await request.body()
     logger.info(f"Proxy {request.method} request: /api/v1/{path}")
@@ -820,9 +785,7 @@ async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
             }
         )
 
-    logger.info(
-        f"Enriched {len(enriched_tags)} tags with {total_projects_found} total project associations"
-    )
+    logger.info(f"Enriched {len(enriched_tags)} tags with {total_projects_found} total project associations")
     return enriched_tags
 
 

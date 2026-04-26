@@ -116,9 +116,9 @@
       }
     },
     {
-      "label": "Run All Tests",
+      "label": "Run Backend Tests",
       "type": "shell",
-      "command": "./scripts/run-tests.sh",
+      "command": "./scripts/run-backend-tests.sh",
       "group": "test",
       "presentation": {
         "echo": true,
@@ -135,7 +135,7 @@
       }
     },
     {
-      "label": "Run Tests (Fast)",
+      "label": "Run Backend Tests (Fast)",
       "type": "shell",
       "command": "cd backend && python -m pytest -x -q --tb=line",
       "group": "test",
@@ -148,15 +148,15 @@
         "clear": true
       },
       "problemMatcher": [],
-      "detail": "Run tests with fail-fast and minimal output",
+      "detail": "Run backend tests with fail-fast and minimal output",
       "icon": {
         "id": "zap"
       }
     },
     {
-      "label": "Run Tests with Coverage",
+      "label": "Run Backend Tests with Coverage",
       "type": "shell",
-      "command": "./scripts/run-tests.sh --coverage",
+      "command": "./scripts/run-backend-tests.sh --coverage",
       "group": "test",
       "presentation": {
         "echo": true,
@@ -167,13 +167,51 @@
         "clear": true
       },
       "problemMatcher": [],
-      "detail": "Run tests with coverage report",
+      "detail": "Run backend tests with coverage report",
       "icon": {
         "id": "shield"
       }
     },
     {
-      "label": "Open Coverage Report",
+      "label": "Run Frontend Tests",
+      "type": "shell",
+      "command": "./scripts/run-frontend-tests.sh",
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "detail": "Run all frontend tests with vitest",
+      "icon": {
+        "id": "beaker"
+      }
+    },
+    {
+      "label": "Run Frontend Tests with Coverage",
+      "type": "shell",
+      "command": "./scripts/run-frontend-tests.sh --coverage",
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "detail": "Run frontend tests with coverage report",
+      "icon": {
+        "id": "shield"
+      }
+    },
+    {
+      "label": "Open Backend Coverage Report",
       "type": "shell",
       "command": "python -m webbrowser file://${workspaceFolder}/backend/htmlcov/index.html",
       "group": "test",
@@ -182,7 +220,22 @@
         "reveal": "never"
       },
       "problemMatcher": [],
-      "detail": "Open HTML coverage report in browser",
+      "detail": "Open backend HTML coverage report in browser",
+      "icon": {
+        "id": "preview"
+      }
+    },
+    {
+      "label": "Open Frontend Coverage Report",
+      "type": "shell",
+      "command": "python -m webbrowser file://${workspaceFolder}/frontend/coverage/index.html",
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "never"
+      },
+      "problemMatcher": [],
+      "detail": "Open frontend HTML coverage report in browser",
       "icon": {
         "id": "preview"
       }

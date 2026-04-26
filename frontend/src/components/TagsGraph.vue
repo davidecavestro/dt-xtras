@@ -9,7 +9,7 @@
 
       <!-- Controls -->
       <div class="flex items-center space-x-6">
-        <!-- Associative Mode Toggle -->
+        <!-- Hierarchical Mode Toggle -->
         <div class="flex items-center space-x-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Mode:</label>
           <div class="flex items-center space-x-2">
@@ -21,7 +21,7 @@
               @change="updateVisualization"
               class="text-blue-600 focus:ring-blue-500"
             >
-            <label for="hierarchical-mode" class="text-sm text-gray-700 dark:text-gray-300">Associative</label>
+            <label for="hierarchical-mode" class="text-sm text-gray-700 dark:text-gray-300">Hierarchical</label>
 
             <input
               type="radio"
@@ -36,6 +36,8 @@
         </div>
 
         <!-- Taxonomy Selector -->
+        <!-- Commented out - currently leads to empty graph -->
+        <!--
         <div class="flex items-center space-x-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Force Root Taxonomy:</label>
           <select
@@ -50,6 +52,7 @@
             </option>
           </select>
         </div>
+        -->
       </div>
 
       <!-- Mode Description -->
@@ -307,7 +310,7 @@ export default {
     const viewMode = ref('graph'); // 'graph', 'list', 'grid', or 'deck'
 
     // Use graph store reactive references
-    const { nodes, edges, loading: graphLoading, error: graphError } = storeToRefs(graphStore);
+    const { nodes, edges, treeData, loading: graphLoading, error: graphError } = storeToRefs(graphStore);
 
     // Taxonomy colors - now dynamic based on user choices
     const taxonomyColors = computed(() => {
@@ -323,9 +326,9 @@ export default {
     // Computed properties
     const modeDescription = computed(() => {
       if (associativeMode.value) {
-        return 'Associative mode creates direct connections between related taxonomies, hiding intermediate connector nodes. Each connection represents a semantic relationship between taxonomy elements. This mode shows projects related to your selection in the Related Projects panel.';
+        return 'Hierarchical mode creates direct connections between related taxonomies, hiding intermediate connector nodes. Each connection represents a semantic relationship between taxonomy elements. This mode shows projects related to your selection in the Related Projects panel.';
       } else {
-        return 'Normal mode creates hierarchical relationships where child nodes connect to parent nodes through defined taxonomy relations. This mode does not show related projects - use Associative mode to see project relationships.';
+        return 'Normal mode creates hierarchical relationships where child nodes connect to parent nodes through defined taxonomy relations. This mode does not show related projects - use Hierarchical mode to see project relationships.';
       }
     });
 
@@ -347,24 +350,38 @@ export default {
         loading.value = true;
         error.value = null;
 
-        // Load tag-based graph using enhanced graph store
-        await graphStore.loadTagGraph({
-          rootTaxonomy: selectedTaxonomy.value,
-          associativeMode: associativeMode.value,
-          selectedTaxonomy: selectedTaxonomy.value
-        });
-
-        logger.info('Graph loaded:', nodes.value?.length, 'nodes,', edges.value?.length, 'edges');
-
-        if (!nodes.value || !edges.value) {
-          throw new Error('Failed to load graph data');
+        // Load hierarchical tree or network graph based on mode
+        if (associativeMode.value) {
+          // Hierarchical mode: use hierarchical tree endpoint
+          await graphStore.loadHierarchicalTree({
+            rootTaxonomy: selectedTaxonomy.value
+          });
+          logger.info('Hierarchical tree loaded:', treeData.value?.length, 'roots');
+        } else {
+          // Raw mode: use network graph endpoint
+          await graphStore.loadTagGraph({
+            rootTaxonomy: selectedTaxonomy.value,
+            associativeMode: false
+          });
+          logger.info('Network graph loaded:', nodes.value?.length, 'nodes,', edges.value?.length, 'edges');
         }
 
-        // Convert graph store data to expected format
-        graphData.value = {
-          nodes: nodes.value,
-          edges: edges.value
-        };
+        if (associativeMode.value) {
+          // For hierarchical mode, convert tree to graph format for Cytoscape
+          if (!treeData.value) {
+            throw new Error('Failed to load hierarchical tree data');
+          }
+          graphData.value = convertTreeToGraph(treeData.value);
+        } else {
+          // For network mode, use nodes/edges directly
+          if (!nodes.value || !edges.value) {
+            throw new Error('Failed to load graph data');
+          }
+          graphData.value = {
+            nodes: nodes.value,
+            edges: edges.value
+          };
+        }
 
       } catch (err) {
         logger.error('Error loading data:', err);
@@ -382,6 +399,46 @@ export default {
       }
     };
 
+    // Convert hierarchical tree to graph format for Cytoscape
+    const convertTreeToGraph = (tree) => {
+      const nodes = new Map();
+      const edges = [];
+
+      const processNode = (node, parentId = null) => {
+        // Add node
+        nodes.set(node.id, {
+          id: node.id,
+          label: node.name,
+          taxonomy: node.taxonomy,
+          hierarchical: true,
+          projectsCount: node.projectsCount || 0,
+          metrics: node.metrics || {}
+        });
+
+        // Add edge from parent
+        if (parentId) {
+          edges.push({
+            id: `${parentId}-${node.id}`,
+            source: parentId,
+            target: node.id,
+            group: 'hierarchical'
+          });
+        }
+
+        // Process children
+        if (node.children && node.children.length > 0) {
+          node.children.forEach(child => processNode(child, node.id));
+        }
+      };
+
+      tree.forEach(rootNode => processNode(rootNode));
+
+      return {
+        nodes: nodes,
+        edges: edges
+      };
+    };
+
     const updateVisualization = () => {
       if (taxonomies.value) {
         logger.info('Updating visualization with selected taxonomy:', selectedTaxonomy.value);
@@ -395,25 +452,44 @@ export default {
         loading.value = true;
 
         logger.info('Rebuilding graph with:', {
-          tagsCount: tags.value?.length,
           selectedTaxonomy: selectedTaxonomy.value,
           associativeMode: associativeMode.value
         });
 
         // Rebuild graph with current mode using graph store
-        await graphStore.loadTagGraph({
-          rootTaxonomy: selectedTaxonomy.value,
-          associativeMode: associativeMode.value,
-          selectedTaxonomy: selectedTaxonomy.value
-        });
+        if (associativeMode.value) {
+          // Hierarchical mode: use hierarchical tree endpoint
+          await graphStore.loadHierarchicalTree({
+            rootTaxonomy: selectedTaxonomy.value
+          });
+          logger.info('Hierarchical tree rebuilt:', treeData.value?.length, 'roots');
+        } else {
+          // Raw mode: use network graph endpoint
+          await graphStore.loadTagGraph({
+            rootTaxonomy: selectedTaxonomy.value,
+            associativeMode: false
+          });
+          logger.info('Network graph rebuilt:', nodes.value?.length, 'nodes,', edges.value?.length, 'edges');
+        }
 
-        // Convert graph store data to expected format
-        graphData.value = {
-          nodes: nodes.value,
-          edges: edges.value
-        };
+        if (associativeMode.value) {
+          // For hierarchical mode, convert tree to graph format for Cytoscape
+          if (!treeData.value) {
+            throw new Error('Failed to load hierarchical tree data');
+          }
+          graphData.value = convertTreeToGraph(treeData.value);
+        } else {
+          // For network mode, use nodes/edges directly
+          if (!nodes.value || !edges.value) {
+            throw new Error('Failed to load graph data');
+          }
+          graphData.value = {
+            nodes: nodes.value,
+            edges: edges.value
+          };
+        }
 
-        logger.info('Graph rebuilt with nodes:', nodes.value?.length, 'edges:', edges.value?.length);
+        logger.info('Graph rebuilt with nodes:', graphData.value?.nodes?.size || graphData.value?.nodes?.length, 'edges:', graphData.value?.edges?.length);
 
         // Re-render Cytoscape after graph is built
         nextTick(() => {
@@ -778,8 +854,14 @@ export default {
     };
 
     // Lifecycle
-    onMounted(() => {
-      loadData();
+    onMounted(async () => {
+      // Ensure taxonomies are loaded first
+      if (taxonomies.value.length === 0) {
+        await taxonomyStore.loadTaxonomies();
+      }
+
+      // Then load graph data
+      await loadData();
 
       // Add resize observer to handle container resizing
       if (cytoscapeContainer.value) {
@@ -813,6 +895,16 @@ export default {
       logger.info('Selected taxonomy changed to:', newTaxonomy);
       if (taxonomies.value && newTaxonomy) {
         rebuildGraph();
+      }
+    });
+
+    // Watch for taxonomies to be loaded and re-render if needed
+    watch(taxonomies, (newTaxonomies) => {
+      if (newTaxonomies && newTaxonomies.length > 0 && graphData.value) {
+        logger.info('Taxonomies loaded, re-rendering graph with colors');
+        nextTick(() => {
+          renderCytoscapeGraph();
+        });
       }
     });
 

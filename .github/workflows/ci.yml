@@ -50,19 +50,26 @@ jobs:
           python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || echo "Flake8 not configured, skipping"
           python -m black --check . || echo "Black not configured, skipping"
 
-      - name: "Run frontend tests"
+      - name: "Run frontend tests with coverage"
         run: |
           cd frontend
-          npm test 2>/dev/null || echo "No tests configured, skipping"
+          npm run test:run -- --coverage
+
+      - name: "Upload frontend coverage report"
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-coverage-report
+          path: frontend/coverage
+          retention-days: 30
 
       - name: "Run backend tests with coverage"
         run: |
           cd backend
           python -m pytest . -v --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=70
 
-      - name: "Upload coverage report"
+      - name: "Upload backend coverage report"
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: coverage-report
+          name: backend-coverage-report
           path: backend/coverage.xml
           retention-days: 30
