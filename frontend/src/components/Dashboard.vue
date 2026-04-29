@@ -255,7 +255,7 @@
 
             <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
               <span v-if="selectedTreeNode && selectedTreeNode.name">
-                {{ relatedProjects.length }} projects found for "{{ selectedTreeNode.name }}"
+                {{ relatedProjects.length }} projects found for {{ getTaxonomyNameForNode(selectedTreeNode) }} "{{ selectedTreeNode.name }}"
               </span>
               <span v-else>
                 {{ relatedProjects.length }} projects found (all projects reachable from any root taxonomy)
