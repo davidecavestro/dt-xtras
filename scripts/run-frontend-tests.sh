@@ -55,6 +55,8 @@ if (withoutCoverage.length > 10) console.log(\`  ... and \${withoutCoverage.leng
     echo "Full HTML report: frontend/coverage/index.html"
 else
     npm run test:run
+    echo ""
+    echo "Tip: Use --coverage for detailed coverage report"
 fi
 
 echo "================================"
