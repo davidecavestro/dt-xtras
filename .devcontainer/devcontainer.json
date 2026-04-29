@@ -44,10 +44,11 @@
         "Vue.volar",
         "ms-azuretools.vscode-docker",
         "bradlc.vscode-tailwindcss",
-        "ms-vscode.vscode-json"
+        "ms-vscode.vscode-json",
+        "github.vscode-github-actions"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/opt/venv/bin/python"
+        "python.defaultInterpreterPath": "/home/vscode/opt/venv/bin/python3.14"
       }
     }
   }
