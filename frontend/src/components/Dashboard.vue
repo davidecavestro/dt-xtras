@@ -6,7 +6,7 @@
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Security Dashboard</h2>
           <div v-if="selectedTreeNode" class="flex items-center gap-2 mt-1">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Selected:</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">Focusing on:</span>
             <span class="font-mono text-sm text-gray-900 dark:text-white">{{ selectedTreeNode.name }}</span>
             <span
               class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
@@ -551,6 +551,9 @@ export default {
     const getTaxonomyByNode = (node) => {
       if (!node) return {}
 
+      if (node.type=='taxonomy' && node.taxonomy) {
+        return taxonomies.value.find(t => t.id === node.taxonomy)
+      }
       // Try to find taxonomy sorted by priority by matching regex pattern
       return taxonomies.value
         .filter(t => {
