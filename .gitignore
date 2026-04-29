@@ -2,7 +2,7 @@
 .env.dev
 frontend/node_modules/
 frontend/dist/
-frontend/coverage
+frontend/coverage/
 backend/.venv
 logs/
 data/taxonomies.yaml
