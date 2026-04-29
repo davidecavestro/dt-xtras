@@ -428,6 +428,8 @@
                       v-for="project in paginatedProjects"
                       :key="project.uuid"
                       :project="project"
+                      :getTagStyle="getTagStyle"
+                      :getTagDynamicStyle="getTagDynamicStyle"
                       @select="viewProject"
                       @view="viewProject"
                       @security-details="viewSecurityDetails"
@@ -564,6 +566,53 @@ export default {
     }
 
     // Helper function to get taxonomy badge style for tree nodes
+    // Tag styling functions for ProjectCard
+    const getTagStyle = (tag) => {
+      // Try to get taxonomy from tag object first
+      let hasTaxonomy = tag.taxonomy
+
+      // If tag doesn't have taxonomy info, try to find it by matching tag name with taxonomies
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          return regex ? regex.test(tag.name) : false
+        })
+      }
+
+      // Store taxonomy reference for style application
+      if (hasTaxonomy) {
+        tag._taxonomy = hasTaxonomy
+      }
+
+      // Return taxonomy style if it's a taxonomy tag
+      if (hasTaxonomy) {
+        return 'taxonomy'
+      }
+
+      // Default style for non-taxonomy tags
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+    }
+
+    const getTagDynamicStyle = (tag) => {
+      // Get taxonomy using same logic as getTagStyle
+      let hasTaxonomy = tag.taxonomy
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          return regex ? regex.test(tag.name) : false
+        })
+      }
+
+      // Return taxonomy style if it's a taxonomy tag
+      if (hasTaxonomy) {
+        return getTaxonomyBadgeStyle(hasTaxonomy)
+      }
+
+      return {}
+    }
+
     const getTaxonomyBadgeStyleForNode = (node) => {
       if (!node) return {}
 
@@ -1119,7 +1168,9 @@ export default {
       // Helper functions
       buildDTProjectUrl,
       buildDTProjectFindingsUrl,
-      getProjectVulnerabilities
+      getProjectVulnerabilities,
+      getTagStyle,
+      getTagDynamicStyle
     }
   }
 }
