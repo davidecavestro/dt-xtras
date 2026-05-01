@@ -77,62 +77,81 @@
       <div class="flex flex-col lg:flex-row gap-6">
         <!-- Left: Graph Section -->
         <div class="flex-1">
-          <!-- Cytoscape Graph -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
-            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Visualization</h2>
-            <div ref="cytoscapeContainer" class="w-full h-96 lg:h-[600px] border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 resize overflow-hidden"></div>
-          </div>
-
-          <!-- Graph Controls -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mt-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Graph Controls</h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Layout Algorithm -->
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Layout Algorithm:</label>
-            <select
-              v-model="layoutAlgorithm"
-              @change="updateGraphLayout"
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          <!-- Collapsible Graph Controls -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-4">
+            <button
+              @click="controlsCollapsed = !controlsCollapsed"
+              class="w-full px-4 py-2 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <option value="dagre">Dagre (Hierarchical)</option>
-              <option value="breadthfirst">Breadth-First</option>
-              <option value="cose">CoSE (Force-Directed)</option>
-              <option value="circle">Circular</option>
-              <option value="grid">Grid</option>
-              <option value="concentric">Concentric</option>
-            </select>
+              <span class="text-sm font-semibold text-gray-900 dark:text-white">Graph Controls</span>
+              <svg
+                class="w-4 h-4 text-gray-500 dark:text-gray-400 transform transition-transform"
+                :class="{ 'rotate-180': !controlsCollapsed }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div v-if="!controlsCollapsed" class="px-4 pb-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Layout Algorithm -->
+                <div>
+                  <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Layout:</label>
+                  <select
+                    v-model="layoutAlgorithm"
+                    @change="updateGraphLayout"
+                    class="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="dagre">Dagre</option>
+                    <option value="breadthfirst">Breadth-First</option>
+                    <option value="cose">CoSE</option>
+                    <option value="circle">Circular</option>
+                    <option value="grid">Grid</option>
+                    <option value="concentric">Concentric</option>
+                  </select>
+                </div>
+
+                <!-- Node Spacing -->
+                <div>
+                  <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Spacing: {{ nodeSpacing }}px</label>
+                  <input
+                    v-model.number="nodeSpacing"
+                    @change="updateGraphLayout"
+                    type="range"
+                    min="50"
+                    max="200"
+                    step="10"
+                    class="mt-1 block w-full h-1.5"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- Node Spacing -->
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Node Spacing:</label>
-            <input
-              v-model.number="nodeSpacing"
-              @change="updateGraphLayout"
-              type="range"
-              min="50"
-              max="200"
-              step="10"
-              class="mt-1 block w-full"
-            />
-            <div class="text-sm text-gray-600 dark:text-gray-400">{{ nodeSpacing }}px</div>
+          <!-- Cytoscape Graph -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3">
+            <div ref="cytoscapeContainer" class="w-full h-64 lg:h-80 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 overflow-hidden"></div>
           </div>
-        </div>
-      </div>
         </div>
         <!-- End Left: Graph Section -->
 
         <!-- Right: Related Projects Section -->
         <div v-if="associativeMode" class="lg:w-96">
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
-            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Related Projects</h2>
+            <h2 class="text-xl font-semibold mb-1 text-gray-900 dark:text-white">Related Projects</h2>
 
             <!-- Selected Node Info -->
-            <div v-if="selectedNode" class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
-              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">Selected Node:</div>
-              <div class="text-sm text-gray-900 dark:text-white">{{ selectedNode.label || selectedNode.id }}</div>
+            <div v-if="selectedNode" class="flex items-center gap-2 my-1">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Focusing on:</span>
+              <span class="font-mono text-sm text-gray-900 dark:text-white">"{{ selectedNode.title || selectedNode.id }}"</span>
+              <span
+                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                  :style="getTaxonomyBadgeStyleForNode(selectedNode)"
+              >
+                  {{ getTaxonomyNameForNode(selectedNode) }}
+              </span>
             </div>
 
             <!-- Projects List -->
@@ -188,87 +207,70 @@
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading projects...</p>
           </div>
 
-          <div class="max-h-96 overflow-y-auto space-y-2">
+          <div class="space-y-2">
             <div
               v-for="project in relatedProjects"
               :key="project.uuid"
               class="p-3 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
             >
-              <div class="flex justify-between items-start gap-2">
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ project.name }}</div>
-                  <!-- Metrics & Info Line -->
-                  <div class="flex flex-wrap items-center gap-1.5 mt-1">
-                    <!-- Version -->
-                    <span class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ project.version || 'latest' }}</span>
-                    <!-- Metrics Counters -->
-                    <template v-if="project.metrics">
-                      <span class="text-xs text-gray-400">|</span>
-                      <span class="text-xs text-gray-500 dark:text-gray-400">
-                        <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.vulnerableComponents || 0 }}</span>
-                        /
-                        <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.components || project.metrics.vulnerableComponents || 0 }}</span>
-                        comp.
-                      </span>
-                      <span class="text-xs text-gray-400">|</span>
-                      <span class="text-xs text-gray-500 dark:text-gray-400">
-                        <span class="font-medium text-gray-900 dark:text-white">{{ getTotalVulnerabilities(project.metrics) }}</span>
-                        vulns
-                      </span>
-                    </template>
-                    <!-- Security Badges -->
-                    <template v-if="project.metrics">
-                      <span v-if="project.metrics.critical > 0" class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-xs font-medium">
-                        {{ project.metrics.critical }} C
-                      </span>
-                      <span v-if="project.metrics.high > 0" class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">
-                        {{ project.metrics.high }} H
-                      </span>
-                      <span v-if="project.metrics.medium > 0" class="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs font-medium">
-                        {{ project.metrics.medium }} M
-                      </span>
-                      <span v-if="project.metrics.low > 0" class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">
-                        {{ project.metrics.low }} L
-                      </span>
-                      <span v-if="getTotalVulnerabilities(project.metrics) === 0" class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">
-                        No Vulns
-                      </span>
-                    </template>
-                    <!-- Tags (at end since variable length) -->
-                    <template v-if="project.tags && project.tags.length > 0">
-                      <span class="text-xs text-gray-400">|</span>
-                      <span
-                        v-for="tag in project.tags.slice(0, 3)"
-                        :key="tag.name"
-                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium border truncate"
-                        :class="getTagStyle(tag)"
-                        :style="getTagDynamicStyle(tag)"
-                      >
-                        {{ tag.name }}
-                      </span>
-                      <span
-                        v-if="project.tags.length > 3"
-                        class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full"
-                      >
-                        +{{ project.tags.length - 3 }}
-                      </span>
-                    </template>
-                  </div>
-                </div>
-                <div class="text-right shrink-0">
-                  <a
-                    :href="buildDTProjectUrl(project.uuid)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
-                    title="View in Dependency-Track"
-                  >
-                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
-                      <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
-                    </svg>
-                    DT
-                  </a>
+              <div class="min-w-0">
+                <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ project.name }}</div>
+                <!-- Metrics & Info Line -->
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <!-- Version -->
+                  <span class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ project.version || 'latest' }}</span>
+                  <!-- Metrics Counters -->
+                  <template v-if="project.metrics">
+                    <span class="text-xs text-gray-400">|</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.vulnerableComponents || 0 }}</span>
+                      /
+                      <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.components || project.metrics.vulnerableComponents || 0 }}</span>
+                      comp.
+                    </span>
+                    <span class="text-xs text-gray-400">|</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      <span class="font-medium text-gray-900 dark:text-white">{{ getTotalVulnerabilities(project.metrics) }}</span>
+                      vulns
+                    </span>
+                  </template>
+                  <!-- Security Badges -->
+                  <template v-if="project.metrics">
+                    <span v-if="project.metrics.critical > 0" class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-xs font-medium">
+                      {{ project.metrics.critical }} C
+                    </span>
+                    <span v-if="project.metrics.high > 0" class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">
+                      {{ project.metrics.high }} H
+                    </span>
+                    <span v-if="project.metrics.medium > 0" class="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs font-medium">
+                      {{ project.metrics.medium }} M
+                    </span>
+                    <span v-if="project.metrics.low > 0" class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">
+                      {{ project.metrics.low }} L
+                    </span>
+                    <span v-if="getTotalVulnerabilities(project.metrics) === 0" class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">
+                      No Vulns
+                    </span>
+                  </template>
+                  <!-- Tags (at end since variable length) -->
+                  <template v-if="project.tags && project.tags.length > 0">
+                    <span class="text-xs text-gray-400">|</span>
+                    <span
+                      v-for="tag in project.tags.slice(0, 3)"
+                      :key="tag.name"
+                      class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium border truncate"
+                      :class="getTagStyle(tag)"
+                      :style="getTagDynamicStyle(tag)"
+                    >
+                      {{ tag.name }}
+                    </span>
+                    <span
+                      v-if="project.tags.length > 3"
+                      class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full"
+                    >
+                      +{{ project.tags.length - 3 }}
+                    </span>
+                  </template>
                 </div>
               </div>
             </div>
@@ -278,13 +280,14 @@
         <div v-else class="text-sm text-gray-500 dark:text-gray-400">
           {{ selectedNode ? 'No projects found for this selection' : 'Select a node to see related projects' }}
         </div>
-          </div>
-        </div>
-        <!-- End Right: Related Projects Section -->
       </div>
-      <!-- End Graph and Related Projects Container -->
+      <!-- End Related Projects inner container -->
     </div>
+    <!-- End Right: Related Projects Section -->
   </div>
+  <!-- End Graph and Related Projects Container -->
+</div>
+</div>
 </template>
 
 <script>
@@ -344,6 +347,7 @@ export default {
     const pageSize = ref(20); // Dashboard shows fewer projects per page
     const loadingRelatedProjects = ref(false);
     const viewMode = ref('graph'); // 'graph', 'list', 'grid', or 'deck'
+    const controlsCollapsed = ref(true); // Collapsed by default
 
     // Use graph store reactive references
     const { nodes, edges, treeData, loading: graphLoading, error: graphError } = storeToRefs(graphStore);
@@ -364,7 +368,7 @@ export default {
       if (associativeMode.value) {
         return 'Hierarchical mode creates direct connections between related taxonomies, hiding intermediate connector nodes. Each connection represents a semantic relationship between taxonomy elements. This mode shows projects related to your selection in the Related Projects panel.';
       } else {
-        return 'Normal mode creates hierarchical relationships where child nodes connect to parent nodes through defined taxonomy relations. This mode does not show related projects - use Hierarchical mode to see project relationships.';
+        return 'Raw mode creates relationships where nodes connect to others through defined taxonomy relations. This mode does not show related projects - use Hierarchical mode to see project relationships.';
       }
     });
 
@@ -570,6 +574,7 @@ export default {
         return {
           data: {
             id: node.id,
+            title: node.label,
             label: `${taxonomyName}\n${captureGroups.length > 0 ? '\n' + captureGroups.join('\n') : ''}`, // Show taxonomy name and capture groups
             taxonomy: node.taxonomy,
             captureGroups: captureGroups,
@@ -748,12 +753,60 @@ export default {
       return taxonomy ? taxonomy.name || taxonomy.id : taxonomyId;
     };
 
+    // Helper function to get taxonomy by node (similar to Dashboard)
+    const getTaxonomyByNode = (node) => {
+      if (!node) return {}
+
+      // Handle tree nodes (from Dashboard) with type and taxonomy properties
+      if (node.type === 'taxonomy' && node.taxonomy) {
+        return taxonomies.value.find(t => t.id === node.taxonomy)
+      }
+      // Try to find taxonomy sorted by priority by matching regex pattern
+      // Use node.name (tree nodes) or node.id (Cytoscape graph nodes) for matching
+      const nodeName = node.name || node.id || ''
+      return taxonomies.value
+        .filter(t => {
+          const regex = createJsRegExp(t.regex_pattern)
+          return regex && nodeName.match(regex)
+        })
+        .sort((a, b) => a.priority - b.priority)[0]
+    }
+
+    // Helper function to get taxonomy name for nodes
+    const getTaxonomyNameForNode = (node) => {
+      if (!node) return 'unknown'
+
+      let taxonomy = getTaxonomyByNode(node)
+
+      // If still not found, return 'unknown'
+      return taxonomy ? taxonomy.name : 'unknown'
+    }
+
+    // Helper function to get taxonomy badge style for nodes
+    const getTaxonomyBadgeStyleForNode = (node) => {
+      if (!node) return {}
+
+      // Try to find taxonomy sorted by priority by matching regex pattern
+      let taxonomy = getTaxonomyByNode(node)
+
+      // If still not found, use a default color
+      if (!taxonomy) {
+        return {
+          backgroundColor: '#6b728020',
+          color: '#6b7280',
+          borderColor: '#6b728040'
+        }
+      }
+
+      return getTaxonomyBadgeStyle(taxonomy)
+    }
+
     const getNodeConnections = (nodeId, direction) => {
       if (!graphData.value?.edges) return 0;
       return graphData.value.edges.filter(edge => edge[direction] === nodeId);
     };
 
-    // Find all reachable tags from a selected node
+    // Find all reachable tags from a selected node following DAG edges (descendants only)
     const findReachableTags = (startNodeId) => {
       if (!graphData.value?.nodes || !graphData.value?.edges) return new Set();
 
@@ -768,12 +821,13 @@ export default {
         visited.add(currentId);
         reachableTags.add(currentId);
 
-        // Find all connected nodes (both incoming and outgoing)
-        const connectedNodes = graphData.value.edges
-          .filter(edge => edge.source === currentId || edge.target === currentId)
-          .map(edge => edge.source === currentId ? edge.target : edge.source);
+        // Follow directed edges forward (source -> target) to get descendants
+        // In the DAG, edges represent hierarchical relationships (parent -> child)
+        const childNodes = graphData.value.edges
+          .filter(edge => edge.source === currentId)
+          .map(edge => edge.target);
 
-        connectedNodes.forEach(nodeId => {
+        childNodes.forEach(nodeId => {
           if (!visited.has(nodeId)) {
             queue.push(nodeId);
           }
@@ -1002,10 +1056,13 @@ export default {
       pageSize,
       loadingRelatedProjects,
       viewMode,
+      controlsCollapsed,
 
       // Methods
       loadData,
       getTaxonomyDisplayName,
+      getTaxonomyNameForNode,
+      getTaxonomyBadgeStyleForNode,
       getNodeConnections,
       findReachableTags,
       getProjectsForTags,
