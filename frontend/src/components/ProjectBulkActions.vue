@@ -337,57 +337,90 @@
             :key="project.uuid"
             class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
-            <div class="flex items-start justify-between">
-              <div class="flex items-start space-x-3 flex-1">
-                <input
-                  type="checkbox"
-                  v-model="selectedProjects"
-                  :value="project.uuid"
-                  class="mt-1 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                />
-                <div class="flex-1">
-                  <div class="flex items-center space-x-2">
-                    <h3 class="text-sm font-medium text-gray-900 dark:text-white">
-                      {{ project.name }}
-                    </h3>
-                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                      {{ project.version }}
-                    </span>
-                  </div>
-                  <div v-if="project.tags && project.tags.length > 0" class="mt-1 text-sm italic text-gray-600 dark:text-gray-400">
-                    🏷 {{ project.tags.map( tag => tag.name ).join(', ') }}
-                  </div>
-                  <div class="mt-2 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
-                    <span class="flex items-center">
-                      <Clock class="mr-1 h-3 w-3" />
-                      Last activity: {{ formatDate(project.lastActivity) }}
-                    </span>
-                    <span class="flex items-center">
-                      <Package class="mr-1 h-3 w-3" />
-                      Last SBOM: {{ formatDate(project.lastSbomUpload) }}
-                    </span>
-                    <span class="flex items-center">
-                      <AlertCircle class="mr-1 h-3 w-3" />
-                      {{ getProjectVulnerabilities(project.metrics) }} vulnerabilities
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex flex-col items-end space-y-2">
-                <div class="flex items-center space-x-1">
+            <div class="flex items-start gap-3">
+              <!-- Checkbox -->
+              <input
+                type="checkbox"
+                v-model="selectedProjects"
+                :value="project.uuid"
+                class="mt-1 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 shrink-0"
+              />
+              <!-- Main Content -->
+              <div class="flex-1 min-w-0">
+                <div class="text-base font-medium text-gray-900 dark:text-white truncate">{{ project.name }}</div>
+                <!-- Metrics & Info Line -->
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <!-- Version -->
+                  <span class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ project.version || 'latest' }}</span>
+                  <!-- Status Badges -->
                   <span
                     :class="getActiveStatusClass(project)"
-                    class="px-2 py-1 text-xs font-medium rounded-full"
+                    class="px-1.5 py-0.5 text-xs font-medium rounded-full"
                   >
                     {{ getActiveStatus(project) }}
                   </span>
                   <span
                     :class="getActivityStatusClass(project)"
-                    class="px-2 py-1 text-xs font-medium rounded-full"
+                    class="px-1.5 py-0.5 text-xs font-medium rounded-full"
                   >
                     {{ getActivityStatus(project) }}
                   </span>
+                  <!-- Metrics Counters -->
+                  <template v-if="project.metrics">
+                    <span class="text-xs text-gray-400">|</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.vulnerableComponents || 0 }}</span>
+                      /
+                      <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.components || project.metrics.vulnerableComponents || 0 }}</span>
+                      comp.
+                    </span>
+                    <span class="text-xs text-gray-400">|</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      <span class="font-medium text-gray-900 dark:text-white">{{ getProjectVulnerabilities(project.metrics) }}</span>
+                      vulns
+                    </span>
+                  </template>
+                  <!-- Security Badges -->
+                  <template v-if="project.metrics">
+                    <span v-if="project.metrics.critical > 0" class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-xs font-medium">
+                      {{ project.metrics.critical }} C
+                    </span>
+                    <span v-if="project.metrics.high > 0" class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">
+                      {{ project.metrics.high }} H
+                    </span>
+                    <span v-if="project.metrics.medium > 0" class="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs font-medium">
+                      {{ project.metrics.medium }} M
+                    </span>
+                    <span v-if="project.metrics.low > 0" class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">
+                      {{ project.metrics.low }} L
+                    </span>
+                    <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">
+                      No Vulns
+                    </span>
+                  </template>
+                  <!-- Tags (at end since variable length) -->
+                  <template v-if="project.tags && project.tags.length > 0">
+                    <span class="text-xs text-gray-400">|</span>
+                    <span
+                      v-for="tag in project.tags.slice(0, 3)"
+                      :key="tag.name"
+                      class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium border truncate"
+                      :class="getTagStyle(tag)"
+                      :style="getTagDynamicStyle(tag)"
+                    >
+                      {{ tag.name }}
+                    </span>
+                    <span
+                      v-if="project.tags.length > 3"
+                      class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full"
+                    >
+                      +{{ project.tags.length - 3 }}
+                    </span>
+                  </template>
                 </div>
+              </div>
+              <!-- Delete Button -->
+              <div class="shrink-0">
                 <button
                   @click="deleteProject(project)"
                   class="text-red-600 hover:text-red-800 text-xs font-medium"
@@ -509,8 +542,10 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useProjectStore } from '../stores/projects'
+import { useTaxonomyStore } from '../stores/taxonomies'
 import { useToast } from '../composables/useToast'
 import { createLogger } from '../utils/logger'
+import { createJsRegExp } from '../utils/taxonomyParser'
 import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff, List as ListIcon, Square as SquareIcon, Edit3 } from 'lucide-vue-next'
 import ProjectCard from './ProjectCard.vue'
 import Modal from './Modal.vue'
@@ -534,7 +569,9 @@ export default {
   },
   setup() {
     const projectStore = useProjectStore()
+    const taxonomyStore = useTaxonomyStore()
     const { projects, isLoading, currentPage, pageSize, totalProjects, totalPages, searchQuery, paginatedProjects } = storeToRefs(projectStore)
+    const { taxonomies } = storeToRefs(taxonomyStore)
     const { showSuccess, showError } = useToast()
     const logger = createLogger('ProjectBulkActions')
     const activityFilter = ref('all')
@@ -839,6 +876,42 @@ export default {
       return (metrics.critical || 0) + (metrics.high || 0) + (metrics.medium || 0) + (metrics.low || 0)
     }
 
+    // Tag styling functions
+    const { getTaxonomyBadgeStyle } = taxonomyStore
+
+    const getTagStyle = (tag) => {
+      let hasTaxonomy = tag.taxonomy
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          return regex ? regex.test(tag.name) : false
+        })
+      }
+      if (hasTaxonomy) {
+        tag._taxonomy = hasTaxonomy
+      }
+      if (hasTaxonomy) {
+        return 'taxonomy'
+      }
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+    }
+
+    const getTagDynamicStyle = (tag) => {
+      let hasTaxonomy = tag.taxonomy
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          return regex ? regex.test(tag.name) : false
+        })
+      }
+      if (hasTaxonomy) {
+        return getTaxonomyBadgeStyle(hasTaxonomy)
+      }
+      return {}
+    }
+
     const getProjectName = (uuid) => {
       const project = projects.value.find(p => p.uuid === uuid)
       return project ? project.name : 'Unknown'
@@ -1028,6 +1101,8 @@ export default {
       getSbomStatusClass,
       formatDate,
       getProjectVulnerabilities,
+      getTagStyle,
+      getTagDynamicStyle,
       getProjectName,
       deleteProject,
       confirmDelete,

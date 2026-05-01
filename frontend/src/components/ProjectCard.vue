@@ -81,7 +81,7 @@
 
     <!-- Compact Footer -->
     <div class="mt-auto pt-2 border-t border-gray-200 dark:border-gray-600 flex items-center justify-between gap-2">
-      <span class="text-xs text-gray-500 dark:text-gray-400 truncate">
+      <span class="text-xs text-gray-500 dark:text-gray-400 truncate" title="Last activity">
         {{ formatDate(project.lastActivity) }}
       </span>
       <div class="flex items-center gap-2 shrink-0">
