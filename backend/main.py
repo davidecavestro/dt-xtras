@@ -819,3 +819,9 @@ async def api_health_check():
             "message": str(e),
             "timestamp": datetime.utcnow().isoformat(),
         }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
