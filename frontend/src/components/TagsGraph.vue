@@ -194,46 +194,82 @@
               :key="project.uuid"
               class="p-3 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
             >
-              <div class="flex justify-between items-start mb-2">
-                <div>
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">{{ project.name }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</div>
+              <div class="flex justify-between items-start gap-2">
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ project.name }}</div>
+                  <!-- Metrics & Info Line -->
+                  <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                    <!-- Version -->
+                    <span class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ project.version || 'latest' }}</span>
+                    <!-- Metrics Counters -->
+                    <template v-if="project.metrics">
+                      <span class="text-xs text-gray-400">|</span>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">
+                        <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.vulnerableComponents || 0 }}</span>
+                        /
+                        <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.components || project.metrics.vulnerableComponents || 0 }}</span>
+                        comp.
+                      </span>
+                      <span class="text-xs text-gray-400">|</span>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">
+                        <span class="font-medium text-gray-900 dark:text-white">{{ getTotalVulnerabilities(project.metrics) }}</span>
+                        vulns
+                      </span>
+                    </template>
+                    <!-- Security Badges -->
+                    <template v-if="project.metrics">
+                      <span v-if="project.metrics.critical > 0" class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-xs font-medium">
+                        {{ project.metrics.critical }} C
+                      </span>
+                      <span v-if="project.metrics.high > 0" class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">
+                        {{ project.metrics.high }} H
+                      </span>
+                      <span v-if="project.metrics.medium > 0" class="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs font-medium">
+                        {{ project.metrics.medium }} M
+                      </span>
+                      <span v-if="project.metrics.low > 0" class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">
+                        {{ project.metrics.low }} L
+                      </span>
+                      <span v-if="getTotalVulnerabilities(project.metrics) === 0" class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">
+                        No Vulns
+                      </span>
+                    </template>
+                    <!-- Tags (at end since variable length) -->
+                    <template v-if="project.tags && project.tags.length > 0">
+                      <span class="text-xs text-gray-400">|</span>
+                      <span
+                        v-for="tag in project.tags.slice(0, 3)"
+                        :key="tag.name"
+                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium border truncate"
+                        :class="getTagStyle(tag)"
+                        :style="getTagDynamicStyle(tag)"
+                      >
+                        {{ tag.name }}
+                      </span>
+                      <span
+                        v-if="project.tags.length > 3"
+                        class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full"
+                      >
+                        +{{ project.tags.length - 3 }}
+                      </span>
+                    </template>
+                  </div>
                 </div>
-                <a
-                  :href="buildDTProjectUrl(project.uuid)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
-                  title="View in Dependency-Track"
-                >
-                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
-                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
-                  </svg>
-                  DT
-                </a>
-              </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                🏷 {{ project.tags && Array.isArray(project.tags) ? project.tags.map( tag => tag.name).join(', ') : 'No tags' }}
-              </div>
-
-              <!-- Security Info -->
-              <div v-if="project.metrics" class="flex flex-wrap gap-2 text-xs">
-                <span v-if="project.metrics.critical > 0" class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
-                  🔴 {{ project.metrics.critical }} Critical
-                </span>
-                <span v-if="project.metrics.high > 0" class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
-                  🟠 {{ project.metrics.high }} High
-                </span>
-                <span v-if="project.metrics.medium > 0" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">
-                  🟡 {{ project.metrics.medium }} Medium
-                </span>
-                <span v-if="project.metrics.low > 0" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                  🔵 {{ project.metrics.low }} Low
-                </span>
-                <span v-if="getTotalVulnerabilities(project.metrics) === 0" class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-                  ✅ No Vulnerabilities
-                </span>
+                <div class="text-right shrink-0">
+                  <a
+                    :href="buildDTProjectUrl(project.uuid)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
+                    title="View in Dependency-Track"
+                  >
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
+                      <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                    </svg>
+                    DT
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -820,6 +856,42 @@ export default {
       return (metrics.critical || 0) + (metrics.high || 0) + (metrics.medium || 0) + (metrics.low || 0);
     };
 
+    // Tag styling functions
+    const { getTaxonomyBadgeStyle, getTaxonomyByName } = taxonomyStore;
+
+    const getTagStyle = (tag) => {
+      let hasTaxonomy = tag.taxonomy
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          return regex ? regex.test(tag.name) : false
+        })
+      }
+      if (hasTaxonomy) {
+        tag._taxonomy = hasTaxonomy
+      }
+      if (hasTaxonomy) {
+        return 'taxonomy'
+      }
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+    }
+
+    const getTagDynamicStyle = (tag) => {
+      let hasTaxonomy = tag.taxonomy
+      if (!hasTaxonomy) {
+        hasTaxonomy = taxonomies.value.find(taxonomy => {
+          if (!taxonomy.regex_pattern) return false
+          const regex = createJsRegExp(taxonomy.regex_pattern)
+          return regex ? regex.test(tag.name) : false
+        })
+      }
+      if (hasTaxonomy) {
+        return getTaxonomyBadgeStyle(hasTaxonomy)
+      }
+      return {}
+    }
+
     // Zoom control functions
     const zoomIn = () => {
       if (cytoscapeInstance.value) {
@@ -941,6 +1013,8 @@ export default {
       updateRelatedProjects,
       buildDTProjectUrl,
       getTotalVulnerabilities,
+      getTagStyle,
+      getTagDynamicStyle,
       zoomIn,
       zoomOut,
       resetZoom
