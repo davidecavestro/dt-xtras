@@ -38,42 +38,45 @@
       <span class="text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</span>
     </div>
 
-    <!-- Tags -->
-    <div v-if="project.tags && project.tags.length > 0" class="flex flex-wrap gap-1 mb-2">
-      <span
-        v-for="tag in project.tags.slice(0, 3)"
-        :key="tag.name || tag"
-        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium border truncate flex-shrink-0"
-        :class="getTagStyle(tag)"
-        :style="getTagDynamicStyle(tag)"
-      >
-        {{ tag.name || tag }}
-      </span>
-      <span
-        v-if="project.tags.length > 3"
-        class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full flex-shrink-0"
-      >
-        +{{ project.tags.length - 3 }}
-      </span>
-    </div>
+    <!-- Security Badges & Tags -->
+    <div class="flex flex-wrap gap-1 mb-2">
+      <!-- Security Badges -->
+      <template v-if="project.metrics">
+        <span v-if="project.metrics.critical > 0" class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-xs font-medium">
+          {{ project.metrics.critical }} C
+        </span>
+        <span v-if="project.metrics.high > 0" class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">
+          {{ project.metrics.high }} H
+        </span>
+        <span v-if="project.metrics.medium > 0" class="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs font-medium">
+          {{ project.metrics.medium }} M
+        </span>
+        <span v-if="project.metrics.low > 0" class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">
+          {{ project.metrics.low }} L
+        </span>
+        <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">
+          No Vulns
+        </span>
+      </template>
 
-    <!-- Security Badges -->
-    <div v-if="project.metrics" class="flex flex-wrap gap-1 mb-2">
-      <span v-if="project.metrics.critical > 0" class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-xs font-medium">
-        {{ project.metrics.critical }} C
-      </span>
-      <span v-if="project.metrics.high > 0" class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">
-        {{ project.metrics.high }} H
-      </span>
-      <span v-if="project.metrics.medium > 0" class="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs font-medium">
-        {{ project.metrics.medium }} M
-      </span>
-      <span v-if="project.metrics.low > 0" class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">
-        {{ project.metrics.low }} L
-      </span>
-      <span v-if="getProjectVulnerabilities(project.metrics) === 0" class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">
-        No Vulns
-      </span>
+      <!-- Tags -->
+      <template v-if="project.tags && project.tags.length > 0">
+        <span
+          v-for="tag in project.tags.slice(0, 3)"
+          :key="tag.name || tag"
+          class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium border truncate flex-shrink-0"
+          :class="getTagStyle(tag)"
+          :style="getTagDynamicStyle(tag)"
+        >
+          {{ tag.name || tag }}
+        </span>
+        <span
+          v-if="project.tags.length > 3"
+          class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full flex-shrink-0"
+        >
+          +{{ project.tags.length - 3 }}
+        </span>
+      </template>
     </div>
 
     <!-- Compact Footer -->
