@@ -27,15 +27,15 @@
       </span>
       <span class="text-gray-300 dark:text-gray-600">|</span>
       <span class="text-gray-500 dark:text-gray-400">
-        <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.vulnerableComponents || 0 }}</span> / <span class="font-medium text-gray-900 dark:text-white">{{ project.metrics.components || project.metrics.vulnerableComponents || 0 }}</span> vuln. comp.
+        <span class="font-medium text-gray-900 dark:text-white" title="Vulnerable components">{{ project.metrics.vulnerableComponents || 0 }}</span> / <span class="font-medium text-gray-900 dark:text-white" title="Total components">{{ project.metrics.components || project.metrics.vulnerableComponents || 0 }}</span> vuln. comp.
       </span>
       <span class="text-gray-300 dark:text-gray-600">|</span>
       <span class="text-gray-500 dark:text-gray-400">
-        <span class="font-medium text-gray-900 dark:text-white">{{ getProjectVulnerabilities(project.metrics) }}</span> vulns
+        <span class="font-medium text-gray-900 dark:text-white" title="Total vulnerabilities">{{ getProjectVulnerabilities(project.metrics) }}</span> vulns
       </span>
     </div>
     <div v-else class="flex items-center gap-2 text-xs mb-2">
-      <span class="text-gray-500 dark:text-gray-400">{{ project.version || 'latest' }}</span>
+      <span class="text-gray-500 dark:text-gray-400" title="Version">{{ project.version || 'latest' }}</span>
     </div>
 
     <!-- Security Badges & Tags -->
