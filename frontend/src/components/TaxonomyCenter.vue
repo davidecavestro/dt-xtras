@@ -311,7 +311,7 @@
         <div class="p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-              Tags for {{ selectedTaxonomy?.name }} ({{ taxonomyTags.length }})
+              Tags for {{ selectedTaxonomy.value?.name }} ({{ taxonomyTags.length }})
             </h3>
             <button
               @click="closeTagsModal"

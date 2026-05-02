@@ -138,6 +138,8 @@ class TreeResponse(BaseModel):
 class HierarchicalTreeResponse(BaseModel):
     """Response model for hierarchical tree endpoint."""
 
+    nodes: List[SecurityNode]
+    edges: List[TreeEdge]
     tree: List[TreeNode]
 
 

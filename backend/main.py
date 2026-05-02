@@ -534,13 +534,8 @@ async def get_tree(
 ):
     """Build and return taxonomy tree with aggregated project data (network/graph view)"""
     # Load taxonomies and fetch enriched tags with project UUIDs and metrics
-    from services import get_dt_projects
-
     taxonomies = load_taxonomies()
     enriched_tags = await fetch_enriched_tags_for_tree(dt_token)
-
-    # Fetch projects to build proper project-to-tags mapping for edge creation
-    projects = await get_dt_projects(dt_token, limit=10000)
 
     # Build simple tree from tags
     nodes = []
@@ -685,7 +680,7 @@ async def get_hierarchical_tree(
 
     if not hierarchical_taxonomies:
         logger.warning("No hierarchical taxonomies found, returning empty tree")
-        return {"tree": []}
+        return {"nodes": [], "edges": [], "tree": []}
 
     # If root_taxonomy is specified, ensure it's included in hierarchical_taxonomies
     # but don't filter out other hierarchical taxonomies as they may be needed for relations
@@ -693,10 +688,10 @@ async def get_hierarchical_tree(
         root_tax = next((t for t in taxonomies if t.id == root_taxonomy), None)
         if not root_tax:
             logger.warning(f"Root taxonomy '{root_taxonomy}' not found")
-            return {"tree": []}
+            return {"nodes": [], "edges": [], "tree": []}
         if not root_tax.hierarchical:
             logger.warning(f"Root taxonomy '{root_taxonomy}' is not hierarchical")
-            return {"tree": []}
+            return {"nodes": [], "edges": [], "tree": []}
 
     # Fetch enriched tags with project UUIDs and metrics
     enriched_tags = await fetch_enriched_tags_for_tree(dt_token)
@@ -704,7 +699,37 @@ async def get_hierarchical_tree(
     # Build hierarchical tree
     tree_data = build_hierarchical_tree(enriched_tags, hierarchical_taxonomies, taxonomies, root_taxonomy)
 
-    return {"tree": tree_data}
+    # Flatten tree to get nodes and create edges from parent-child relationships
+    nodes = []
+    edges = []
+    node_ids = set()
+    edge_set = set()
+
+    def extract_nodes_and_edges(node, parent_id=None):
+        node_id = node.get("id")
+        if node_id and node_id not in node_ids:
+            node_ids.add(node_id)
+            # Create a clean copy of the node without children for the flat list
+            node_copy = {k: v for k, v in node.items() if k != "children"}
+            nodes.append(node_copy)
+
+        # Create edge from parent to this node
+        if parent_id and node_id:
+            edge_key = tuple(sorted([parent_id, node_id]))
+            if edge_key not in edge_set:
+                edge_set.add(edge_key)
+                edges.append(
+                    {"id": f"{parent_id}-{node_id}", "source": parent_id, "target": node_id, "relation": "hierarchy"}
+                )
+
+        # Process children recursively
+        for child in node.get("children", []):
+            extract_nodes_and_edges(child, node_id)
+
+    for root in tree_data:
+        extract_nodes_and_edges(root)
+
+    return {"nodes": nodes, "edges": edges, "tree": tree_data}
 
 
 # Proxy endpoints for DT API
