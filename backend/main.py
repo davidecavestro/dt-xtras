@@ -534,8 +534,13 @@ async def get_tree(
 ):
     """Build and return taxonomy tree with aggregated project data (network/graph view)"""
     # Load taxonomies and fetch enriched tags with project UUIDs and metrics
+    from services import get_dt_projects
+
     taxonomies = load_taxonomies()
     enriched_tags = await fetch_enriched_tags_for_tree(dt_token)
+
+    # Fetch projects to build proper project-to-tags mapping for edge creation
+    projects = await get_dt_projects(dt_token, limit=10000)
 
     # Build simple tree from tags
     nodes = []
@@ -594,6 +599,77 @@ async def get_tree(
 
             nodes.append(tax_node)
             tree.append(tax_node)
+
+    # Build edges based on taxonomy relations
+    # For each tag node, parse its name using its taxonomy's regex
+    # Then create edges to related taxonomy nodes based on relations
+    edge_set = set()
+
+    # Build a lookup of taxonomy nodes by (taxonomy_id, captured_value)
+    taxonomy_node_lookup = {}
+    for node in nodes:
+        if node.get("type") == "tag":
+            # Store by (taxonomy_id, node.id) where node.id is the tag name
+            taxonomy_node_lookup[(node.get("taxonomy"), node.get("id"))] = node
+
+    # Build regex patterns for all taxonomies
+    tax_patterns = {}
+    for taxonomy in taxonomies:
+        if taxonomy.regex_pattern:
+            tax_patterns[taxonomy.id] = (taxonomy, regex.compile(taxonomy.regex_pattern))
+
+    # For each tag node, find relations and create edges
+    for tag_node in nodes:
+        if tag_node.get("type") != "tag":
+            continue
+
+        tag_name = tag_node.get("id")
+        taxonomy_id = tag_node.get("taxonomy")
+
+        if taxonomy_id not in tax_patterns:
+            continue
+
+        taxonomy, pattern = tax_patterns[taxonomy_id]
+        match = pattern.match(tag_name)
+        if not match:
+            continue
+
+        # Get capture groups from the match
+        groups = match.groupdict()
+
+        # For each relation in this taxonomy, create an edge to the target
+        for relation in getattr(taxonomy, "relations", []) or []:
+            group_name = relation.group if hasattr(relation, "group") else relation.get("group")
+            target_tax_id = relation.targets if hasattr(relation, "targets") else relation.get("targets")
+
+            if group_name in groups and target_tax_id:
+                captured_value = groups[group_name]
+                # Find the target tag node
+                target_key = (
+                    target_tax_id,
+                    f"{target_tax_id}:{captured_value}" if ":" not in captured_value else captured_value,
+                )
+
+                # Try to find the target node
+                target_node = taxonomy_node_lookup.get(target_key)
+                if not target_node:
+                    # Try alternative formats
+                    alt_key = (target_tax_id, captured_value)
+                    target_node = taxonomy_node_lookup.get(alt_key)
+
+                if target_node:
+                    # Create edge from source tag to target tag
+                    edge_key = tuple(sorted([tag_name, target_node.get("id")]))
+                    if edge_key not in edge_set:
+                        edge_set.add(edge_key)
+                        edges.append(
+                            {
+                                "id": f"{edge_key[0]}-{edge_key[1]}",
+                                "source": tag_name,
+                                "target": target_node.get("id"),
+                                "relation": "taxonomy_relation",
+                            }
+                        )
 
     return {"nodes": nodes, "edges": edges, "tree": tree}
 

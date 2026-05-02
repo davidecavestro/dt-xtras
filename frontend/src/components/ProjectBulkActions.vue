@@ -443,7 +443,7 @@
               type="checkbox"
               v-model="selectedProjects"
               :value="project.uuid"
-              class="absolute top-2 left-2 z-10 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800"
+              class="absolute top-0 left-0 z-10 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800"
             />
             <ProjectCard
               :project="project"
