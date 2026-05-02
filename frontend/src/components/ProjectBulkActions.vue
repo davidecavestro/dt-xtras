@@ -243,52 +243,52 @@
           <div class="flex flex-wrap gap-2">
             <!-- Bulk Delete -->
             <button
-              v-if="selectedProjects.length > 0"
               @click="showDeleteConfirmation = true"
-              class="px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              :disabled="selectedProjects.length === 0"
+              class="px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Trash2 class="mr-2 h-4 w-4" />
-              Delete Selected ({{ selectedProjects.length }})
+              Delete ({{ selectedProjects.length }})
             </button>
 
             <!-- Bulk Activate -->
             <button
-              v-if="selectedProjects.length > 0"
               @click="showActivateConfirmation = true"
-              class="px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              :disabled="selectedProjects.length === 0"
+              class="px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Power class="mr-2 h-4 w-4" />
-              Activate Selected ({{ selectedProjects.length }})
+              Activate ({{ selectedProjects.length }})
             </button>
 
             <!-- Bulk Deactivate -->
             <button
-              v-if="selectedProjects.length > 0"
               @click="showDeactivateConfirmation = true"
-              class="px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+              :disabled="selectedProjects.length === 0"
+              class="px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <PowerOff class="mr-2 h-4 w-4" />
-              Deactivate Selected ({{ selectedProjects.length }})
+              Deactivate ({{ selectedProjects.length }})
             </button>
 
             <!-- Bulk Refresh -->
             <button
-              v-if="selectedProjects.length > 0"
               @click="refreshSelectedProjects"
-              class="px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              :disabled="selectedProjects.length === 0"
+              class="px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw class="mr-2 h-4 w-4" />
-              Refresh Selected ({{ selectedProjects.length }})
+              Refresh ({{ selectedProjects.length }})
             </button>
 
             <!-- Bulk Rename -->
             <button
-              v-if="selectedProjects.length > 0"
               @click="showRenameModal = true"
-              class="px-4 py-2 border border-purple-300 text-sm font-medium rounded-md text-purple-700 bg-purple-50 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+              :disabled="selectedProjects.length === 0"
+              class="px-4 py-2 border border-purple-300 text-sm font-medium rounded-md text-purple-700 bg-purple-50 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Edit3 class="mr-2 h-4 w-4" />
-              Rename Selected ({{ selectedProjects.length }})
+              Rename ({{ selectedProjects.length }})
             </button>
           </div>
         </div>
