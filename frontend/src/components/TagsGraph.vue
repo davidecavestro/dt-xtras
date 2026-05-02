@@ -375,12 +375,7 @@ export default {
     const taxonomyNodes = computed(() => {
       if (!graphData.value?.nodes) return {};
       const nodes = {};
-      // Handle both Map (hierarchical mode) and Array (raw mode) formats
-      const nodeList = graphData.value.nodes instanceof Map
-        ? Array.from(graphData.value.nodes.values())
-        : Array.isArray(graphData.value.nodes)
-          ? graphData.value.nodes
-          : [];
+      const nodeList = Array.isArray(graphData.value.nodes) ? graphData.value.nodes : [];
       nodeList.forEach(node => {
         if (!nodes[node.taxonomy]) {
           nodes[node.taxonomy] = [];
@@ -564,12 +559,7 @@ export default {
       }
 
       // Convert graph data to Cytoscape format
-      // Handle both Map (hierarchical mode) and Array (raw mode) formats
-      const nodeList = graphData.value.nodes instanceof Map
-        ? Array.from(graphData.value.nodes.values())
-        : Array.isArray(graphData.value.nodes)
-          ? graphData.value.nodes
-          : [];
+      const nodeList = Array.isArray(graphData.value.nodes) ? graphData.value.nodes : [];
       const nodes = nodeList.map(node => {
         // Extract capture group from tag name if it matches taxonomy pattern
         const taxonomy = taxonomies.value?.find(t => t.id === node.taxonomy);
