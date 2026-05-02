@@ -112,21 +112,21 @@
         </div>
       </div>
 
-      <!-- Edit Form View -->
-      <div v-if="editingTaxonomy">
-      <!-- Taxonomy Form -->
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mt-5">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-              {{ isEditingExisting ? 'Edit Taxonomy' : 'Create Taxonomy' }}
-            </h3>
-            <button
-              @click="cancelEdit"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              ← Back to List
-            </button>
-          </div>
+      <!-- Taxonomy Modal -->
+      <div v-if="editingTaxonomy" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ isEditingExisting ? 'Edit Taxonomy' : 'Create Taxonomy' }}
+              </h3>
+              <button
+                @click="cancelEdit"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
+            </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- ID Field -->
             <div>
@@ -286,20 +286,21 @@
             </div>
           </div>
 
-          <div class="mt-6 flex justify-end space-x-3">
-            <button
-              @click="cancelEdit"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              @click="saveTaxonomy"
-              :disabled="!isFormValid"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            >
-              Save
-            </button>
+            <div class="mt-6 flex justify-end space-x-3">
+              <button
+                @click="cancelEdit"
+                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                @click="saveTaxonomy"
+                :disabled="!isFormValid"
+                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -558,6 +559,7 @@ const graphGroup = ref(null)
 
     const cancelEdit = () => {
       editingTaxonomy.value = null
+      isEditingExisting.value = false
       testTags.value = ''
       regexTestResult.value = null
     }
