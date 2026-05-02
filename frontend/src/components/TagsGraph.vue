@@ -16,7 +16,7 @@
             <input
               type="radio"
               id="hierarchical-mode"
-              v-model="associativeMode"
+              v-model="hierarchicalMode"
               :value="true"
               @change="updateVisualization"
               class="text-blue-600 focus:ring-blue-500"
@@ -26,7 +26,7 @@
             <input
               type="radio"
               id="normal-mode"
-              v-model="associativeMode"
+              v-model="hierarchicalMode"
               :value="false"
               @change="updateVisualization"
               class="text-blue-600 focus:ring-blue-500"
@@ -45,7 +45,7 @@
             @change="updateVisualization"
             class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             v-if="!loading"
-            :disabled="!associativeMode"
+            :disabled="!hierarchicalMode"
           >
             <option v-for="taxonomy in taxonomies" :key="taxonomy.id" :value="taxonomy.id">
               {{ taxonomy.name || taxonomy.id }}
@@ -138,7 +138,7 @@
         <!-- End Left: Graph Section -->
 
         <!-- Right: Related Projects Section -->
-        <div v-if="associativeMode" class="lg:w-96">
+        <div v-if="hierarchicalMode" class="lg:w-96">
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
             <h2 class="text-xl font-semibold mb-1 text-gray-900 dark:text-white">Related Projects</h2>
 
@@ -334,7 +334,7 @@ export default {
     const loading = ref(true);
     const error = ref(null);
     const selectedTaxonomy = ref(null);
-    const associativeMode = ref(true);
+    const hierarchicalMode = ref(true);
     const selectedNode = ref(null);
     const cytoscapeContainer = ref(null);
     const cytoscapeInstance = ref(null);
@@ -365,7 +365,7 @@ export default {
 
     // Computed properties
     const modeDescription = computed(() => {
-      if (associativeMode.value) {
+      if (hierarchicalMode.value) {
         return 'Hierarchical mode creates direct connections between related taxonomies, hiding intermediate connector nodes. Each connection represents a semantic relationship between taxonomy elements. This mode shows projects related to your selection in the Related Projects panel.';
       } else {
         return 'Raw mode creates relationships where nodes connect to others through defined taxonomy relations. This mode does not show related projects - use Hierarchical mode to see project relationships.';
@@ -375,7 +375,13 @@ export default {
     const taxonomyNodes = computed(() => {
       if (!graphData.value?.nodes) return {};
       const nodes = {};
-      Array.from(graphData.value.nodes.values()).forEach(node => {
+      // Handle both Map (hierarchical mode) and Array (raw mode) formats
+      const nodeList = graphData.value.nodes instanceof Map
+        ? Array.from(graphData.value.nodes.values())
+        : Array.isArray(graphData.value.nodes)
+          ? graphData.value.nodes
+          : [];
+      nodeList.forEach(node => {
         if (!nodes[node.taxonomy]) {
           nodes[node.taxonomy] = [];
         }
@@ -391,7 +397,7 @@ export default {
         error.value = null;
 
         // Load hierarchical tree or network graph based on mode
-        if (associativeMode.value) {
+        if (hierarchicalMode.value) {
           // Hierarchical mode: use hierarchical tree endpoint
           await graphStore.loadHierarchicalTree({
             rootTaxonomy: selectedTaxonomy.value
@@ -401,12 +407,12 @@ export default {
           // Raw mode: use network graph endpoint
           await graphStore.loadTagGraph({
             rootTaxonomy: selectedTaxonomy.value,
-            associativeMode: false
+            hierarchicalMode: false
           });
           logger.info('Network graph loaded:', nodes.value?.length, 'nodes,', edges.value?.length, 'edges');
         }
 
-        if (associativeMode.value) {
+        if (hierarchicalMode.value) {
           // For hierarchical mode, convert tree to graph format for Cytoscape
           if (!treeData.value) {
             throw new Error('Failed to load hierarchical tree data');
@@ -421,6 +427,11 @@ export default {
             nodes: nodes.value,
             edges: edges.value
           };
+          logger.info('Raw mode graphData set in loadData:', {
+            nodeCount: nodes.value.length,
+            edgeCount: edges.value.length,
+            sampleEdge: edges.value[0]
+          });
         }
 
       } catch (err) {
@@ -493,11 +504,11 @@ export default {
 
         logger.info('Rebuilding graph with:', {
           selectedTaxonomy: selectedTaxonomy.value,
-          associativeMode: associativeMode.value
+          hierarchicalMode: hierarchicalMode.value
         });
 
         // Rebuild graph with current mode using graph store
-        if (associativeMode.value) {
+        if (hierarchicalMode.value) {
           // Hierarchical mode: use hierarchical tree endpoint
           await graphStore.loadHierarchicalTree({
             rootTaxonomy: selectedTaxonomy.value
@@ -507,12 +518,12 @@ export default {
           // Raw mode: use network graph endpoint
           await graphStore.loadTagGraph({
             rootTaxonomy: selectedTaxonomy.value,
-            associativeMode: false
+            hierarchicalMode: false
           });
           logger.info('Network graph rebuilt:', nodes.value?.length, 'nodes,', edges.value?.length, 'edges');
         }
 
-        if (associativeMode.value) {
+        if (hierarchicalMode.value) {
           // For hierarchical mode, convert tree to graph format for Cytoscape
           if (!treeData.value) {
             throw new Error('Failed to load hierarchical tree data');
@@ -553,7 +564,13 @@ export default {
       }
 
       // Convert graph data to Cytoscape format
-      const nodes = Array.from(graphData.value.nodes.values()).map(node => {
+      // Handle both Map (hierarchical mode) and Array (raw mode) formats
+      const nodeList = graphData.value.nodes instanceof Map
+        ? Array.from(graphData.value.nodes.values())
+        : Array.isArray(graphData.value.nodes)
+          ? graphData.value.nodes
+          : [];
+      const nodes = nodeList.map(node => {
         // Extract capture group from tag name if it matches taxonomy pattern
         const taxonomy = taxonomies.value?.find(t => t.id === node.taxonomy);
         let captureGroups = [];
@@ -584,7 +601,11 @@ export default {
         };
       });
 
-      const edges = graphData.value.edges.map(edge => ({
+      // Safety check for edges array
+      const edgeList = Array.isArray(graphData.value.edges) ? graphData.value.edges : [];
+      logger.info('Rendering graph with', nodes.length, 'nodes and', edgeList.length, 'edges');
+
+      const edges = edgeList.map(edge => ({
         data: {
           id: edge.id || `${edge.source}-${edge.target}`,
           source: edge.source,
@@ -1010,7 +1031,7 @@ export default {
     });
 
     // Watch for mode changes to rebuild graph
-    watch(associativeMode, () => {
+    watch(hierarchicalMode, () => {
       if (taxonomies.value) {
         rebuildGraph();
       }
@@ -1038,7 +1059,7 @@ export default {
       // Reactive data
       graphData,
       selectedTaxonomy,
-      associativeMode,
+      hierarchicalMode,
       loading,
       error,
       taxonomies,

@@ -15,9 +15,7 @@ class TestNetworkTreeEndpoint:
         response = client.get("/api/tree")
         assert response.status_code == 401
 
-    def test_get_tree_success(
-        self, client, mock_dt_apis, auth_headers, sample_dt_tags, sample_dt_projects
-    ):
+    def test_get_tree_success(self, client, mock_dt_apis, auth_headers, sample_dt_tags, sample_dt_projects):
         """Test successful tree retrieval with mocked DT data."""
         response = client.get("/api/tree", headers=auth_headers)
 
@@ -42,18 +40,38 @@ class TestNetworkTreeEndpoint:
                 assert "brand:y" in node_names
 
     def test_get_tree_with_associative_mode(self, client, mock_dt_apis, auth_headers):
-        """Test tree with associative edges mode enabled."""
+        """Test tree with associative edges mode enabled - edges based on taxonomy relations."""
         response = client.get("/api/tree?associative_mode=true", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
 
-        # In associative edges mode, edges connect related taxonomy nodes
+        # In Raw mode (associative_mode=true), edges connect tags based on taxonomy relations
+        # e.g., site:qualcoz:eu:bee:2026.05 connects to brand:qualcoz, region:eu, bee:2026.05
         edges = data.get("edges") or []
+        nodes = data.get("nodes") or []
 
-    def test_get_tree_has_metrics_and_projects(
-        self, client, mock_dt_apis, auth_headers, sample_dt_projects
-    ):
+        # Verify edges exist
+        assert len(edges) > 0, f"Expected edges but got none. Nodes: {len(nodes)}, Edges: {len(edges)}"
+
+        # Verify edge structure
+        for edge in edges:
+            assert "source" in edge
+            assert "target" in edge
+            assert "id" in edge
+            assert edge.get("relation") == "taxonomy_relation"
+
+        # Verify taxonomy relation edges exist
+        # site:qualcoz:eu:bee:2026.05 should connect to brand:qualcoz (via brand group)
+        edge_pairs = {tuple(sorted([e["source"], e["target"]])) for e in edges}
+        expected_pairs = [
+            ("brand:qualcoz", "site:qualcoz:eu:bee:2026.05"),
+            ("region:eu", "site:qualcoz:eu:bee:2026.05"),
+        ]
+        for pair in expected_pairs:
+            assert pair in edge_pairs, f"Expected taxonomy relation edge {pair} not found in {edge_pairs}"
+
+    def test_get_tree_has_metrics_and_projects(self, client, mock_dt_apis, auth_headers, sample_dt_projects):
         """Test that tree nodes include metrics and project counts with non-zero values."""
         response = client.get("/api/tree", headers=auth_headers)
 
@@ -74,28 +92,15 @@ class TestNetworkTreeEndpoint:
                 bee_bundle = node
                 break
 
-        assert bee_bundle is not None, (
-            f"site:qualcoz:eu:bee:2026.05 node not found. "
-            f"Available nodes: {node_names}"
-        )
+        assert bee_bundle is not None, f"site:qualcoz:eu:bee:2026.05 node not found. " f"Available nodes: {node_names}"
         # 3 projects have this tag: baz, qux, quux
-        assert (
-            bee_bundle["projectsCount"] == 3
-        ), f"Expected 3 projects, got {bee_bundle['projectsCount']}"
+        assert bee_bundle["projectsCount"] == 3, f"Expected 3 projects, got {bee_bundle['projectsCount']}"
         assert len(bee_bundle["projectUUIDs"]) == 3, f"Expected 3 project UUIDs"
-        assert (
-            bee_bundle["metrics"]["critical"] == 1
-        ), f"Expected critical=1, got {bee_bundle['metrics']['critical']}"
-        assert (
-            bee_bundle["metrics"]["high"] == 1
-        ), f"Expected high=1, got {bee_bundle['metrics']['high']}"
-        assert (
-            bee_bundle["metrics"]["medium"] == 3
-        ), f"Expected medium=3, got {bee_bundle['metrics']['medium']}"
+        assert bee_bundle["metrics"]["critical"] == 1, f"Expected critical=1, got {bee_bundle['metrics']['critical']}"
+        assert bee_bundle["metrics"]["high"] == 1, f"Expected high=1, got {bee_bundle['metrics']['high']}"
+        assert bee_bundle["metrics"]["medium"] == 3, f"Expected medium=3, got {bee_bundle['metrics']['medium']}"
         # Metrics: baz(low=3) + qux(low=0) + quux(low=1) = 4
-        assert (
-            bee_bundle["metrics"]["low"] == 4
-        ), f"Expected low=4, got {bee_bundle['metrics']['low']}"
+        assert bee_bundle["metrics"]["low"] == 4, f"Expected low=4, got {bee_bundle['metrics']['low']}"
 
         # Check that nodes have metrics
         for node in nodes:
@@ -172,16 +177,12 @@ class TestHierarchicalTreeEndpoint:
             y_regions = [c.get("name") for c in y_brand.get("children", [])]
 
             if "region:eu" in qualcoz_regions:
-                qualcoz_eu = next(
-                    c for c in qualcoz["children"] if c.get("name") == "region:eu"
-                )
+                qualcoz_eu = next(c for c in qualcoz["children"] if c.get("name") == "region:eu")
                 # Verify qualcoz's eu has children
                 assert len(qualcoz_eu.get("children", [])) >= 0
 
             if "region:eu" in y_regions:
-                y_eu = next(
-                    c for c in y_brand["children"] if c.get("name") == "region:eu"
-                )
+                y_eu = next(c for c in y_brand["children"] if c.get("name") == "region:eu")
                 # Verify y's eu has children
                 assert len(y_eu.get("children", [])) >= 0
 
@@ -198,21 +199,13 @@ class TestHierarchicalTreeEndpoint:
 
         if qualcoz:
             qualcoz_eu = next(
-                (
-                    c
-                    for c in qualcoz.get("children", [])
-                    if c.get("name") == "region:eu"
-                ),
+                (c for c in qualcoz.get("children", []) if c.get("name") == "region:eu"),
                 None,
             )
             if qualcoz_eu:
                 # Find bee bundle and verify metrics
                 bee_bundle = next(
-                    (
-                        c
-                        for c in qualcoz_eu.get("children", [])
-                        if "bee" in c.get("name", "")
-                    ),
+                    (c for c in qualcoz_eu.get("children", []) if "bee" in c.get("name", "")),
                     None,
                 )
                 if bee_bundle:
@@ -223,13 +216,9 @@ class TestHierarchicalTreeEndpoint:
                     assert (
                         bee_bundle["projectsCount"] > 0
                     ), f"Expected non-zero projectsCount, got {bee_bundle['projectsCount']}"
-                    assert (
-                        len(bee_bundle["projectUUIDs"]) > 0
-                    ), "Expected non-empty projectUUIDs"
+                    assert len(bee_bundle["projectUUIDs"]) > 0, "Expected non-empty projectUUIDs"
 
-    def test_hierarchical_no_explicit_hierarchical_taxonomy(
-        self, client, mock_dt_apis, auth_headers
-    ):
+    def test_hierarchical_no_explicit_hierarchical_taxonomy(self, client, mock_dt_apis, auth_headers):
         """Test that endpoint works with hierarchical taxonomies."""
         # The site taxonomy has hierarchical=True with relations defining the tree structure
         response = client.get("/api/tree/hierarchical", headers=auth_headers)
@@ -263,9 +252,7 @@ class TestTreeComparison:
             region_eu = region_eu_nodes[0]
             assert region_eu is not None
 
-    def test_hierarchical_separates_region_nodes(
-        self, client, mock_dt_apis, auth_headers
-    ):
+    def test_hierarchical_separates_region_nodes(self, client, mock_dt_apis, auth_headers):
         """Test that hierarchical tree creates distinct region nodes per path."""
         response = client.get("/api/tree/hierarchical", headers=auth_headers)
 
@@ -279,19 +266,11 @@ class TestTreeComparison:
 
         if qualcoz and y_brand:
             qualcoz_eu = next(
-                (
-                    c
-                    for c in qualcoz.get("children", [])
-                    if c.get("name") == "region:eu"
-                ),
+                (c for c in qualcoz.get("children", []) if c.get("name") == "region:eu"),
                 None,
             )
             y_eu = next(
-                (
-                    c
-                    for c in y_brand.get("children", [])
-                    if c.get("name") == "region:eu"
-                ),
+                (c for c in y_brand.get("children", []) if c.get("name") == "region:eu"),
                 None,
             )
 
