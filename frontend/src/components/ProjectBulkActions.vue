@@ -449,6 +449,7 @@
             />
             <ProjectCard
               :project="project"
+              :show-actions="false"
               @select="viewProject"
               @view="viewProject"
               @security-details="viewSecurityDetails"

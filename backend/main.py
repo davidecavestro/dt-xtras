@@ -275,6 +275,186 @@ async def get_projects(
     return projects
 
 
+@app.delete("/api/project/batch")
+async def batch_delete_projects(
+    request: dict,
+    dt_token: str = Depends(get_dt_token_from_request),
+    permissions: List[str] = Depends(require_edit_permissions),
+):
+    """Delete multiple projects from Dependency-Track"""
+    project_uuids = request.get("projectUuids", [])
+
+    if not project_uuids:
+        raise HTTPException(status_code=400, detail="No projects selected for deletion")
+
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    results = {"success": [], "failed": []}
+
+    async with httpx.AsyncClient() as client:
+        for uuid in project_uuids:
+            try:
+                # Get project first to check if it's active
+                get_response = await client.get(f"{DT_API_URL}/api/v1/project/{uuid}", headers=headers, timeout=10.0)
+
+                if get_response.status_code == 404:
+                    results["failed"].append({"uuid": uuid, "error": "Project not found"})
+                    continue
+
+                if get_response.status_code != 200:
+                    results["failed"].append(
+                        {"uuid": uuid, "error": f"Failed to get project: {get_response.status_code}"}
+                    )
+                    continue
+
+                project_data = get_response.json()
+
+                # Check if project is active - prevent deletion of active projects
+                if project_data.get("active", True):
+                    results["failed"].append(
+                        {"uuid": uuid, "error": "Cannot delete active project. Please deactivate first."}
+                    )
+                    continue
+
+                # Delete project via DT API
+                response = await client.delete(f"{DT_API_URL}/api/v1/project/{uuid}", headers=headers, timeout=10.0)
+
+                if response.status_code == 204:
+                    results["success"].append(uuid)
+                else:
+                    results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
+
+            except Exception as e:
+                logger.error(f"Error deleting project {uuid}: {e}")
+                results["failed"].append({"uuid": uuid, "error": str(e)})
+
+    return {"message": f"Deleted {len(results['success'])} of {len(project_uuids)} projects", "results": results}
+
+
+@app.patch("/api/project/batch/activate")
+async def batch_activate_projects(
+    request: dict,
+    dt_token: str = Depends(get_dt_token_from_request),
+    permissions: List[str] = Depends(require_edit_permissions),
+):
+    """Activate multiple projects in Dependency-Track"""
+    project_uuids = request.get("projectUuids", [])
+
+    if not project_uuids:
+        raise HTTPException(status_code=400, detail="No projects selected for activation")
+
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    results = {"success": [], "failed": []}
+
+    async with httpx.AsyncClient() as client:
+        for uuid in project_uuids:
+            try:
+                response = await client.patch(
+                    f"{DT_API_URL}/api/v1/project/{uuid}", json={"active": True}, headers=headers, timeout=10.0
+                )
+
+                if response.status_code == 200:
+                    results["success"].append(uuid)
+                else:
+                    results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
+
+            except Exception as e:
+                logger.error(f"Error activating project {uuid}: {e}")
+                results["failed"].append({"uuid": uuid, "error": str(e)})
+
+    return {"message": f"Activated {len(results['success'])} of {len(project_uuids)} projects", "results": results}
+
+
+@app.patch("/api/project/batch/deactivate")
+async def batch_deactivate_projects(
+    request: dict,
+    dt_token: str = Depends(get_dt_token_from_request),
+    permissions: List[str] = Depends(require_edit_permissions),
+):
+    """Deactivate multiple projects in Dependency-Track"""
+    project_uuids = request.get("projectUuids", [])
+
+    if not project_uuids:
+        raise HTTPException(status_code=400, detail="No projects selected for deactivation")
+
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    results = {"success": [], "failed": []}
+
+    async with httpx.AsyncClient() as client:
+        for uuid in project_uuids:
+            try:
+                response = await client.patch(
+                    f"{DT_API_URL}/api/v1/project/{uuid}", json={"active": False}, headers=headers, timeout=10.0
+                )
+
+                if response.status_code == 200:
+                    results["success"].append(uuid)
+                else:
+                    results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
+
+            except Exception as e:
+                logger.error(f"Error deactivating project {uuid}: {e}")
+                results["failed"].append({"uuid": uuid, "error": str(e)})
+
+    return {"message": f"Deactivated {len(results['success'])} of {len(project_uuids)} projects", "results": results}
+
+
+@app.put("/api/project/batch/refresh")
+async def batch_refresh_projects(
+    request: dict,
+    dt_token: str = Depends(get_dt_token_from_request),
+    permissions: List[str] = Depends(require_edit_permissions),
+):
+    """Refresh multiple projects in Dependency-Track (trigger re-analysis)"""
+    project_uuids = request.get("projectUuids", [])
+
+    if not project_uuids:
+        raise HTTPException(status_code=400, detail="No projects selected for refresh")
+
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+
+    results = {"success": [], "failed": []}
+
+    async with httpx.AsyncClient() as client:
+        for uuid in project_uuids:
+            try:
+                response = await client.post(
+                    f"{DT_API_URL}/api/v1/project/{uuid}/analysis", headers=headers, timeout=10.0
+                )
+
+                if response.status_code in [200, 202]:
+                    results["success"].append(uuid)
+                else:
+                    results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
+
+            except Exception as e:
+                logger.error(f"Error refreshing project {uuid}: {e}")
+                results["failed"].append({"uuid": uuid, "error": str(e)})
+
+    return {
+        "message": f"Refresh triggered for {len(results['success'])} of {len(project_uuids)} projects",
+        "results": results,
+    }
+
+
 # Tag endpoints
 
 

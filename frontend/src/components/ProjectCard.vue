@@ -84,7 +84,7 @@
       <span class="text-xs text-gray-500 dark:text-gray-400 truncate" title="Last activity">
         {{ formatDate(project.lastActivity) }}
       </span>
-      <div class="flex items-center gap-2 shrink-0">
+      <div v-if="showActions" class="flex items-center gap-2 shrink-0">
         <button
           @click.stop="$emit('view', project)"
           class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
@@ -117,6 +117,10 @@ export default {
     getTagDynamicStyle: {
       type: Function,
       default: () => ({})
+    },
+    showActions: {
+      type: Boolean,
+      default: true
     }
   },
   emits: ['select', 'view', 'security-details', 'analyze'],
