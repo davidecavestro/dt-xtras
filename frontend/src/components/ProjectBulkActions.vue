@@ -1,6 +1,7 @@
 <template>
-  <div class="px-4 py-6 sm:px-0">
-    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+  <div class="relative">
+    <!-- Main Content Area -->
+    <div class="bg-white dark:bg-gray-800 shadow sm:rounded-md mr-20">
       <!-- Header -->
       <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex justify-between items-center">
@@ -224,76 +225,6 @@
         </div>
       </div>
 
-      <!-- Bulk Actions -->
-      <div class="px-4 py-3 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-        <div class="flex justify-between items-center">
-          <div class="flex items-center space-x-4">
-            <label class="flex items-center">
-              <input
-                type="checkbox"
-                v-model="selectAll"
-                @change="toggleSelectAll"
-                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-              />
-              <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                Select All ({{ selectedProjects.length }}/{{ data.length }})
-              </span>
-            </label>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <!-- Bulk Delete -->
-            <button
-              @click="showDeleteConfirmation = true"
-              :disabled="selectedProjects.length === 0"
-              class="px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Trash2 class="mr-2 h-4 w-4" />
-              Delete ({{ selectedProjects.length }})
-            </button>
-
-            <!-- Bulk Activate -->
-            <button
-              @click="showActivateConfirmation = true"
-              :disabled="selectedProjects.length === 0"
-              class="px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Power class="mr-2 h-4 w-4" />
-              Activate ({{ selectedProjects.length }})
-            </button>
-
-            <!-- Bulk Deactivate -->
-            <button
-              @click="showDeactivateConfirmation = true"
-              :disabled="selectedProjects.length === 0"
-              class="px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <PowerOff class="mr-2 h-4 w-4" />
-              Deactivate ({{ selectedProjects.length }})
-            </button>
-
-            <!-- Bulk Refresh -->
-            <button
-              @click="refreshSelectedProjects"
-              :disabled="selectedProjects.length === 0"
-              class="px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw class="mr-2 h-4 w-4" />
-              Refresh ({{ selectedProjects.length }})
-            </button>
-
-            <!-- Bulk Rename -->
-            <button
-              @click="showRenameModal = true"
-              :disabled="selectedProjects.length === 0"
-              class="px-4 py-2 border border-purple-300 text-sm font-medium rounded-md text-purple-700 bg-purple-50 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Edit3 class="mr-2 h-4 w-4" />
-              Rename ({{ selectedProjects.length }})
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Projects List -->
       <div class="px-4 py-4 sm:px-6">
         <div v-if="isLoading && data.length === 0" class="text-center py-8">
@@ -335,7 +266,8 @@
           <div
             v-for="project in data"
             :key="project.uuid"
-            class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700"
+            class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+            @click="toggleProjectSelection(project.uuid)"
           >
             <div class="flex items-start gap-3">
               <!-- Checkbox -->
@@ -344,6 +276,7 @@
                 v-model="selectedProjects"
                 :value="project.uuid"
                 class="mt-1 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 shrink-0"
+                @click.stop
               />
               <!-- Main Content -->
               <div class="flex-1 min-w-0">
@@ -419,15 +352,6 @@
                   </template>
                 </div>
               </div>
-              <!-- Delete Button -->
-              <div class="shrink-0">
-                <button
-                  @click="deleteProject(project)"
-                  class="text-red-600 hover:text-red-800 text-xs font-medium"
-                >
-                  Delete
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -450,6 +374,8 @@
             <ProjectCard
               :project="project"
               :show-actions="false"
+              :get-tag-style="getTagStyle"
+              :get-tag-dynamic-style="getTagDynamicStyle"
               @select="viewProject"
               @view="viewProject"
               @security-details="viewSecurityDetails"
@@ -460,7 +386,88 @@
       </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
+    <!-- Vertical Bulk Actions Toolbar - Fixed Right -->
+    <div class="fixed top-24 right-8 w-16 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 flex flex-col items-center gap-2 z-30">
+      <!-- Selection Count -->
+      <div class="text-xs text-center text-gray-500 dark:text-gray-400 mb-1 px-1">
+        {{ selectedProjects.length }}
+      </div>
+
+      <!-- Bulk Delete -->
+      <button
+        @click="showDeleteConfirmation = true"
+        :disabled="selectedProjects.length === 0"
+        class="w-12 h-12 flex flex-col items-center justify-center rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        title="Delete selected"
+      >
+        <Trash2 class="h-5 w-5" />
+        <span class="text-[10px] mt-0.5">Del</span>
+      </button>
+
+      <!-- Bulk Activate -->
+      <button
+        @click="showActivateConfirmation = true"
+        :disabled="selectedProjects.length === 0"
+        class="w-12 h-12 flex flex-col items-center justify-center rounded-lg border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        title="Activate selected"
+      >
+        <Power class="h-5 w-5" />
+        <span class="text-[10px] mt-0.5">Act</span>
+      </button>
+
+      <!-- Bulk Deactivate -->
+      <button
+        @click="showDeactivateConfirmation = true"
+        :disabled="selectedProjects.length === 0"
+        class="w-12 h-12 flex flex-col items-center justify-center rounded-lg border border-yellow-200 dark:border-yellow-800 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        title="Deactivate selected"
+      >
+        <PowerOff class="h-5 w-5" />
+        <span class="text-[10px] mt-0.5">Deact</span>
+      </button>
+
+      <!-- Bulk Refresh -->
+      <button
+        @click="refreshSelectedProjects"
+        :disabled="selectedProjects.length === 0"
+        class="w-12 h-12 flex flex-col items-center justify-center rounded-lg border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        title="Refresh selected"
+      >
+        <RefreshCw class="h-5 w-5" />
+        <span class="text-[10px] mt-0.5">Ref</span>
+      </button>
+
+      <!-- Bulk Rename -->
+      <button
+        @click="showRenameModal = true"
+        :disabled="selectedProjects.length === 0"
+        class="w-12 h-12 flex flex-col items-center justify-center rounded-lg border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        title="Rename selected"
+      >
+        <Edit3 class="h-5 w-5" />
+        <span class="text-[10px] mt-0.5">Ren</span>
+      </button>
+
+      <!-- Select All Divider -->
+      <div class="w-10 h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+
+      <!-- Select All -->
+      <label
+        class="w-12 h-12 flex flex-col items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+        title="Select all"
+      >
+        <input
+          type="checkbox"
+          v-model="selectAll"
+          @change="toggleSelectAll"
+          class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
+        />
+        <span class="text-[10px] mt-0.5">All</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
     <Modal
       :show="showDeleteConfirmation"
       title="Delete Projects"
@@ -538,7 +545,6 @@
         </div>
       </template>
     </Modal>
-  </div>
 </template>
 
 <script>

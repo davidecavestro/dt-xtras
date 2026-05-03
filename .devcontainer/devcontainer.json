@@ -38,8 +38,6 @@
       "extensions": [
         "ms-python.python",
         "ms-python.debugpy",
-        "ms-python.black-formatter",
-        "ms-python.flake8",
         "matangover.mypy",
         "Vue.volar",
         "ms-azuretools.vscode-docker",
