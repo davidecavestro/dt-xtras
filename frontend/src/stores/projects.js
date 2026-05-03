@@ -265,7 +265,7 @@ export const useProjectStore = defineStore('projects', () => {
       const { default: axios } = await import('axios')
 
       const deletePromises = projectUuids.map(uuid =>
-        axios.delete(`/api/project/${uuid}`)
+        axios.delete(`/api/v1/project/${uuid}`)
       )
       await Promise.all(deletePromises)
 
@@ -299,7 +299,7 @@ export const useProjectStore = defineStore('projects', () => {
     try {
       const { default: axios } = await import('axios')
 
-      await axios.delete(`/api/project/${projectUuid}`)
+      await axios.delete(`/api/v1/project/${projectUuid}`)
 
       // Remove project from local state
       const index = projects.value.findIndex(project => project.uuid === projectUuid)

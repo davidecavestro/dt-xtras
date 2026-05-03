@@ -435,15 +435,17 @@
         <!-- Deck View -->
         <div v-else-if="viewMode === 'deck'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-4">
           <div
-            v-for="project in data"
+            v-for="project in paginatedProjects"
             :key="project.uuid"
-            class="relative"
+            class="relative cursor-pointer"
+            @click="toggleProjectSelection(project.uuid)"
           >
             <input
               type="checkbox"
               v-model="selectedProjects"
               :value="project.uuid"
               class="absolute top-0 left-0 z-10 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800"
+              @click.stop
             />
             <ProjectCard
               :project="project"
@@ -804,6 +806,15 @@ export default {
       }
     }
 
+    const toggleProjectSelection = (uuid) => {
+      const index = selectedProjects.value.indexOf(uuid)
+      if (index === -1) {
+        selectedProjects.value.push(uuid)
+      } else {
+        selectedProjects.value.splice(index, 1)
+      }
+    }
+
     const getActiveStatus = (project) => {
       if (project.active === true) return 'Active (DT)'
       if (project.active === false) return 'Inactive (DT)'
@@ -1093,6 +1104,7 @@ export default {
       handleProjectFilterChange,
       clearFilters,
       toggleSelectAll,
+      toggleProjectSelection,
       getActiveStatus,
       getActiveStatusClass,
       getActivityStatus,
@@ -1116,7 +1128,12 @@ export default {
       handlePageSizeChange,
       viewProject,
       viewSecurityDetails,
-      analyzeProject
+      analyzeProject,
+      // Icons for Modal components
+      Power,
+      PowerOff,
+      Edit3,
+      AlertCircle
     }
   }
 }
