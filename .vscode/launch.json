@@ -54,6 +54,24 @@
       }
     },
     {
+      "name": "Debug populate DT",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/populate_dt_with_sboms.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/scripts",
+      "python": "/home/vscode/opt/venv/bin/python3",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/scripts",
+        "DT_API_URL": "http://dtrack-apiserver:8080",
+      },
+      "presentation": {
+        "hidden": false,
+        "group": "DT extras",
+        "order": 2
+      }
+    },
+    {
       "name": "Attach to Backend in Docker",
       "type": "debugpy",
       "request": "attach",

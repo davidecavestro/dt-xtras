@@ -17,7 +17,7 @@
 
       <!-- Modal panel -->
       <div
-        class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+        class="relative z-10 inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
         :class="sizeClasses"
       >
         <!-- Header with icon and title -->
@@ -122,7 +122,7 @@ export default {
       default: ''
     },
     icon: {
-      type: Object,
+      type: [Object, Function],
       default: null
     },
     iconColor: {
