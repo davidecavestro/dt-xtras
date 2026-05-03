@@ -216,10 +216,9 @@ export const useProjectStore = defineStore('projects', () => {
     try {
       const { default: axios } = await import('axios')
 
-      const activatePromises = projectUuids.map(uuid =>
-        axios.patch(`/api/project/${uuid}/activate`)
-      )
-      await Promise.all(activatePromises)
+      await axios.patch('/api/project/batch/activate', {
+        projectUuids
+      })
 
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
@@ -240,10 +239,9 @@ export const useProjectStore = defineStore('projects', () => {
     try {
       const { default: axios } = await import('axios')
 
-      const deactivatePromises = projectUuids.map(uuid =>
-        axios.patch(`/api/project/${uuid}/deactivate`)
-      )
-      await Promise.all(deactivatePromises)
+      await axios.patch('/api/project/batch/deactivate', {
+        projectUuids
+      })
 
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
@@ -264,10 +262,9 @@ export const useProjectStore = defineStore('projects', () => {
     try {
       const { default: axios } = await import('axios')
 
-      const deletePromises = projectUuids.map(uuid =>
-        axios.delete(`/api/v1/project/${uuid}`)
-      )
-      await Promise.all(deletePromises)
+      await axios.delete('/api/project/batch', {
+        data: { projectUuids }
+      })
 
       // Remove deleted projects from local state
       projectUuids.forEach(uuid => {
@@ -350,10 +347,9 @@ export const useProjectStore = defineStore('projects', () => {
     try {
       const { default: axios } = await import('axios')
 
-      const refreshPromises = projectUuids.map(uuid =>
-        axios.put(`/api/project/${uuid}/refresh`)
-      )
-      await Promise.all(refreshPromises)
+      await axios.put('/api/project/batch/refresh', {
+        projectUuids
+      })
 
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
