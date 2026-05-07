@@ -13,7 +13,8 @@
     8000,
     5173,
     8080,
-    3000
+    3000,
+    9323
   ],
   "portsAttributes": {
     "8000": {
@@ -31,6 +32,10 @@
     "3000": {
       "label": "Dependency Track Frontend",
       "onAutoForward": "notify"
+    },
+    "9323": {
+      "label": "Playwright Test Report",
+      "onAutoForward": "notify"
     }
   },
   "customizations": {
@@ -43,10 +48,11 @@
         "ms-azuretools.vscode-docker",
         "bradlc.vscode-tailwindcss",
         "ms-vscode.vscode-json",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "codeium.windsurfPyright"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/home/vscode/opt/venv/bin/python3.14"
+        "python.defaultInterpreterPath": "/usr/local/bin/python3.14"
       }
     }
   }

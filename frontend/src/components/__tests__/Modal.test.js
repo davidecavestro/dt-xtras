@@ -189,6 +189,15 @@ describe('Modal', () => {
     expect(validator('invalid')).toBe(false)
   })
 
+  it('accepts Function type for icon prop (Vue component)', () => {
+    // This test prevents the "Invalid prop: type check failed for prop icon" warning
+    // Vue components are functions, so icon prop must accept [Object, Function]
+    const iconProp = Modal.props.icon
+
+    expect(iconProp.type).toContain(Function)
+    expect(iconProp.type).toContain(Object)
+  })
+
   it('renders slot content', () => {
     const wrapper = mount(Modal, {
       props: {
