@@ -136,6 +136,7 @@ export const toJsRegexPattern = (pattern) => {
 /**
  * Creates a RegExp from a Python-style pattern.
  * Converts the pattern to JavaScript syntax first.
+ * Handles patterns with or without /delimiters/.
  * @param {string} pattern - Python-style regex pattern
  * @param {string} flags - RegExp flags (optional)
  * @returns {RegExp|null} JavaScript RegExp or null if invalid
@@ -143,7 +144,20 @@ export const toJsRegexPattern = (pattern) => {
 export const createJsRegExp = (pattern, flags = '') => {
   if (!pattern) return null
   try {
-    const jsPattern = toJsRegexPattern(pattern)
+    // Strip /delimiters/ if present (e.g., /^security-/ -> ^security-)
+    let cleanPattern = pattern
+    if (pattern.startsWith('/') && pattern.includes('/', 1)) {
+      const lastSlash = pattern.lastIndexOf('/')
+      if (lastSlash > 0) {
+        cleanPattern = pattern.slice(1, lastSlash)
+        // Extract flags after last slash
+        const patternFlags = pattern.slice(lastSlash + 1)
+        if (patternFlags && !flags) {
+          flags = patternFlags
+        }
+      }
+    }
+    const jsPattern = toJsRegexPattern(cleanPattern)
     return new RegExp(jsPattern, flags)
   } catch (error) {
     return null
