@@ -7,7 +7,7 @@ import os
 import yaml
 import regex
 import httpx
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, Tuple
 from logger_config import logger
 from models import Taxonomy, TaxonomyRelation
 
@@ -514,3 +514,46 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies, root_
 
     logger.info(f"Tree complete: {len(tree_roots)} roots, {len(node_cache)} total nodes")
     return tree_roots
+
+# PASS 3: Aggregate metrics up the tree
+def aggregate_node(node):
+    """Recursively aggregate from children."""
+    all_uuids = set(node["projectUUIDs"])
+    all_metrics = dict(node["metrics"])
+
+    for child in node["children"]:
+        child_uuids, child_metrics = aggregate_node(child)
+        all_uuids.update(child_uuids)
+        for sev, count in child_metrics.items():
+            all_metrics[sev] = all_metrics.get(sev, 0) + count
+
+    node["projectUUIDs"] = list(all_uuids)
+    node["projectsCount"] = len(all_uuids)
+    node["metrics"] = all_metrics
+
+    return all_uuids, all_metrics
+
+
+
+async def deactivate_project(project_uuid: str, headers: Dict[str, str]) -> None:
+    """
+    Deactivate a single project in Dependency-Track.
+
+    Args:
+        project_uuid: UUID of the project to deactivate
+        headers: HTTP headers for authentication
+
+    Raises:
+        HTTPError: If the API call fails
+        Exception: For other network or unexpected errors
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.patch(
+            f"{DT_API_URL}/api/v1/project/{project_uuid}",
+            json={"active": False},
+            headers=headers,
+            timeout=10.0
+        )
+
+        # Let HTTP errors propagate naturally
+        response.raise_for_status()

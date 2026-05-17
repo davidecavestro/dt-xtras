@@ -584,10 +584,10 @@
             </div>
           </div>
 
-          <!-- Action Buttons -->
+            <!-- Action Buttons -->
           <div class="mt-6 flex gap-2">
             <button
-              @click="selectedTaxonomy ? createOrUpdateTag : handleCreateTag"
+              @click="saveCreateTagModal"
               :disabled="selectedTaxonomy ? (editingTag ? !canEditTag : !canCreateTag) : !tagValidation.valid"
               class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
@@ -1788,6 +1788,15 @@ export default {
       }
     }
 
+    const saveCreateTagModal = async () => {
+      if (selectedTaxonomy.value) {
+        await createOrUpdateTag()
+        return
+      }
+
+      await handleCreateTag()
+    }
+
     return {
       // Tag store state
       tags,
@@ -1844,75 +1853,6 @@ export default {
       taxonomies,
       getTagTaxonomy,
       getTaxonomyBadgeStyle,
-      // Clone Tag state
-      showCloneTagModal,
-      cloningTag,
-      cloneTagName,
-      cloneTagValidation,
-      linkProjects,
-      isDarkMode,
-      gridColumns,
-      validateTag,
-      selectSuggestedTag,
-      handleCreateTag,
-      handleDeleteTag,
-      clearForm,
-      viewTagProjects,
-      startEditTag,
-      startAidedEditTag,
-      startCloneTag,
-      validateCloneTag,
-      cloneTag,
-      cloneTagFromBuilder,
-      closeCloneTagModal,
-      tagBelongsToTaxonomy,
-      cancelEditTag,
-      saveEditTag,
-      refreshTags,
-      formatDate,
-      closeProjectsModal,
-      buildDTProjectUrl,
-
-      // Tag store state
-      tags,
-      tagsLoading,
-      tagsError,
-      currentPage,
-      pageSize,
-      totalTags,
-      totalPages,
-      searchQuery,
-      filteredTags,
-      paginatedTags,
-      hasPreviousPage,
-      hasNextPage,
-
-      // Tag store methods
-      loadTags,
-      setSearchQuery,
-      setTaxonomyFilter,
-      setPageSize,
-      goToPage,
-      nextPage,
-      previousPage,
-      clearFilters,
-
-      // Local state
-      projects,
-      newTag,
-      tagValidation,
-      showProjectsModal,
-      selectedTag,
-      tagProjects,
-      tagsViewMode,
-      showCreateTagModal,
-      editingTag,
-      editingTagName,
-
-      // Taxonomy store functions
-      taxonomies,
-      getTagTaxonomy,
-      getTaxonomyBadgeStyle,
       selectedTaxonomy,
 
       // Clone Tag state
@@ -1946,6 +1886,7 @@ export default {
       closeProjectsModal,
       closeCreateTagModal,
       createOrUpdateTag,
+      saveCreateTagModal,
       buildDTProjectUrl,
 
       // Tag builder properties
@@ -1963,7 +1904,10 @@ export default {
       confirmDialogConfirmText,
       confirmDialogCancelText,
       handleConfirm,
-      handleCancel
+      handleCancel,
+
+      // Components
+      AlertTriangle
     }
   }
 }

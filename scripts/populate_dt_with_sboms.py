@@ -33,6 +33,10 @@ DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
 DT_USERNAME = "admin"
 DT_PASSWORD = "password"
 
+# Vulnerability injection for testing
+VULN_PROBABILITY = 0.7  # 70% chance of adding a vulnerability to a component
+INJECT_VULNERABILITIES = True  # Set to False to disable vulnerability injection
+
 # Sample projects with their SBOM sources
 # Format: (name, version, sbom_url_or_source, tags)
 OSS_PROJECTS = [
@@ -143,49 +147,50 @@ def generate_cyclonedx_sbom(project_name: str, version: str, tags: List[str]) ->
 
     # Create components based on tags (simulated)
     components = []
+    vulnerabilities: list[dict] = []
     if "java" in tags:
         components.extend(
             [
                 {
                     "type": "library",
                     "name": "spring-core",
-                    "version": "6.0.11",
-                    "purl": "pkg:maven/org.springframework/spring-core@6.0.11",
+                    "version": "5.3.23",  # Known vulnerable version
+                    "purl": "pkg:maven/org.springframework/spring-core@5.3.23",
                 },
                 {
                     "type": "library",
                     "name": "spring-boot",
-                    "version": "3.1.2",
-                    "purl": "pkg:maven/org.springframework.boot/spring-boot@3.1.2",
+                    "version": "2.7.14",  # Known vulnerable version
+                    "purl": "pkg:maven/org.springframework.boot/spring-boot@2.7.14",
                 },
                 {
                     "type": "library",
-                    "name": "logback-classic",
-                    "version": "1.4.8",
-                    "purl": "pkg:maven/ch.qos.logback/logback-classic@1.4.8",
+                    "name": "log4j-core",
+                    "version": "2.14.1",  # Log4Shell vulnerable version
+                    "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
                 },
                 {
                     "type": "library",
                     "name": "jackson-databind",
-                    "version": "2.15.2",
-                    "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.2",
+                    "version": "2.12.7",  # Known vulnerable version
+                    "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.12.7",
                 },
             ]
         )
     if "nodejs" in tags or "javascript" in tags:
         components.extend(
             [
-                {"type": "library", "name": "express", "version": "4.18.2", "purl": "pkg:npm/express@4.18.2"},
-                {"type": "library", "name": "lodash", "version": "4.17.21", "purl": "pkg:npm/lodash@4.17.21"},
-                {"type": "library", "name": "axios", "version": "1.5.0", "purl": "pkg:npm/axios@1.5.0"},
+                {"type": "library", "name": "express", "version": "4.17.1", "purl": "pkg:npm/express@4.17.1"},  # Known vulnerable version
+                {"type": "library", "name": "lodash", "version": "4.17.20", "purl": "pkg:npm/lodash@4.17.20"},  # Prototype pollution vuln
+                {"type": "library", "name": "axios", "version": "0.21.1", "purl": "pkg:npm/axios@0.21.1"},  # Known vulnerable version
             ]
         )
     if "python" in tags:
         components.extend(
             [
-                {"type": "library", "name": "flask", "version": "2.3.3", "purl": "pkg:pypi/flask@2.3.3"},
-                {"type": "library", "name": "requests", "version": "2.31.0", "purl": "pkg:pypi/requests@2.31.0"},
-                {"type": "library", "name": "sqlalchemy", "version": "2.0.20", "purl": "pkg:pypi/sqlalchemy@2.0.20"},
+                {"type": "library", "name": "flask", "version": "2.0.1", "purl": "pkg:pypi/flask@2.0.1"},  # Known vulnerable version
+                {"type": "library", "name": "requests", "version": "2.25.0", "purl": "pkg:pypi/requests@2.25.0"},  # Known vulnerable version
+                {"type": "library", "name": "urllib3", "version": "1.26.4", "purl": "pkg:pypi/urllib3@1.26.4"},  # Known vulnerable version
             ]
         )
     if "go" in tags:
@@ -245,9 +250,22 @@ def generate_cyclonedx_sbom(project_name: str, version: str, tags: List[str]) ->
             ]
         )
 
+    # Inject vulnerabilities for testing if enabled
+    if INJECT_VULNERABILITIES:
+        for component in components:
+            if random.random() < VULN_PROBABILITY:
+                # Add vulnerability to this component
+                vuln = generate_fake_vulnerability(component["name"], component["version"])
+                vulnerabilities.append(vuln)
+
+        # Also add vulnerabilities to the main project component
+        if random.random() < VULN_PROBABILITY:
+            main_vuln = generate_fake_vulnerability(project_name, version)
+            vulnerabilities.append(main_vuln)
+
     sbom = {
         "bomFormat": "CycloneDX",
-        "specVersion": "1.5",
+        "specVersion": "1.6",
         "serialNumber": f"urn:uuid:{generate_uuid()}",
         "version": 1,
         "metadata": {
@@ -264,6 +282,11 @@ def generate_cyclonedx_sbom(project_name: str, version: str, tags: List[str]) ->
         "components": components,
     }
 
+    # Add vulnerabilities section if any were generated
+    if vulnerabilities:
+        sbom["vulnerabilities"] = vulnerabilities
+        print(f"  → Added {len(vulnerabilities)} fake vulnerabilities for testing")
+
     return sbom
 
 
@@ -271,6 +294,96 @@ def generate_uuid() -> str:
     """Generate a UUID-like string."""
     chars = string.hexdigits.lower()
     return f"{''.join(random.choices(chars, k=8))}-{''.join(random.choices(chars, k=4))}-{''.join(random.choices(chars, k=4))}-{''.join(random.choices(chars, k=4))}-{''.join(random.choices(chars, k=12))}"
+
+
+def generate_fake_vulnerability(component_name: str, component_version: str) -> dict:
+    """Generate a fake vulnerability for testing purposes that complies with CycloneDX schema."""
+    # Generate a realistic fake CVE ID
+    year = random.randint(2020, 2024)
+    cve_number = random.randint(1000, 99999)
+    cve_id = f"CVE-{year}-{cve_number}"
+
+    # Generate severity levels with realistic distribution (lowercase for CycloneDX)
+    severity_weights = ["critical", "high", "medium", "low"]
+    severity = random.choices(severity_weights, weights=[0.15, 0.35, 0.35, 0.15])[0]
+
+    # Generate CVSS scores based on severity
+    cvss_scores = {
+        "critical": (9.0, 10.0),
+        "high": (7.0, 8.9),
+        "medium": (4.0, 6.9),
+        "low": (0.1, 3.9)
+    }
+    cvss_score = round(random.uniform(*cvss_scores[severity]), 1)
+
+    # Generate realistic vulnerability descriptions
+    vulnerability_types = [
+        "remote code execution",
+        "denial of service",
+        "information disclosure",
+        "cross-site scripting",
+        "SQL injection",
+        "buffer overflow",
+        "privilege escalation",
+        "authentication bypass"
+    ]
+
+    vuln_type = random.choice(vulnerability_types)
+    descriptions = [
+        f"A {vuln_type} vulnerability exists in {component_name} version {component_version}",
+        f"{component_name} before {component_version} allows {vuln_type} via crafted input",
+        f"The {component_name} component in version {component_version} is vulnerable to {vuln_type}",
+        f"{vuln_type.title()} vulnerability in {component_name} {component_version} could lead to system compromise"
+    ]
+
+    description = random.choice(descriptions)
+
+    # Generate references with correct CycloneDX schema (id and source required)
+    references = [
+        {
+            "id": cve_id,
+            "source": {
+                "name": "NVD",
+                "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}"
+            }
+        },
+        {
+            "id": f"GHSA-{random.randint(10000, 99999)}",
+            "source": {
+                "name": "GitHub",
+                "url": f"https://github.com/{component_name}/security/advisories"
+            }
+        }
+    ]
+
+    return {
+        "bom-ref": f"{component_name}-{component_version}-{cve_id}",
+        "id": cve_id,
+        "source": {
+            "name": "NVD",
+            "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}"
+        },
+        "ratings": [
+            {
+                "source": {
+                    "name": "NVD",
+                    "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}"
+                },
+                "score": cvss_score,
+                "method": "CVSSv31",
+                "vector": f"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                "severity": severity
+            }
+        ],
+        "cwes": [
+            random.randint(79, 932)  # CWE should be integer, not object
+        ],
+        "description": description,
+        "detail": description,
+        "references": references,
+        "published": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - random.randint(1, 365) * 24 * 3600)),
+        "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    }
 
 
 async def upload_sbom_to_dt(token: str, project_name: str, version: str, sbom: dict) -> bool:
@@ -322,9 +435,25 @@ async def upload_sbom_to_dt(token: str, project_name: str, version: str, sbom: d
 
             if response.status_code in [200, 202]:
                 print(f"  ✓ Uploaded SBOM for {project_name}@{version}")
+
+                # Trigger vulnerability analysis
+                try:
+                    analyze_response = await client.post(
+                        f"{DT_API_URL}/api/v1/finding/project/{project_uuid}/analyze",
+                        headers=headers,
+                        timeout=10.0
+                    )
+                    if analyze_response.status_code == 200:
+                        print(f"  ✓ Triggered vulnerability analysis for {project_name}@{version}")
+                    else:
+                        print(f"  ⚠ Failed to trigger analysis: {analyze_response.status_code}")
+                except Exception as e:
+                    print(f"  ⚠ Error triggering analysis: {e}")
+
                 return True
             else:
                 print(f"  ✗ Failed to upload SBOM: {response.status_code}")
+                print(f"  Response body: {response.text}")
                 return False
     except Exception as e:
         print(f"  ✗ Error: {e}")

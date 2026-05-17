@@ -477,6 +477,7 @@
       :items="selectedProjects.map(getProjectName)"
       confirm-text="Delete"
       cancel-text="Cancel"
+      :loading="isDeleting"
       @confirm="confirmDelete"
       @close="showDeleteConfirmation = false"
     />
@@ -491,6 +492,7 @@
       :items="selectedProjects.map(getProjectName)"
       confirm-text="Activate"
       cancel-text="Cancel"
+      :loading="isActivating"
       @confirm="confirmActivate"
       @close="showActivateConfirmation = false"
     />
@@ -505,6 +507,7 @@
       :items="selectedProjects.map(getProjectName)"
       confirm-text="Deactivate"
       cancel-text="Cancel"
+      :loading="isDeactivating"
       @confirm="confirmDeactivate"
       @close="showDeactivateConfirmation = false"
     />
@@ -594,6 +597,11 @@ export default {
     const showRenameModal = ref(false)
     const newProjectName = ref('')
     const viewMode = ref('deck') // 'list' or 'deck'
+
+    // Loading states for batch operations
+    const isDeleting = ref(false)
+    const isActivating = ref(false)
+    const isDeactivating = ref(false)
 
     // Computed properties
     const uniqueProjectNames = computed(() => {
@@ -948,20 +956,35 @@ export default {
     }
 
     const confirmDelete = async () => {
+      isDeleting.value = true
       try {
-        await projectStore.bulkDeleteProjects(selectedProjects.value)
+        const result = await projectStore.bulkDeleteProjects(selectedProjects.value)
 
         // Store handles state updates, just clear local selection
         selectedProjects.value = []
         selectAll.value = false
         showDeleteConfirmation.value = false
+
+        // Show appropriate message based on results
+        if (result && result.failed > 0) {
+          if (result.success > 0) {
+            showSuccess(`Successfully deleted ${result.success} projects. ${result.failed} projects failed to delete.`)
+          } else {
+            showError('Failed to delete any projects. Please try again.')
+          }
+        } else {
+          showSuccess('Successfully deleted all selected projects.')
+        }
       } catch (error) {
         logger.error('Failed to delete projects:', error)
-        showError('Failed to delete some projects. Please try again.')
+        showError('Failed to delete projects. Please try again.')
+      } finally {
+        isDeleting.value = false
       }
     }
 
     const confirmActivate = async () => {
+      isActivating.value = true
       try {
         await projectStore.bulkActivateProjects(selectedProjects.value)
 
@@ -976,13 +999,17 @@ export default {
         selectedProjects.value = []
         selectAll.value = false
         showActivateConfirmation.value = false
+        showSuccess('Successfully activated all selected projects.')
       } catch (error) {
         logger.error('Failed to activate projects:', error)
         showError('Failed to activate some projects. Please try again.')
+      } finally {
+        isActivating.value = false
       }
     }
 
     const confirmDeactivate = async () => {
+      isDeactivating.value = true
       try {
         await projectStore.bulkDeactivateProjects(selectedProjects.value)
 
@@ -997,9 +1024,12 @@ export default {
         selectedProjects.value = []
         selectAll.value = false
         showDeactivateConfirmation.value = false
+        showSuccess('Successfully deactivated all selected projects.')
       } catch (error) {
         logger.error('Failed to deactivate projects:', error)
         showError('Failed to deactivate some projects. Please try again.')
+      } finally {
+        isDeactivating.value = false
       }
     }
 
@@ -1124,6 +1154,9 @@ export default {
       getTagDynamicStyle,
       getProjectName,
       deleteProject,
+      isDeleting,
+      isActivating,
+      isDeactivating,
       confirmDelete,
       confirmActivate,
       confirmDeactivate,

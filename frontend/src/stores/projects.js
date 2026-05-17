@@ -262,12 +262,16 @@ export const useProjectStore = defineStore('projects', () => {
     try {
       const { default: axios } = await import('axios')
 
-      await axios.delete('/api/project/batch', {
+      const response = await axios.delete('/api/project/batch', {
         data: { projectUuids }
       })
 
-      // Remove deleted projects from local state
-      projectUuids.forEach(uuid => {
+      const results = response.data.results
+      const successUuids = results.success || []
+      const failedUuids = results.failed || []
+
+      // Only remove successfully deleted projects from local state
+      successUuids.forEach(uuid => {
         const index = projects.value.findIndex(project => project.uuid === uuid)
         if (index > -1) {
           projects.value.splice(index, 1)
@@ -280,7 +284,15 @@ export const useProjectStore = defineStore('projects', () => {
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
 
-      return true
+      // If there were any failures, set error message but don't throw
+      if (failedUuids.length > 0) {
+        const failureDetails = failedUuids.map(f => f.error || 'Unknown error').join('; ')
+        error.value = `Deleted ${successUuids.length} of ${projectUuids.length} projects. Failures: ${failureDetails}`
+        // Return partial success info instead of throwing
+        return { success: successUuids.length, failed: failedUuids.length, results }
+      }
+
+      return { success: successUuids.length, failed: 0, results }
     } catch (err) {
       error.value = err.response?.data?.detail || err.message || 'Failed to delete projects'
       throw err
