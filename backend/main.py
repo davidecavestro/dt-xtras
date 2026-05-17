@@ -9,7 +9,7 @@ import httpx
 import regex
 from datetime import datetime
 from typing import Dict, Optional, List, Any
-from fastapi import Request, status, Form, FastAPI, HTTPException, Depends, Body
+from fastapi import Request, Response, status, Form, FastAPI, HTTPException, Depends, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -39,16 +39,15 @@ from auth import (
     JWT_ALGORITHM,
 )
 from services import (
-    load_taxonomies,
-    save_taxonomies,
     get_dt_projects,
     get_all_tags,
     get_projects_with_tag,
     get_tag_by_name,
-    add_projects_to_tag,
-    remove_projects_from_tag,
-    delete_tag_from_dt,
     build_hierarchical_tree,
+    load_taxonomies,
+    deactivate_project,
+    save_taxonomies,
+    logger,
     DT_API_URL,
     DT_API_KEY,
 )
@@ -313,12 +312,16 @@ async def batch_delete_projects(
 
                 project_data = get_response.json()
 
-                # Check if project is active - prevent deletion of active projects
+                # Check if project is active - deactivate it first if needed
                 if project_data.get("active", True):
-                    results["failed"].append(
-                        {"uuid": uuid, "error": "Cannot delete active project. Please deactivate first."}
-                    )
-                    continue
+                    # Deactivate project using the proper service
+                    try:
+                        await deactivate_project(uuid, headers)
+                    except Exception as e:
+                        results["failed"].append(
+                            {"uuid": uuid, "error": f"Failed to deactivate project: {str(e)}"}
+                        )
+                        continue
 
                 # Delete project via DT API
                 response = await client.delete(f"{DT_API_URL}/api/v1/project/{uuid}", headers=headers, timeout=10.0)
@@ -581,6 +584,16 @@ async def create_tag(
     async with httpx.AsyncClient() as client:
         response = await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[tag_name], timeout=30.0)
         response.raise_for_status()
+
+        # Get the created tag details from DT
+        get_response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers, timeout=10.0)
+        if get_response.status_code == 200:
+            all_tags = get_response.json()
+            created_tag = next((tag for tag in all_tags if tag.get("name") == tag_name), None)
+            if created_tag:
+                return created_tag
+
+        # Fallback if we can't get the full tag details
         return {"name": tag_name, "message": "Tag created successfully"}
 
 
@@ -906,8 +919,9 @@ async def get_hierarchical_tree(
         for child in node.get("children", []):
             extract_nodes_and_edges(child, node_id)
 
-    for root in tree_data:
-        extract_nodes_and_edges(root)
+    if tree_data:
+        for root in tree_data:
+            extract_nodes_and_edges(root)
 
     return {"nodes": nodes, "edges": edges, "tree": tree_data}
 

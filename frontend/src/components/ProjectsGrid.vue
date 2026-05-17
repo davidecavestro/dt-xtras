@@ -454,11 +454,22 @@ export default {
       loadingBulk.value = true
       try {
         const projectUuids = selectedRows.value.map(row => row.uuid)
-        await projectStore.bulkDeleteProjects(projectUuids)
+        const result = await projectStore.bulkDeleteProjects(projectUuids)
 
-        // Reload projects
+        // Reload projects to get updated state
         await projectStore.loadProjects()
         selectedRows.value = []
+
+        // Show appropriate message based on results
+        if (result && result.failed > 0) {
+          if (result.success > 0) {
+            // Show success message for partial deletion
+            console.log(`Successfully deleted ${result.success} projects. ${result.failed} projects failed to delete.`)
+          } else {
+            // All failed
+            console.error('Failed to delete any projects.')
+          }
+        }
       } catch (error) {
         logger.error('Failed to delete projects:', error)
       } finally {

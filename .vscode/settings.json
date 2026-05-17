@@ -13,7 +13,7 @@
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
-  "python.defaultInterpreterPath": "/usr/local/bin/python3.14",
+  "python.defaultInterpreterPath": "/home/vscode/opt/venv/bin/python",
   "python.terminal.activateEnvironment": false,
   "python.terminal.activateEnvInCurrentTerminal": false,
   "python.envFile": "${workspaceFolder}/.env",

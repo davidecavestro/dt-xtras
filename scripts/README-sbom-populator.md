@@ -47,10 +47,11 @@ The catalog includes 60+ popular OSS projects across categories:
 
 ## How It Works
 
-1. **Generates SBOMs**: Creates CycloneDX SBOMs with realistic component structures
-2. **Simulates Vulnerabilities**: Randomly adds CVEs to components (30% chance)
-3. **Uploads to DT**: Creates projects in DT and uploads the SBOMs
-4. **DT Analysis**: DT will analyze the SBOMs and find actual vulnerabilities
+1. **Generates SBOMs**: Creates CycloneDX SBOMs with realistic component structures using known vulnerable versions
+2. **Injects Vulnerabilities**: Adds fake CVEs to components (70% chance by default) for testing purposes
+3. **Real Vulnerabilities**: Uses actual vulnerable component versions that DT can detect in its vulnerability database
+4. **Uploads to DT**: Creates projects in DT and uploads the SBOMs
+5. **DT Analysis**: DT will analyze the SBOMs and find both real and injected vulnerabilities
 
 ## Re-running
 
@@ -63,9 +64,25 @@ You can run this script multiple times:
 
 Edit `populate_dt_with_sboms.py` to:
 - Add more projects to `OSS_PROJECTS` list
-- Adjust vulnerability probability (default: 30%)
+- Adjust vulnerability injection probability (default: 70%)
+- Enable/disable vulnerability injection (`INJECT_VULNERABILITIES = True/False`)
 - Add more component types per language/framework
 - Change DT endpoint/credentials (default: localhost:8080, admin/password)
+
+### Vulnerability Injection
+
+The script now includes two types of vulnerabilities:
+
+1. **Real Vulnerabilities**: Uses known vulnerable component versions (e.g., Log4j 2.14.1, lodash 4.17.20)
+2. **Fake Vulnerabilities**: Generates realistic fake CVEs for testing (70% chance per component)
+
+Fake vulnerabilities include:
+- Realistic CVE IDs (CVE-2020-XXXX to CVE-2024-XXXX)
+- Proper CVSS scores and severity levels
+- Detailed descriptions and references
+- CWE identifiers
+
+This ensures DT will always find vulnerabilities to analyze and display.
 
 ## Troubleshooting
 
