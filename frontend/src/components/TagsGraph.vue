@@ -480,7 +480,7 @@ export default {
       tree.forEach(rootNode => processNode(rootNode));
 
       return {
-        nodes: nodes,
+        nodes: Array.from(nodes.values()),
         edges: edges
       };
     };
