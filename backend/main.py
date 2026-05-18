@@ -43,6 +43,9 @@ from services import (
     get_all_tags,
     get_projects_with_tag,
     get_tag_by_name,
+    add_projects_to_tag,
+    remove_projects_from_tag,
+    delete_tag_from_dt,
     build_hierarchical_tree,
     load_taxonomies,
     deactivate_project,
@@ -537,7 +540,8 @@ async def update_tag(
         headers["X-Api-Key"] = DT_API_KEY
 
     async with httpx.AsyncClient() as client:
-        await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[new_name], timeout=30.0)
+        response = await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[new_name], timeout=30.0)
+        response.raise_for_status()
 
     # Get projects with old tag and migrate
     projects_with_old_tag = await get_projects_with_tag(dt_token, tag_name)
@@ -604,18 +608,12 @@ async def delete_tag(
     permissions: List[str] = Depends(require_edit_permissions),
 ):
     """Delete a tag from DT"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    try:
+        await delete_tag_from_dt(dt_token, tag_name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    async with httpx.AsyncClient() as client:
-        response = await client.delete(f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0)
-        if response.status_code in [200, 204]:
-            return {"message": "Tag deleted successfully"}
-        else:
-            raise HTTPException(status_code=response.status_code, detail="Failed to delete tag")
+    return {"message": "Tag deleted successfully"}
 
 
 @app.get("/api/tag/{tag_name}/project")
@@ -639,22 +637,7 @@ async def add_tag_to_projects(
         raise HTTPException(status_code=400, detail="Projects are required")
 
     logger.info(f"Adding tag '{tag_name}' to projects {projects}")
-
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
-
-    async with httpx.AsyncClient() as client:
-        project_response = await client.post(
-            f"{DT_API_URL}/api/v1/tag/{tag_name}/project",
-            headers=headers,
-            json={"projects": projects},
-            timeout=30.0,
-        )
-        project_response.raise_for_status()
-        current_project = project_response.json()
+    await add_projects_to_tag(dt_token, tag_name, projects)
 
     return {"message": f"Successfully added tag '{tag_name}' to {len(projects)} projects"}
 
@@ -673,45 +656,7 @@ async def remove_tag_from_projects(
         raise HTTPException(status_code=400, detail="Projects are required")
 
     logger.info(f"Removing tag '{tag_name}' from projects {projects}")
-
-    # For each project, remove the specified tag
-    for project_uuid in projects:
-        # Get current project to preserve existing tags
-        headers = {}
-        if dt_token:
-            headers["Authorization"] = f"Bearer {dt_token}"
-        elif DT_API_KEY:
-            headers["X-Api-Key"] = DT_API_KEY
-
-        async with httpx.AsyncClient() as client:
-            project_response = await client.get(
-                f"{DT_API_URL}/api/v1/project/{project_uuid}",
-                headers=headers,
-                timeout=30.0,
-            )
-            project_response.raise_for_status()
-            current_project = project_response.json()
-
-            # Remove specified tag from existing tags
-            current_tags = current_project.get("tags", [])
-            if isinstance(current_tags, list) and current_tags and isinstance(current_tags[0], dict):
-                tag_names = [tag.get("name", "") for tag in current_tags]
-            else:
-                tag_names = current_tags if isinstance(current_tags, list) else []
-
-            # Remove the specified tag if present
-            if tag_name in tag_names:
-                tag_names.remove(tag_name)
-
-            # Update project with remaining tags
-            update_data = {"tags": tag_names}
-            await client.put(
-                f"{DT_API_URL}/api/v1/project/{project_uuid}",
-                headers=headers,
-                json=update_data,
-                timeout=30.0,
-            )
-            logger.info(f"Successfully removed tag '{tag_name}' from project {project_uuid}")
+    await remove_projects_from_tag(dt_token, tag_name, projects)
 
     return {"message": f"Successfully removed tag '{tag_name}' from {len(projects)} projects"}
 
@@ -1015,9 +960,11 @@ async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_
             status_code=401,
             headers={"Content-Type": "application/json"},
         )
-    content = (response.content,)
-    status_code = (response.status_code,)
-    headers = dict(response.headers)
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        headers=dict(response.headers),
+    )
 
 
 async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:

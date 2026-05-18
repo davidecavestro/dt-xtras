@@ -104,3 +104,65 @@ class TestTagErrors:
 
         response = client.get("/api/tag", headers=auth_headers)
         assert response.status_code in [502, 200]
+
+
+def test_update_tag_migrates_projects_with_dependency_track_tag_api(client, mock_jwt_secret, respx_mock):
+    """Renaming a tag preserves project assignments through DT tag endpoints."""
+    import json
+    import main
+
+    token = main.create_jwt_token(
+        "admin", "mock-dt-token-12345", ["VIEW_PORTFOLIO", "PORTFOLIO_MANAGEMENT"]
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    projects = [
+        {"uuid": "11111111-1111-1111-1111-111111111111", "name": "one"},
+        {"uuid": "22222222-2222-2222-2222-222222222222", "name": "two"},
+    ]
+    project_uuids = [project["uuid"] for project in projects]
+
+    create_tag = respx_mock.put(f"{DT_API_URL}/api/v1/tag").mock(return_value=httpx.Response(201))
+    old_tag_projects = respx_mock.get(
+        url__startswith=f"{DT_API_URL}/api/v1/tag/brand%3Aqualcoz/project"
+    ).mock(return_value=httpx.Response(200, json=projects))
+    add_to_new_tag = respx_mock.post(
+        f"{DT_API_URL}/api/v1/tag/brand%3Aupdated/project"
+    ).mock(return_value=httpx.Response(204))
+    remove_from_old_tag = respx_mock.delete(
+        f"{DT_API_URL}/api/v1/tag/brand%3Aqualcoz/project"
+    ).mock(return_value=httpx.Response(204))
+    delete_old_tag = respx_mock.delete(f"{DT_API_URL}/api/v1/tag").mock(return_value=httpx.Response(204))
+    get_all_tags = respx_mock.get(f"{DT_API_URL}/api/v1/tag").mock(
+        return_value=httpx.Response(200, json=[{"name": "brand:updated", "projectCount": 2}])
+    )
+
+    response = client.put("/api/tag/brand:qualcoz", json={"name": "brand:updated"}, headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "brand:updated"
+    assert create_tag.called
+    assert old_tag_projects.called
+    assert add_to_new_tag.called
+    assert json.loads(add_to_new_tag.calls.last.request.content) == project_uuids
+    assert remove_from_old_tag.called
+    assert json.loads(remove_from_old_tag.calls.last.request.content) == project_uuids
+    assert delete_old_tag.called
+    assert json.loads(delete_old_tag.calls.last.request.content) == ["brand:qualcoz"]
+    assert get_all_tags.called
+
+
+def test_proxy_write_methods_return_dependency_track_response(client, mock_jwt_secret, respx_mock):
+    """The write proxy forwards DT response content and status."""
+    import main
+
+    token = main.create_jwt_token("admin", "mock-dt-token-12345", ["VIEW_PORTFOLIO"])
+    headers = {"Authorization": f"Bearer {token}"}
+    proxied = respx_mock.post(f"{DT_API_URL}/api/v1/project/refresh").mock(
+        return_value=httpx.Response(202, json={"queued": True})
+    )
+
+    response = client.post("/api/v1/project/refresh", json={"force": True}, headers=headers)
+
+    assert response.status_code == 202
+    assert response.json() == {"queued": True}
+    assert proxied.called
