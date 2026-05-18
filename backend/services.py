@@ -8,6 +8,7 @@ import yaml
 import regex
 import httpx
 from typing import Dict, Optional, List, Any, Tuple
+from urllib.parse import quote
 from logger_config import logger
 from models import Taxonomy, TaxonomyRelation
 
@@ -16,6 +17,35 @@ from models import Taxonomy, TaxonomyRelation
 DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
 DT_API_KEY = os.getenv("DT_API_KEY", "")
 TAXONOMIES_FILE = os.getenv("TAXONOMIES_FILE", "../data/taxonomies.yaml")
+
+
+def build_dt_headers(dt_token: str) -> Dict[str, str]:
+    """Build Dependency-Track authentication headers."""
+    headers = {}
+    if dt_token:
+        headers["Authorization"] = f"Bearer {dt_token}"
+    elif DT_API_KEY:
+        headers["X-Api-Key"] = DT_API_KEY
+    return headers
+
+
+def project_uuids_from_projects(projects: List[Dict]) -> List[str]:
+    """Extract project UUIDs from DT project records or UUID strings."""
+    uuids = []
+    for project in projects:
+        if isinstance(project, str):
+            uuids.append(project)
+            continue
+
+        project_uuid = project.get("uuid")
+        if project_uuid:
+            uuids.append(project_uuid)
+    return uuids
+
+
+def chunk_items(items: List[str], size: int):
+    for index in range(0, len(items), size):
+        yield items[index : index + size]
 
 
 # Taxonomy management
@@ -172,82 +202,88 @@ async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
 
 async def get_projects_with_tag(dt_token: str, tag_name: str) -> List[Dict]:
     """Get all projects that have a specific tag"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
+    encoded_tag_name = quote(tag_name, safe="")
 
+    projects = []
+    page = 1
+    page_size = 100
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{DT_API_URL}/api/v1/project/tag/{tag_name}", headers=headers, timeout=30.0)
-        response.raise_for_status()
-        return response.json()
+        while True:
+            response = await client.get(
+                f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project",
+                headers=headers,
+                params={"pageNumber": str(page), "pageSize": str(page_size)},
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            page_projects = response.json()
+            projects.extend(page_projects)
+            if len(page_projects) < page_size:
+                break
+            page += 1
+
+    return projects
 
 
 async def get_tag_by_name(tag_name: str, dt_token: str) -> Optional[Dict]:
     """Get a specific tag by name"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
-
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0)
-        if response.status_code == 200:
-            return response.json()
-        return None
+    tags = await get_all_tags(dt_token, limit=100)
+    return next((tag for tag in tags if tag.get("name") == tag_name), None)
 
 
 async def add_projects_to_tag(dt_token: str, tag_name: str, projects: List[Dict]):
     """Add projects to a tag"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
+    encoded_tag_name = quote(tag_name, safe="")
+    project_uuids = project_uuids_from_projects(projects)
+    if not project_uuids:
+        return
 
     async with httpx.AsyncClient() as client:
-        for project in projects:
-            project_uuid = project.get("uuid")
-            if project_uuid:
-                await client.post(
-                    f"{DT_API_URL}/api/v1/project/{project_uuid}/tag/{tag_name}",
-                    headers=headers,
-                    timeout=30.0,
-                )
+        for batch in chunk_items(project_uuids, 100):
+            response = await client.post(
+                f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project",
+                headers=headers,
+                json=batch,
+                timeout=30.0,
+            )
+            response.raise_for_status()
 
 
 async def remove_projects_from_tag(dt_token: str, tag_name: str, projects: List[Dict]):
     """Remove projects from a tag"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
+    encoded_tag_name = quote(tag_name, safe="")
+    project_uuids = project_uuids_from_projects(projects)
+    if not project_uuids:
+        return
 
     async with httpx.AsyncClient() as client:
-        for project in projects:
-            project_uuid = project.get("uuid")
-            if project_uuid:
-                await client.delete(
-                    f"{DT_API_URL}/api/v1/project/{project_uuid}/tag/{tag_name}",
-                    headers=headers,
-                    timeout=30.0,
-                )
+        for batch in chunk_items(project_uuids, 100):
+            response = await client.request(
+                "DELETE",
+                f"{DT_API_URL}/api/v1/tag/{encoded_tag_name}/project",
+                headers=headers,
+                json=batch,
+                timeout=30.0,
+            )
+            response.raise_for_status()
 
 
 async def delete_tag_from_dt(dt_token: str, tag_name: str):
     """Delete a tag from DT"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     async with httpx.AsyncClient() as client:
-        response = await client.delete(f"{DT_API_URL}/api/v1/tag/{tag_name}", headers=headers, timeout=30.0)
-        if response.status_code not in [200, 204]:
+        response = await client.request(
+            "DELETE",
+            f"{DT_API_URL}/api/v1/tag",
+            headers=headers,
+            json=[tag_name],
+            timeout=30.0,
+        )
+        if response.status_code != 204:
             raise ValueError(f"Failed to delete tag: {response.text}")
 
 
