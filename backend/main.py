@@ -46,6 +46,7 @@ from services import (
     add_projects_to_tag,
     remove_projects_from_tag,
     delete_tag_from_dt,
+    build_dt_headers,
     build_hierarchical_tree,
     load_taxonomies,
     deactivate_project,
@@ -289,11 +290,7 @@ async def batch_delete_projects(
     if not project_uuids:
         raise HTTPException(status_code=400, detail="No projects selected for deletion")
 
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     results = {"success": [], "failed": []}
 
@@ -319,7 +316,7 @@ async def batch_delete_projects(
                 if project_data.get("active", True):
                     # Deactivate project using the proper service
                     try:
-                        await deactivate_project(uuid, headers)
+                        await deactivate_project(uuid, dt_token)
                     except Exception as e:
                         results["failed"].append(
                             {"uuid": uuid, "error": f"Failed to deactivate project: {str(e)}"}
@@ -353,11 +350,7 @@ async def batch_activate_projects(
     if not project_uuids:
         raise HTTPException(status_code=400, detail="No projects selected for activation")
 
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     results = {"success": [], "failed": []}
 
@@ -392,11 +385,7 @@ async def batch_deactivate_projects(
     if not project_uuids:
         raise HTTPException(status_code=400, detail="No projects selected for deactivation")
 
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     results = {"success": [], "failed": []}
 
@@ -431,11 +420,7 @@ async def batch_refresh_projects(
     if not project_uuids:
         raise HTTPException(status_code=400, detail="No projects selected for refresh")
 
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     results = {"success": [], "failed": []}
 
@@ -467,11 +452,7 @@ async def batch_refresh_projects(
 @app.get("/api/tag")
 async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
     """Get all tags from DT with project counts and taxonomy information"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers)
@@ -533,11 +514,7 @@ async def update_tag(
             raise HTTPException(status_code=404, detail="Tag not found")
 
     # Create new tag
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     async with httpx.AsyncClient() as client:
         response = await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[new_name], timeout=30.0)
@@ -579,11 +556,7 @@ async def create_tag(
     if not tag_name:
         raise HTTPException(status_code=400, detail="Tag name is required")
 
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     async with httpx.AsyncClient() as client:
         response = await client.put(f"{DT_API_URL}/api/v1/tag", headers=headers, json=[tag_name], timeout=30.0)
@@ -887,11 +860,7 @@ async def proxy_dt_api_get(path: str, request: Request, dt_token: str = Depends(
     logger.info(f"Proxy GET request: /api/v1/{path}")
 
     # Prepare headers for DT API
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     # Forward query parameters
     params = dict(request.query_params)
@@ -923,16 +892,7 @@ async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_
     data = await request.body()
     logger.info(f"Proxy {request.method} request: /api/v1/{path}")
 
-    # copy headers from the request
-    # headers = {}
-    # for key, value in request.headers.items():
-    #    headers[key] = value
-    headers = {"Content-Type": "application/json"}
-
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = {"Content-Type": "application/json", **build_dt_headers(dt_token)}
 
     params = dict(request.query_params)
 

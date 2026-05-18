@@ -124,12 +124,10 @@ async def get_dt_projects(
     excludeInactive: Optional[str] = "false",
 ) -> List[Dict]:
     """Get projects from DT API with proper authentication and pagination"""
-    headers = {}
+    headers = build_dt_headers(dt_token)
     if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
         logger.info(f"Using DT token for authentication")
     elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
         logger.info(f"Using API key for authentication")
     else:
         logger.info(f"No authentication available")
@@ -184,11 +182,7 @@ async def get_dt_projects(
 
 async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
     """Get all tags from the system"""
-    headers = {}
-    if dt_token:
-        headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
+    headers = build_dt_headers(dt_token)
 
     params = {"pageNumber": str(page), "pageSize": str(limit)}
 
@@ -571,25 +565,14 @@ def aggregate_node(node):
 
 
 
-async def deactivate_project(project_uuid: str, headers: Dict[str, str]) -> None:
-    """
-    Deactivate a single project in Dependency-Track.
-
-    Args:
-        project_uuid: UUID of the project to deactivate
-        headers: HTTP headers for authentication
-
-    Raises:
-        HTTPError: If the API call fails
-        Exception: For other network or unexpected errors
-    """
+async def deactivate_project(project_uuid: str, dt_token: str) -> None:
+    """Deactivate a single project in Dependency-Track."""
+    headers = build_dt_headers(dt_token)
     async with httpx.AsyncClient() as client:
         response = await client.patch(
             f"{DT_API_URL}/api/v1/project/{project_uuid}",
             json={"active": False},
             headers=headers,
-            timeout=10.0
+            timeout=10.0,
         )
-
-        # Let HTTP errors propagate naturally
         response.raise_for_status()
