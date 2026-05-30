@@ -252,8 +252,14 @@ def temp_taxonomy_file(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def auth_token(client, mock_jwt_secret, mock_dt_apis):
-    """Get an authentication token for testing."""
+def auth_token(mock_jwt_secret):
+    """Get an authentication token for testing.
+
+    The token is created locally via main.create_jwt_token, so this fixture must
+    NOT depend on mock_dt_apis: pulling that fixture in would activate its broad
+    DT router as the outermost respx layer, and respx resolves only the outermost
+    active router — preventing a test's own respx_mock routes from intercepting.
+    """
     # Import main module to ensure JWT secret is set
     import main
 
