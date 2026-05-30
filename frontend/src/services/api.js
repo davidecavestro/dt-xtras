@@ -114,8 +114,9 @@ class ApiService {
       metadata.totalItems = parseInt(headers['total-count'])
     }
 
-    // If data is an array, we can use its length for current page items
-    if (Array.isArray(data)) {
+    // If data is an array, infer pagination from its length — but only when the
+    // headers did not already provide an authoritative total count.
+    if (Array.isArray(data) && metadata.totalItems === 0) {
       // If we got fewer items than requested, we're likely on the last page
       if (data.length < metadata.pageSize) {
         metadata.totalItems = (metadata.currentPage - 1) * metadata.pageSize + data.length

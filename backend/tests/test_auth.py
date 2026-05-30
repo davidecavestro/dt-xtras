@@ -43,7 +43,7 @@ class TestAuthentication:
 
         assert response.status_code == 422
 
-    def test_protected_endpoint_with_valid_token(self, client, auth_headers):
+    def test_protected_endpoint_with_valid_token(self, client, mock_dt_apis, auth_headers):
         """Test accessing protected endpoint with valid token."""
         response = client.get("/api/tag", headers=auth_headers)
 
