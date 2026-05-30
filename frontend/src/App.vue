@@ -30,7 +30,7 @@
         </div>
         <button
           @click="toggleSidebar"
-          class="lg:hidden p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          class="lg:hidden p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer hover:shadow-md transition-all"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -45,11 +45,11 @@
       ]">
         <router-link
           to="/"
-          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
           :class="[
             $route.path === '/'
-              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
           ]"
           @click="closeSidebarOnMobile"
@@ -62,11 +62,11 @@
 
         <router-link
           to="/projects"
-          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
           :class="[
             $route.path.startsWith('/projects')
-              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
           ]"
           @click="closeSidebarOnMobile"
@@ -79,11 +79,11 @@
 
         <router-link
           to="/project-bulk-actions"
-          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
           :class="[
             $route.path === '/project-bulk-actions'
-              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
           ]"
           @click="closeSidebarOnMobile"
@@ -96,11 +96,11 @@
 
         <router-link
           to="/tags"
-          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
           :class="[
             $route.path === '/tags'
-              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
           ]"
           @click="closeSidebarOnMobile"
@@ -113,11 +113,11 @@
 
         <router-link
           to="/tag-bulk-actions"
-          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
           :class="[
             $route.path === '/tag-bulk-actions'
-              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
           ]"
           @click="closeSidebarOnMobile"
@@ -130,11 +130,11 @@
 
         <router-link
           to="/dependency-graph"
-          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
           :class="[
             $route.path === '/dependency-graph'
-              ? 'bg-gray-700 dark:bg-gray-700 dark:text-blue-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              ? 'bg-gray-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
           ]"
           @click="closeSidebarOnMobile"
@@ -147,11 +147,11 @@
 
         <router-link
           to="/taxonomies"
-          class="flex items-center text-sm font-medium rounded-md transition-colors duration-200"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
           :class="[
             $route.path === '/taxonomies'
-              ? 'bg-gray-700 dark:bg-gray-700 dark:text-blue-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              ? 'bg-gray-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
           ]"
           @click="closeSidebarOnMobile"
@@ -183,7 +183,7 @@
               </p>
               <button
                 @click="handleLogout"
-                class="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+                class="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 cursor-pointer hover:underline transition-all"
               >
                 Logout
               </button>
@@ -192,7 +192,7 @@
           <router-link
             v-else
             to="/login"
-            class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-md transition-colors duration-200"
+            class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-md transition-all duration-200 cursor-pointer hover:shadow-md"
             @click="closeSidebarOnMobile"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +210,7 @@
       ]">
         <button
           @click="toggleDarkMode"
-          class="w-full flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+          class="w-full flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 cursor-pointer hover:shadow-md"
         >
           <svg v-if="isDark" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
@@ -226,7 +226,7 @@
       <div class="hidden lg:flex fixed bottom-0 left-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-50" :class="sidebarOpen ? 'w-64' : 'w-16'">
         <button
           @click="toggleSidebar"
-          class="w-full flex items-center justify-center p-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+          class="w-full flex items-center justify-center p-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 cursor-pointer hover:shadow-md"
           :title="sidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'"
         >
           <svg v-if="sidebarOpen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +246,7 @@
         <div class="flex items-center">
           <button
             @click="toggleSidebar"
-            class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer hover:shadow-md transition-all"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
