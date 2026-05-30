@@ -103,10 +103,10 @@
 import { ref, onMounted, watch } from 'vue'
 import { AlertCircle, RefreshCw, Folder } from 'lucide-vue-next'
 import { usePaginatedData } from '../composables/usePagination'
-import apiService from '../services/api'
 import Pagination from './Pagination.vue'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import { useTagStore } from '../stores/tags.js'
+import { useProjectStore } from '../stores/projects.js'
 import ProjectCard from './ProjectCard.vue'
 import { createLogger } from '../utils/logger'
 
@@ -121,13 +121,14 @@ export default {
     RiskScoreBadge
   },
   setup() {
-    const logger = createLogger('ProjectBulkActions')
+    const logger = createLogger('ProjectsList')
     const filters = ref({
       search: '',
       activeOnly: false
     })
 
     const tagStore = useTagStore()
+    const projectStore = useProjectStore()
 
     // Debounce search input
     let searchTimeout = null
@@ -151,7 +152,7 @@ export default {
           queryParams.active_only = true
         }
 
-        return apiService.getProjects(params, queryParams)
+        return projectStore.fetchProjectsPaginated(params, queryParams)
       },
       { initialPageSize: 20 }
     )

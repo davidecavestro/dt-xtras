@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 import { createLogger } from '../utils/logger'
 
 export const useGraphStore = defineStore('graph', () => {
@@ -64,9 +65,6 @@ export const useGraphStore = defineStore('graph', () => {
     error.value = null
 
     try {
-      // Import here to avoid circular dependency
-      const { default: axios } = await import('axios')
-
       // Build query parameters - backend already supports all needed features
       const queryParams = {
         root_taxonomy: params.rootTaxonomy || rootTaxonomy.value,
@@ -125,8 +123,6 @@ export const useGraphStore = defineStore('graph', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       const queryParams = {
         root_taxonomy: params.rootTaxonomy || rootTaxonomy.value
       }

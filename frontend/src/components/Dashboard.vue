@@ -55,157 +55,31 @@
         </p>
       </div>
 
-      <div v-else class="px-4 py-3 sm:px-6">
-        <!-- Security Overview -->
-        <div v-if="!filteredSecurityData || filteredSecurityData.length === 0" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-4">
-          <div class="flex items-center">
-            <AlertCircle class="h-5 w-5 text-yellow-400" />
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">No security data available</h3>
-              <p class="text-sm text-yellow-700 dark:text-yellow-300">
-                No projects found with security metrics. Try selecting different tree nodes or check if projects have security data.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Security Overview (only show if security data exists) -->
-        <div v-if="filteredSecurityData && filteredSecurityData.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-            <div class="text-center">
-              <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ totalVulnerabilities }}</div>
-              <div class="text-sm text-blue-600 dark:text-blue-400">Total Vulnerabilities</div>
-            </div>
-          </div>
-
-          <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
-            <div class="text-center">
-              <div class="text-2xl font-bold text-orange-600 dark:text-orange-300">{{ criticalVulns }}</div>
-              <div class="text-sm text-orange-600 dark:text-orange-400">Critical</div>
-            </div>
-          </div>
-
-          <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-            <div class="text-center">
-              <div class="text-2xl font-bold text-red-600 dark:text-red-300">{{ highVulns }}</div>
-              <div class="text-sm text-red-600 dark:text-red-400">High</div>
-            </div>
-          </div>
-
-          <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
-            <div class="text-center">
-              <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-300">{{ mediumVulns }}</div>
-              <div class="text-sm text-yellow-600 dark:text-yellow-400">Medium</div>
-            </div>
-          </div>
-
-          <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
-            <div class="text-center">
-              <div class="text-2xl font-bold text-green-600 dark:text-green-300">{{ lowVulns }}</div>
-              <div class="text-sm text-green-600 dark:text-green-400">Low</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SecurityOverview
+        :has-data="filteredSecurityData && filteredSecurityData.length > 0"
+        :total="totalVulnerabilities"
+        :critical="criticalVulns"
+        :high="highVulns"
+        :medium="mediumVulns"
+        :low="lowVulns"
+      />
     </div>
     <!-- Tree (1/3) + Related Projects (2/3) -->
     <div class="flex flex-col lg:flex-row gap-4 mt-6" style="min-height: 300px;">
       <!-- Tree Panel (1/3) -->
-      <div class="lg:w-2/5 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Navigation Tree</h3>
-            <div class="flex items-center gap-2">
-              <!-- Tree Mode Toggle -->
-              <div class="flex bg-gray-100 dark:bg-gray-700 rounded">
-                <button
-                  @click="setTreeMode('network')"
-                  :class="treeMode === 'network' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
-                  class="px-2 py-1 text-xs rounded transition-all cursor-pointer hover:shadow-md"
-                  title="Network View (shared nodes)"
-                >
-                  <Share2 class="w-4 h-4" />
-                </button>
-                <button
-                  @click="setTreeMode('hierarchical')"
-                  :class="treeMode === 'hierarchical' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
-                  class="px-2 py-1 text-xs rounded transition-all cursor-pointer hover:shadow-md"
-                  title="Hierarchical View (distinct paths)"
-                >
-                  <GitBranch class="w-4 h-4" />
-                </button>
-              </div>
-              <!-- View Toggle -->
-              <div class="flex bg-gray-100 dark:bg-gray-700 rounded">
-                <button
-                  @click="treeViewMode = 'tree'"
-                  :class="treeViewMode === 'tree' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
-                  class="px-2 py-1 text-xs rounded transition-all cursor-pointer hover:shadow-md"
-                  title="Tree View"
-                >
-                  <ListIcon class="w-4 h-4" />
-                </button>
-                <button
-                  @click="treeViewMode = 'table'"
-                  :class="treeViewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
-                  class="px-2 py-1 text-xs rounded transition-all cursor-pointer hover:shadow-md"
-                  title="Table View"
-                >
-                  <Table class="w-4 h-4" />
-                </button>
-              </div>
-              <button
-                @click="clearSelection"
-                v-if="selectedTreeNode"
-                class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer hover:shadow-md transition-all"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-          <input
-            v-model="searchQuery"
-            placeholder="Search tags, projects..."
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          />
-        </div>
-
-        <div class="flex-1 overflow-y-auto p-4">
-          <div v-if="shouldShowLoading" class="text-center py-4">
-            <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          </div>
-
-          <!-- Tree View -->
-          <div v-else-if="treeViewMode === 'tree' && treeData && treeData.length > 0" class="space-y-1" :key="treeData.length">
-            <TreeNode
-              v-for="node in treeData"
-              :key="node.id"
-              :node="node"
-              :selected-node="selectedTreeNode"
-              :expanded-nodes="expandedNodes"
-              :search-query="searchQuery"
-              @select="selectTreeNode"
-              @toggle="toggleTreeNode"
-            />
-          </div>
-
-          <!-- Table View -->
-          <div v-else-if="treeViewMode === 'table' && treeData && treeData.length > 0" :key="'table-' + treeData.length">
-            <TreeTable
-              :nodes="treeData"
-              :selected-node="selectedTreeNode"
-              :sort-by="treeSortBy"
-              :sort-desc="treeSortDesc"
-              @select="selectTreeNode"
-              @toggle="toggleTreeNode"
-            />
-          </div>
-
-          <div v-else class="text-center py-4 text-gray-500 dark:text-gray-400">
-            No tree data available
-          </div>
-        </div>
-      </div>
+      <NavigationTreePanel
+        :tree-mode="treeMode"
+        :tree-data="treeData"
+        :selected-tree-node="selectedTreeNode"
+        :expanded-nodes="expandedNodes"
+        :tree-sort-by="treeSortBy"
+        :tree-sort-desc="treeSortDesc"
+        :should-show-loading="shouldShowLoading"
+        @set-tree-mode="setTreeMode"
+        @select="selectTreeNode"
+        @toggle="toggleTreeNode"
+        @clear="clearSelection"
+      />
 
       <!-- Related Projects (2/3) -->
       <div class="flex-1 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
@@ -263,72 +137,15 @@
             </div>
 
             <!-- Pagination Controls -->
-            <div v-if="relatedProjects.length > pageSize" class="flex items-center justify-between mb-4 px-4">
-              <div class="flex items-center space-x-4">
-                <div class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
-                  Showing {{ paginatedProjects.length }} of {{ relatedProjects.length }} projects
-                </div>
-                <div class="flex items-center space-x-2">
-                  <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
-                  <select
-                    v-model="pageSize"
-                    @change="onPageSizeChanged(pageSize)"
-                    class="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1"
-                  >
-                    <option :value="10">10</option>
-                    <option :value="20">20</option>
-                    <option :value="50">50</option>
-                    <option :value="100">100</option>
-                  </select>
-                </div>
-              </div>
-              <div class="flex items-center space-x-2">
-                <button
-                  @click="onPageChanged(currentPage - 1)"
-                  :disabled="currentPage === 1"
-                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:shadow-md transition-all"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-
-                <!-- Page Numbers -->
-                <div class="flex items-center space-x-1">
-                  <button
-                    v-for="page in Math.min(5, Math.ceil(relatedProjects.length / pageSize))"
-                    :key="page"
-                    @click="onPageChanged(page)"
-                    :class="[
-                      'px-3 py-1 text-sm border rounded-md cursor-pointer hover:shadow-md transition-all',
-                      page === currentPage
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    ]"
-                  >
-                    {{ page }}
-                  </button>
-                  <span v-if="Math.ceil(relatedProjects.length / pageSize) > 5" class="px-2 text-gray-500">...</span>
-                  <button
-                    v-if="Math.ceil(relatedProjects.length / pageSize) > 5"
-                    @click="onPageChanged(Math.ceil(relatedProjects.length / pageSize))"
-                    class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer hover:shadow-md transition-all"
-                  >
-                    {{ Math.ceil(relatedProjects.length / pageSize) }}
-                  </button>
-                </div>
-
-                <button
-                  @click="onPageChanged(currentPage + 1)"
-                  :disabled="currentPage >= Math.ceil(relatedProjects.length / pageSize)"
-                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:shadow-md transition-all"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <Pagination
+              v-if="relatedProjects.length > pageSize"
+              :current-page="currentPage"
+              :page-size="pageSize"
+              :total-items="relatedProjects.length"
+              :page-size-options="PAGE_SIZE_OPTIONS"
+              @page-change="onPageChanged"
+              @page-size-change="onPageSizeChanged"
+            />
 
             <!-- Projects Display -->
             <div class="flex-1 overflow-hidden">
@@ -487,6 +304,8 @@ import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import Pagination from './Pagination.vue'
 import ProjectCard from './ProjectCard.vue'
 import NameCell from './grid-cells/NameCell.vue'
+import SecurityOverview from './SecurityOverview.vue'
+import NavigationTreePanel from './NavigationTreePanel.vue'
 import { createLogger } from '../utils/logger'
 import { findReachableTags } from '../utils/treeTraversal'
 
@@ -513,7 +332,9 @@ export default {
     TagsCell,
     DateCell,
     StatusCell,
-    NameCell
+    NameCell,
+    SecurityOverview,
+    NavigationTreePanel
   },
   setup() {
     const router = useRouter()
@@ -653,9 +474,7 @@ export default {
     // Local state
     const expandedNodes = ref(new Set())
     const treeData = ref([])
-    const searchQuery = ref('')
     const selectedTreeNode = ref(null)
-    const treeViewMode = ref('tree') // 'tree' or 'table'
     const treeSortBy = ref('name')
     const treeSortDesc = ref(false)
     const treeMode = ref('hierarchical') // 'network' or 'hierarchical'
@@ -759,30 +578,6 @@ export default {
 
     onUnmounted(() => {
       observer.disconnect()
-    })
-
-    // Computed properties for filtered data
-    const filteredTreeData = computed(() => {
-      if (!treeData.value || !Array.isArray(treeData.value)) return []
-      if (!searchQuery.value) return treeData.value
-
-      const query = searchQuery.value.toLowerCase()
-      const filterNode = (node) => {
-        if (!node || !node.name) return false
-        if (node.name.toLowerCase().includes(query)) return true
-
-        if (node.children && Array.isArray(node.children) && node.children.length > 0) {
-          node.children = node.children.map(filterNode)
-          return node.children.some(child => child && child.name && child.name.toLowerCase().includes(query))
-        }
-
-        return false
-      }
-
-      return treeData.value.map(filterNode).filter(node =>
-        node && node.name && node.name.toLowerCase().includes(query) ||
-        (node.children && Array.isArray(node.children) && node.children.length > 0)
-      )
     })
 
     const filteredSecurityData = computed(() => {
@@ -1133,12 +928,9 @@ export default {
 
       // Tree data
       treeData,
-      filteredTreeData,
       expandedNodes,
-      searchQuery,
       selectedTreeNode,
       allReachableNodes,
-      treeViewMode,
       treeSortBy,
       treeSortDesc,
       treeMode,

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 import { parseRegExpLiteral } from 'regexpp'
 import { createLogger } from '../utils/logger'
 import { toJsRegexPattern, createJsRegExp } from '../utils/taxonomyParser'
@@ -37,9 +38,6 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     error.value = null
 
     try {
-      // Import here to avoid circular dependency
-      const { default: axios } = await import('axios')
-
       const response = await axios.get('/api/taxonomies')
       taxonomies.value = response.data
 
@@ -333,7 +331,6 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
       const response = await axios.post('/api/taxonomies', taxonomyData)
       await loadTaxonomies() // Refresh the list
       return response.data
@@ -350,7 +347,6 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
       const response = await axios.put(`/api/taxonomies/${id}`, taxonomyData)
       await loadTaxonomies() // Refresh the list
       return response.data
@@ -367,7 +363,6 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
       const response = await axios.delete(`/api/taxonomies/${id}`)
       await loadTaxonomies() // Refresh the list
       return response.data
@@ -384,7 +379,6 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
       const response = await axios.put('/api/taxonomies/reorder', taxonomyOrder)
       await loadTaxonomies() // Refresh the list
       return response.data
@@ -399,7 +393,6 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
   // Get tags for a specific taxonomy
   const getTaxonomyTags = async (taxonomyId) => {
     try {
-      const { default: axios } = await import('axios')
       const response = await axios.get(`/api/taxonomies/${taxonomyId}/tag`)
       return response.data || []
     } catch (err) {
@@ -411,7 +404,6 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
   // Get tag usage data
   const getTagUsage = async (tagName) => {
     try {
-      const { default: axios } = await import('axios')
       const response = await axios.get(`/api/tag/${tagName}/project`)
       return response.data || []
     } catch (err) {
@@ -423,7 +415,6 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
   // Create a tag for a specific taxonomy
   const createTaxonomyTag = async (tagName, taxonomyId) => {
     try {
-      const { default: axios } = await import('axios')
       const response = await axios.post('/api/tag', {
         name: tagName,
         taxonomy_id: taxonomyId

@@ -4,12 +4,19 @@ import { useProjectStore } from '../projects'
 
 vi.mock('axios', () => ({
   default: {
+    defaults: {},
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
     put: vi.fn(),
     delete: vi.fn()
   }
+}))
+
+// The store imports the api service (which constructs ApiService on import);
+// mock it so the store is tested in isolation from the real HTTP layer.
+vi.mock('../../services/api', () => ({
+  default: { getProjects: vi.fn() }
 }))
 
 vi.mock('../../utils/logger', () => ({

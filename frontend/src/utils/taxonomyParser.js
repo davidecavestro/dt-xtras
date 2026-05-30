@@ -9,6 +9,9 @@
 import { parseRegExpLiteral } from 'regexpp'
 import { useTaxonomyStore } from '../stores/taxonomies'
 import { useTagStore } from '../stores/tags'
+import { createLogger } from './logger'
+
+const logger = createLogger('taxonomyParser')
 
 /**
  * Parses a taxonomy pattern into semantic parts
