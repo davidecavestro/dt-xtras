@@ -87,13 +87,13 @@
       <div v-if="showActions" class="flex items-center gap-2 shrink-0">
         <button
           @click.stop="$emit('view', project)"
-          class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+          class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 cursor-pointer hover:underline hover:shadow-sm transition-all px-2 py-1 rounded"
         >
           View
         </button>
         <button
           @click.stop="$emit('analyze', project)"
-          class="text-xs text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+          class="text-xs text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 cursor-pointer hover:underline hover:shadow-sm transition-all px-2 py-1 rounded"
         >
           Analyze
         </button>

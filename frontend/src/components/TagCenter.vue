@@ -10,7 +10,7 @@
         </div>
         <button
           @click="refreshTags"
-          class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
+          class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all flex items-center gap-2 cursor-pointer hover:shadow-md"
           title="Refresh tags"
         >
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': tagsLoading }"/>
@@ -22,7 +22,7 @@
       <div class="mb-6">
         <button
           @click="showCreateTagModal = true"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all cursor-pointer hover:shadow-md"
         >
           Create Tag
         </button>
@@ -42,7 +42,7 @@
             <button
               @click="tagsViewMode = 'list'"
               :class="[
-                'px-3 py-1 text-sm rounded-md',
+                'px-3 py-1 text-sm rounded-md cursor-pointer hover:shadow-md transition-all',
                 tagsViewMode === 'list'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -53,7 +53,7 @@
             <button
               @click="tagsViewMode = 'deck'"
               :class="[
-                'px-3 py-1 text-sm rounded-md',
+                'px-3 py-1 text-sm rounded-md cursor-pointer hover:shadow-md transition-all',
                 tagsViewMode === 'deck'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -107,7 +107,7 @@
           <!-- Clear Filters -->
           <button
             @click="clearFilters"
-            class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-all cursor-pointer hover:shadow-md"
           >
             Clear Filters
           </button>
@@ -138,7 +138,7 @@
           <button
             @click="previousPage"
             :disabled="!hasPreviousPage"
-            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:shadow-md transition-all"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -153,7 +153,7 @@
               :key="page"
               @click="goToPage(page)"
               :class="[
-                'px-3 py-1 text-sm border rounded-md',
+                'px-3 py-1 text-sm border rounded-md cursor-pointer hover:shadow-md transition-all',
                 page === currentPage
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -166,7 +166,7 @@
               v-if="totalPages > 5"
               @click="goToPage(totalPages)"
               :class="[
-                'px-3 py-1 text-sm border rounded-md',
+                'px-3 py-1 text-sm border rounded-md cursor-pointer hover:shadow-md transition-all',
                 totalPages === currentPage
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -179,7 +179,7 @@
           <button
             @click="nextPage"
             :disabled="!hasNextPage"
-            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:shadow-md transition-all"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -214,14 +214,14 @@
               />
               <button
                 @click="saveEditTag"
-                class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 cursor-pointer hover:shadow-sm transition-all"
                 title="Save"
               >
                 ✓
               </button>
               <button
                 @click="cancelEditTag"
-                class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 cursor-pointer hover:shadow-sm transition-all"
                 title="Cancel"
               >
                 ✕
@@ -245,14 +245,14 @@
           <div class="flex gap-1 p-2 flex-shrink-0">
             <button
               @click="viewTagProjects(tag)"
-              class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="View Projects"
             >
               <Folder class="w-3 h-3" />
             </button>
             <button
               @click="startEditTag(tag)"
-              class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Edit Tag"
             >
               <Edit2 class="w-3 h-3" />
@@ -260,7 +260,7 @@
             <button
               v-if="tagBelongsToTaxonomy(tag)"
               @click="startAidedEditTag(tag)"
-              class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Aided Edit"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -269,7 +269,7 @@
             </button>
             <button
               @click="startCloneTag(tag)"
-              class="p-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Clone Tag"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,7 +279,7 @@
             <button
               v-if="tag.projectsCount > 0"
               @click="startCopyProjectsToTag(tag)"
-              class="p-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Copy Projects to Tag"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,7 +289,7 @@
             </button>
             <button
               @click="handleDeleteTag(tag)"
-              class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Delete"
             >
               <Trash2 class="w-3 h-3" />
@@ -336,14 +336,14 @@
               />
               <button
                 @click="saveEditTag"
-                class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 cursor-pointer hover:shadow-sm transition-all"
                 title="Save"
               >
                 ✓
               </button>
               <button
                 @click="cancelEditTag"
-                class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 cursor-pointer hover:shadow-sm transition-all"
                 title="Cancel"
               >
                 ✕
@@ -367,14 +367,14 @@
           <div class="flex justify-end gap-1 pt-2 mt-2 border-t border-gray-200 dark:border-gray-600">
             <button
               @click="viewTagProjects(tag)"
-              class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="View Projects"
             >
               <Folder class="w-3 h-3" />
             </button>
             <button
               @click="startEditTag(tag)"
-              class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Edit Tag"
             >
               <Edit2 class="w-3 h-3" />
@@ -382,7 +382,7 @@
             <button
               v-if="tagBelongsToTaxonomy(tag)"
               @click="startAidedEditTag(tag)"
-              class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Aided Edit"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -391,7 +391,7 @@
             </button>
             <button
               @click="startCloneTag(tag)"
-              class="p-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Clone Tag"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,7 +401,7 @@
             <button
               v-if="tag.projectsCount > 0"
               @click="startCopyProjectsToTag(tag)"
-              class="p-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Copy Projects to Tag"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,7 +411,7 @@
             </button>
             <button
               @click="handleDeleteTag(tag)"
-              class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
+              class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
               title="Delete"
             >
               <Trash2 class="w-3 h-3" />
@@ -436,7 +436,7 @@
             </div>
             <button
               @click="closeProjectsModal"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer hover:underline transition-all"
             >
               ✕
             </button>
@@ -501,7 +501,7 @@
             </h3>
             <button
               @click="closeCreateTagModal"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer hover:underline transition-all"
             >
               ✕
             </button>
@@ -589,13 +589,13 @@
             <button
               @click="saveCreateTagModal"
               :disabled="selectedTaxonomy ? (editingTag ? !canEditTag : !canCreateTag) : !tagValidation.valid"
-              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all cursor-pointer hover:shadow-md"
             >
               {{ editingTag ? 'Update Tag' : 'Create Tag' }}
             </button>
             <button
               @click="closeCreateTagModal"
-              class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-all cursor-pointer hover:shadow-md"
             >
               Cancel
             </button>
@@ -612,7 +612,7 @@
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Clone Tag: {{ cloningTag?.name }}</h3>
             <button
               @click="closeCloneTagModal"
-              class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+              class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 cursor-pointer hover:underline transition-all"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

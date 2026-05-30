@@ -22,7 +22,7 @@
         <button
           @click="refreshData"
           :disabled="shouldShowLoading"
-          class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
+          class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all flex items-center gap-2 cursor-pointer hover:shadow-md"
         >
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': projectLoading || tagLoading }"/>
           <span>Refresh</span>
@@ -121,7 +121,7 @@
                 <button
                   @click="setTreeMode('network')"
                   :class="treeMode === 'network' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
-                  class="px-2 py-1 text-xs rounded transition-colors"
+                  class="px-2 py-1 text-xs rounded transition-all cursor-pointer hover:shadow-md"
                   title="Network View (shared nodes)"
                 >
                   <Share2 class="w-4 h-4" />
@@ -129,7 +129,7 @@
                 <button
                   @click="setTreeMode('hierarchical')"
                   :class="treeMode === 'hierarchical' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
-                  class="px-2 py-1 text-xs rounded transition-colors"
+                  class="px-2 py-1 text-xs rounded transition-all cursor-pointer hover:shadow-md"
                   title="Hierarchical View (distinct paths)"
                 >
                   <GitBranch class="w-4 h-4" />
@@ -140,7 +140,7 @@
                 <button
                   @click="treeViewMode = 'tree'"
                   :class="treeViewMode === 'tree' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
-                  class="px-2 py-1 text-xs rounded transition-colors"
+                  class="px-2 py-1 text-xs rounded transition-all cursor-pointer hover:shadow-md"
                   title="Tree View"
                 >
                   <ListIcon class="w-4 h-4" />
@@ -148,7 +148,7 @@
                 <button
                   @click="treeViewMode = 'table'"
                   :class="treeViewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''"
-                  class="px-2 py-1 text-xs rounded transition-colors"
+                  class="px-2 py-1 text-xs rounded transition-all cursor-pointer hover:shadow-md"
                   title="Table View"
                 >
                   <Table class="w-4 h-4" />
@@ -157,7 +157,7 @@
               <button
                 @click="clearSelection"
                 v-if="selectedTreeNode"
-                class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer hover:shadow-md transition-all"
               >
                 Clear
               </button>
@@ -220,7 +220,7 @@
                 <button
                   @click="projectsViewMode = 'list'"
                   :class="[
-                    'px-3 py-1 text-sm rounded-md',
+                    'px-3 py-1 text-sm rounded-md cursor-pointer hover:shadow-md transition-all',
                     projectsViewMode === 'list'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
@@ -231,7 +231,7 @@
                 <button
                   @click="projectsViewMode = 'deck'"
                   :class="[
-                    'px-3 py-1 text-sm rounded-md',
+                    'px-3 py-1 text-sm rounded-md cursor-pointer hover:shadow-md transition-all',
                     projectsViewMode === 'deck'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
@@ -286,7 +286,7 @@
                 <button
                   @click="onPageChanged(currentPage - 1)"
                   :disabled="currentPage === 1"
-                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:shadow-md transition-all"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -300,7 +300,7 @@
                     :key="page"
                     @click="onPageChanged(page)"
                     :class="[
-                      'px-3 py-1 text-sm border rounded-md',
+                      'px-3 py-1 text-sm border rounded-md cursor-pointer hover:shadow-md transition-all',
                       page === currentPage
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -312,7 +312,7 @@
                   <button
                     v-if="Math.ceil(relatedProjects.length / pageSize) > 5"
                     @click="onPageChanged(Math.ceil(relatedProjects.length / pageSize))"
-                    class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer hover:shadow-md transition-all"
                   >
                     {{ Math.ceil(relatedProjects.length / pageSize) }}
                   </button>
@@ -321,7 +321,7 @@
                 <button
                   @click="onPageChanged(currentPage + 1)"
                   :disabled="currentPage >= Math.ceil(relatedProjects.length / pageSize)"
-                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:shadow-md transition-all"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
