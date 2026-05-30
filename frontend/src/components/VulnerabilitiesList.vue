@@ -138,7 +138,7 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   {{ vulnerability.cvssScore || 'N/A' }}
-                  <div v-if="severity.cvssVector" class="text-xs text-gray-500 dark:text-gray-400">
+                  <div v-if="vulnerability.cvssVector" class="text-xs text-gray-500 dark:text-gray-400">
                     {{ vulnerability.cvssVector }}
                   </div>
                 </td>
@@ -194,9 +194,9 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { AlertCircle, RefreshCw, Shield } from 'lucide-vue-next'
-import apiService from '../services/api'
 import Pagination from './Pagination.vue'
 import { usePaginatedData } from '../composables/usePagination'
+import { useVulnerabilityStore } from '../stores/vulnerabilities.js'
 import { createLogger } from '../utils/logger'
 
 export default {
@@ -208,12 +208,22 @@ export default {
     Pagination
   },
   setup() {
-    const logger = createLogger('ProjectBulkActions')
+    const logger = createLogger('VulnerabilitiesList')
+    const vulnerabilityStore = useVulnerabilityStore()
     const filters = ref({
       search: '',
       severity: '',
       analyzer: ''
     })
+
+    // Tailwind classes for each severity badge.
+    const classes = {
+      CRITICAL: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+      HIGH: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
+      MEDIUM: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200',
+      LOW: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+      INFO: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+    }
 
     // Debounce search input
     let searchTimeout = null
@@ -240,7 +250,7 @@ export default {
           queryParams.analyzer = filters.value.analyzer
         }
 
-        return apiService.getVulnerabilities(params, queryParams)
+        return vulnerabilityStore.fetchVulnerabilitiesPaginated(params, queryParams)
       },
       {
         initialPageSize: 20

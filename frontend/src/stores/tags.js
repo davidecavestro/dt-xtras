@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 import { createLogger } from '../utils/logger'
 
 export const useTagStore = defineStore('tags', () => {
@@ -64,9 +65,6 @@ export const useTagStore = defineStore('tags', () => {
     error.value = null
 
     try {
-      // Import here to avoid circular dependency
-      const { default: axios } = await import('axios')
-
       // Load all tags (backend doesn't support pagination)
       const response = await axios.get('/api/tag')
       logger.info('Tags API response:', response.data);
@@ -106,8 +104,6 @@ export const useTagStore = defineStore('tags', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       const response = await axios.post('/api/tag', tagData)
 
       // Add new tag to local state
@@ -133,8 +129,6 @@ export const useTagStore = defineStore('tags', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       const response = await axios.put(`/api/tag/${tagName}`, tagData)
 
       // Update tag in local state
@@ -160,8 +154,6 @@ export const useTagStore = defineStore('tags', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       await axios.delete(`/api/tag/${tagName}`)
 
       // Remove tag from local state
@@ -190,8 +182,6 @@ export const useTagStore = defineStore('tags', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       const response = await axios.post(`/api/v1/tag/${encodeURIComponent(tagName)}/project`, projectUuids)
 
       // Update timestamp to trigger watchers
@@ -211,8 +201,6 @@ export const useTagStore = defineStore('tags', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       const response = await axios.delete(`/api/v1/tag/${encodeURIComponent(tagName)}/project`, {
         data: projectUuids
       })
@@ -246,8 +234,6 @@ export const useTagStore = defineStore('tags', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       const response = await axios.get(`/api/tag/${encodeURIComponent(tagName)}/project`)
 
       return response.data || []

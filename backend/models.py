@@ -7,14 +7,6 @@ from pydantic import BaseModel, RootModel, field_validator
 from typing import Dict, Optional, List, Any
 
 
-class Tag(BaseModel):
-    name: str
-    projectCount: Optional[int] = None
-    collectionProjectCount: Optional[int] = None
-    policyCount: Optional[int] = None
-    notificationRuleCount: Optional[int] = None
-
-
 class TaxonomyRelation(BaseModel):
     group: str
     targets: str

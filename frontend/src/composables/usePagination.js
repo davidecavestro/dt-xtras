@@ -1,4 +1,7 @@
 import { ref, reactive, computed } from 'vue'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('pagination')
 
 /**
  * Composable for managing pagination state and logic
@@ -186,7 +189,9 @@ export function usePaginatedData(fetchFunction, paginationOptions = {}) {
         ...additionalParams
       }
 
-      const response = await fetchFunction(params.page, params.pageSize)
+      // fetchFunction receives the whole params object (page, pageSize, plus any
+      // extra params); consumers forward it to the api service's pagination arg.
+      const response = await fetchFunction(params)
 
       // Handle DT API response: data array + X-Total-Count header
       if (response.data && Array.isArray(response.data)) {
@@ -217,6 +222,9 @@ export function usePaginatedData(fetchFunction, paginationOptions = {}) {
     currentPage.value = 1
   }
 
+  // Re-fetch the current page with the current params.
+  const refresh = (additionalParams = {}) => fetchData(additionalParams)
+
   return {
     data,
     pagination: {
@@ -229,6 +237,7 @@ export function usePaginatedData(fetchFunction, paginationOptions = {}) {
       setPage,
       setPageSize
     },
-    fetchData
+    fetchData,
+    refresh
   }
 }

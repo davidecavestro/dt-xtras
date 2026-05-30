@@ -212,7 +212,7 @@ export default {
     Vue3Datagrid
   },
   setup() {
-    const logger = createLogger('ProjectBulkActions')
+    const logger = createLogger('ProjectsGrid')
     // Use project store
     const projectStore = useProjectStore()
     const { projects, isLoading, error } = projectStore
@@ -464,10 +464,10 @@ export default {
         if (result && result.failed > 0) {
           if (result.success > 0) {
             // Show success message for partial deletion
-            console.log(`Successfully deleted ${result.success} projects. ${result.failed} projects failed to delete.`)
+            logger.warn(`Successfully deleted ${result.success} projects. ${result.failed} projects failed to delete.`)
           } else {
             // All failed
-            console.error('Failed to delete any projects.')
+            logger.error('Failed to delete any projects.')
           }
         }
       } catch (error) {

@@ -14,8 +14,11 @@ import ProjectBulkActions from './components/ProjectBulkActions.vue'
 import VulnerabilitiesList from './components/VulnerabilitiesList.vue'
 import Login from './components/Login.vue'
 import authService from './services/auth'
+import { createLogger } from './utils/logger'
 
 import './style.css'
+
+const logger = createLogger('router')
 
 const routes = [
   {

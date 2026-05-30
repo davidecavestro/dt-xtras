@@ -23,10 +23,11 @@ async def test_get_dt_projects_sends_filters_and_enriches_timestamps(respx_mock)
                     "lastBomImport": 1700000000000,
                 }
             ],
+            headers={"X-Total-Count": "42"},
         )
     )
 
-    projects = await services.get_dt_projects(
+    projects, total_count = await services.get_dt_projects(
         "dt-token", page=3, limit=25, search="App", excludeInactive="true"
     )
 
@@ -39,22 +40,7 @@ async def test_get_dt_projects_sends_filters_and_enriches_timestamps(respx_mock)
     assert projects[0]["active"] is True
     assert projects[0]["lastActivity"] == "2023-11-14T22:13:20"
     assert projects[0]["lastSbomUpload"] == "2023-11-14T22:13:20"
-
-
-@pytest.mark.asyncio
-async def test_get_all_tags_uses_api_key_when_no_dt_token(monkeypatch, respx_mock):
-    monkeypatch.setattr(services, "DT_API_KEY", "api-key")
-    route = respx_mock.get(f"{DT_API_URL}/api/v1/tag").mock(
-        return_value=httpx.Response(200, json=[{"name": "brand:qualcoz"}])
-    )
-
-    tags = await services.get_all_tags("", page=2, limit=75)
-
-    request = route.calls.last.request
-    assert request.headers["X-Api-Key"] == "api-key"
-    assert request.url.params["pageNumber"] == "2"
-    assert request.url.params["pageSize"] == "75"
-    assert tags == [{"name": "brand:qualcoz"}]
+    assert total_count == 42
 
 
 @pytest.mark.asyncio

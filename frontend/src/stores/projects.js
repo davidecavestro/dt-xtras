@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
+import apiService from '../services/api'
 import { createLogger } from '../utils/logger'
 
 export const useProjectStore = defineStore('projects', () => {
@@ -123,9 +125,6 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      // Import here to avoid circular dependency
-      const { default: axios } = await import('axios')
-
       const response = await axios.get('/api/project')
       logger.debug('Projects API response:', response.data)
       projects.value = response.data.data || response.data || []
@@ -145,6 +144,18 @@ export const useProjectStore = defineStore('projects', () => {
       throw err
     } finally {
       isLoading.value = false
+    }
+  }
+
+  // Server-side paginated fetch used by the projects list view. Wraps the api
+  // service so components never call it directly, and returns the raw paginated
+  // response ({ data, pagination, headers }) for the usePaginatedData composable.
+  const fetchProjectsPaginated = async (pagination = {}, filters = {}) => {
+    try {
+      return await apiService.getProjects(pagination, filters)
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to load projects'
+      throw err
     }
   }
 
@@ -214,8 +225,6 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       await axios.patch('/api/project/batch/activate', {
         projectUuids
       })
@@ -237,8 +246,6 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       await axios.patch('/api/project/batch/deactivate', {
         projectUuids
       })
@@ -260,8 +267,6 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       const response = await axios.delete('/api/project/batch', {
         data: { projectUuids }
       })
@@ -306,9 +311,19 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
+      // Use the backend batch endpoint (handles deactivate-then-delete) rather than
+      // the raw DT proxy, which cannot delete an active project.
+      const response = await axios.delete('/api/project/batch', {
+        data: { projectUuids: [projectUuid] }
+      })
 
-      await axios.delete(`/api/v1/project/${projectUuid}`)
+      const results = response.data.results || {}
+      const failed = results.failed || []
+      if (failed.length > 0) {
+        const detail = failed.map(f => f.error || 'Unknown error').join('; ')
+        error.value = `Failed to delete project: ${detail}`
+        throw new Error(error.value)
+      }
 
       // Remove project from local state
       const index = projects.value.findIndex(project => project.uuid === projectUuid)
@@ -336,8 +351,6 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       await axios.put(`/api/project/${projectUuid}/refresh`)
 
       // Update timestamp to trigger watchers
@@ -357,8 +370,6 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       await axios.put('/api/project/batch/refresh', {
         projectUuids
       })
@@ -380,8 +391,6 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      const { default: axios } = await import('axios')
-
       const response = await axios.patch('/api/project/bulk-rename', {
         projectUuids,
         newName
@@ -549,6 +558,7 @@ export const useProjectStore = defineStore('projects', () => {
 
     // Methods
     loadProjects,
+    fetchProjectsPaginated,
     getProjectById,
     getProjectByName,
     getProjectsByTags,

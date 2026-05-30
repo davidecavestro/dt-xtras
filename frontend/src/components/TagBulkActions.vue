@@ -558,7 +558,7 @@ export default {
     Modal
   },
   setup() {
-    const logger = createLogger('ProjectBulkActions')
+    const logger = createLogger('TagBulkActions')
     // Use stores
     const taxonomyStore = useTaxonomyStore()
     const tagStore = useTagStore()

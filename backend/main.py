@@ -7,7 +7,7 @@ Business logic is in services.py, models in models.py, auth in auth.py.
 import os
 import httpx
 import regex
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional, List, Any
 from fastapi import Request, Response, status, Form, FastAPI, HTTPException, Depends, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -53,7 +53,6 @@ from services import (
     save_taxonomies,
     logger,
     DT_API_URL,
-    DT_API_KEY,
 )
 
 
@@ -65,6 +64,8 @@ cors_origins = cors_origins_env.split(",") if cors_origins_env else ["*"]
 cors_allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
 cors_allow_methods = os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,PATCH,OPTIONS").split(",")
 cors_allow_headers = os.getenv("CORS_ALLOW_HEADERS", "*").split(",")
+# Expose pagination headers so the browser lets the frontend read them cross-origin.
+cors_expose_headers = os.getenv("CORS_EXPOSE_HEADERS", "X-Total-Count").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,6 +73,7 @@ app.add_middleware(
     allow_credentials=cors_allow_credentials,
     allow_methods=cors_allow_methods,
     allow_headers=cors_allow_headers,
+    expose_headers=cors_expose_headers,
 )
 
 security = HTTPBearer()
@@ -141,35 +143,15 @@ async def login(username: str = Form(...), password: str = Form(...)):
                     "permissions": dt_permissions,
                 }
             else:
-                if DT_API_KEY:
-                    permissions = ["VIEW_PORTFOLIO"]
-                    jwt_token = create_jwt_token(username, DT_API_KEY, permissions)
-                    return {
-                        "access_token": jwt_token,
-                        "token_type": "bearer",
-                        "username": username,
-                        "permissions": permissions,
-                    }
-                else:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Authentication failed: {response.text}",
-                    )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication failed: invalid credentials",
+                )
     except httpx.RequestError as e:
-        if DT_API_KEY:
-            permissions = ["VIEW_PORTFOLIO"]
-            jwt_token = create_jwt_token(username, DT_API_KEY, permissions)
-            return {
-                "access_token": jwt_token,
-                "token_type": "bearer",
-                "username": username,
-                "permissions": permissions,
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Unable to connect to DT API: {e}",
-            )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Unable to connect to DT API: {e}",
+        )
 
 
 @app.post("/auth/logout", response_model=LogoutResponse)
@@ -267,14 +249,23 @@ async def reorder_taxonomies(
 
 @app.get("/api/project", response_model=List[DTProject])
 async def get_projects(
+    response: Response,
     page: int = 1,
     limit: int = 50,
     search: Optional[str] = None,
     excludeInactive: Optional[str] = "false",
     dt_token: str = Depends(get_dt_token_from_request),
 ):
-    """Get projects from DT API with optional filtering"""
-    projects = await get_dt_projects(dt_token, page=page, limit=limit, search=search, excludeInactive=excludeInactive)
+    """Get projects from DT API with optional filtering.
+
+    The total project count reported by DT is surfaced via the X-Total-Count
+    response header so the frontend can paginate against the real total.
+    """
+    projects, total_count = await get_dt_projects(
+        dt_token, page=page, limit=limit, search=search, excludeInactive=excludeInactive
+    )
+    if total_count is not None:
+        response.headers["X-Total-Count"] = str(total_count)
     return projects
 
 
@@ -317,7 +308,7 @@ async def batch_delete_projects(
                     # Deactivate project using the proper service
                     try:
                         await deactivate_project(uuid, dt_token)
-                    except Exception as e:
+                    except httpx.HTTPError as e:
                         results["failed"].append(
                             {"uuid": uuid, "error": f"Failed to deactivate project: {str(e)}"}
                         )
@@ -331,7 +322,7 @@ async def batch_delete_projects(
                 else:
                     results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
 
-            except Exception as e:
+            except httpx.HTTPError as e:
                 logger.error(f"Error deleting project {uuid}: {e}")
                 results["failed"].append({"uuid": uuid, "error": str(e)})
 
@@ -366,7 +357,7 @@ async def batch_activate_projects(
                 else:
                     results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
 
-            except Exception as e:
+            except httpx.HTTPError as e:
                 logger.error(f"Error activating project {uuid}: {e}")
                 results["failed"].append({"uuid": uuid, "error": str(e)})
 
@@ -401,7 +392,7 @@ async def batch_deactivate_projects(
                 else:
                     results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
 
-            except Exception as e:
+            except httpx.HTTPError as e:
                 logger.error(f"Error deactivating project {uuid}: {e}")
                 results["failed"].append({"uuid": uuid, "error": str(e)})
 
@@ -436,7 +427,7 @@ async def batch_refresh_projects(
                 else:
                     results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
 
-            except Exception as e:
+            except httpx.HTTPError as e:
                 logger.error(f"Error refreshing project {uuid}: {e}")
                 results["failed"].append({"uuid": uuid, "error": str(e)})
 
@@ -468,17 +459,17 @@ async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
         dt_tags = response.json()
 
         taxonomies = load_taxonomies()
+        # Precompile each taxonomy pattern once, not once per tag (O(tags) instead of O(tags*taxonomies) compiles)
+        compiled_taxonomies = [(t.id, regex.compile(t.regex_pattern)) for t in taxonomies]
 
         tags_with_taxonomy = []
         for dt_tag in dt_tags:
             tag_name = dt_tag.get("name", "")
             taxonomy_id = None
 
-            for taxonomy in taxonomies:
-                js_pattern = regex.compile(taxonomy.regex_pattern)
-                match = js_pattern.match(tag_name)
-                if match:
-                    taxonomy_id = taxonomy.id
+            for tax_id, pattern in compiled_taxonomies:
+                if pattern.match(tag_name):
+                    taxonomy_id = tax_id
                     break
 
             tags_with_taxonomy.append(
@@ -655,8 +646,6 @@ async def get_tree(
 
     for taxonomy in taxonomies:
         # Find tags matching this taxonomy
-        import regex
-
         pattern = regex.compile(taxonomy.regex_pattern)
         taxonomy_tags = [t for t in enriched_tags if pattern.match(t.get("name", ""))]
 
@@ -845,6 +834,30 @@ async def get_hierarchical_tree(
 
 
 # Proxy endpoints for DT API
+
+# Response headers that must not be copied verbatim from the DT response.
+# httpx already decompresses the body, so forwarding Content-Encoding/Content-Length
+# would misrepresent the decoded content; the rest are hop-by-hop headers that are
+# meaningless to forward through a proxy.
+_STRIPPED_RESPONSE_HEADERS = {
+    "content-encoding",
+    "content-length",
+    "transfer-encoding",
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "upgrade",
+}
+
+
+def passthrough_response_headers(response: httpx.Response) -> Dict[str, str]:
+    """Copy DT response headers, dropping ones that would corrupt the proxied body."""
+    return {k: v for k, v in response.headers.items() if k.lower() not in _STRIPPED_RESPONSE_HEADERS}
+
+
 @app.get("/api/v1/test")
 async def test_proxy():
     return {"message": "Proxy is working"}
@@ -857,48 +870,40 @@ async def test_proxy_post(request: Request):
 
 @app.api_route("/api/v1/{path:path}", methods=["GET"])
 async def proxy_dt_api_get(path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
+    # Note: request headers are intentionally NOT logged here - they carry the DT bearer token.
     logger.info(f"Proxy GET request: /api/v1/{path}")
 
-    # Prepare headers for DT API
     headers = build_dt_headers(dt_token)
-
-    # Forward query parameters
     params = dict(request.query_params)
-
-    target_url = f"{DT_API_URL}/api/v1/{path}"
-    logger.info(f"GET Target URL: {target_url}")
-    logger.info(f"GET Request headers: {headers}")
-    logger.info(f"GET Request params: {params}")
 
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{DT_API_URL}/api/v1/{path}", headers=headers, params=params)
 
-        logger.info(f"GET DT API Response status: {response.status_code}")
-        logger.info(f"GET DT API Response headers: {dict(response.headers)}")
-        if response.status_code == 405:
-            logger.info(f"GET 405 Method Not Allowed for {path} - check DT API docs")
+    logger.info(f"GET /api/v1/{path} -> DT API responded {response.status_code}")
 
-        # Return response with same status and headers
-        return Response(
-            content=response.content,
-            status_code=response.status_code,
-            headers=dict(response.headers),
-        )
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        headers=passthrough_response_headers(response),
+    )
 
 
 @app.api_route("/api/v1/{path:path}", methods=["POST", "PUT", "DELETE"])
-async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
-    """Proxy API requests to DT API"""
+async def proxy_dt_api(
+    path: str,
+    request: Request,
+    dt_token: str = Depends(get_dt_token_from_request),
+    permissions: List[str] = Depends(require_edit_permissions),
+):
+    """Proxy mutating API requests to DT API. Requires edit permissions, matching the
+    explicit write endpoints - the generic proxy must not be a way to bypass them."""
     data = await request.body()
+    # Note: request headers are intentionally NOT logged here - they carry the DT bearer token.
     logger.info(f"Proxy {request.method} request: /api/v1/{path}")
 
     headers = {"Content-Type": "application/json", **build_dt_headers(dt_token)}
-
     params = dict(request.query_params)
-
     target_url = f"{DT_API_URL}/api/v1/{path}"
-    logger.info(f"Target URL: {target_url}")
-    logger.info(f"Request headers: {headers}")
 
     async with httpx.AsyncClient() as client:
         response = await client.request(
@@ -909,8 +914,7 @@ async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_
             content=data,
         )
 
-    logger.info(f"DT API Response status: {response.status_code}")
-    logger.info(f"DT API Response headers: {dict(response.headers)}")
+    logger.info(f"{request.method} /api/v1/{path} -> DT API responded {response.status_code}")
 
     # Handle specific authentication errors
     if response.status_code == 401:
@@ -923,7 +927,7 @@ async def proxy_dt_api(path: str, request: Request, dt_token: str = Depends(get_
     return Response(
         content=response.content,
         status_code=response.status_code,
-        headers=dict(response.headers),
+        headers=passthrough_response_headers(response),
     )
 
 
@@ -934,9 +938,7 @@ async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
     logger.info(f"Fetched {len(tags)} tags from DT")
 
     # Fetch all projects to build tag-to-project mapping
-    from services import get_dt_projects
-
-    projects = await get_dt_projects(dt_token, limit=10000)
+    projects, _ = await get_dt_projects(dt_token, limit=10000)
     logger.info(f"Fetched {len(projects)} projects from DT")
 
     # Build project tag mapping
@@ -999,7 +1001,7 @@ async def health_check():
     """Health check endpoint for container orchestration"""
     return {
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "message": "dt-xtras API is running",
     }
 
@@ -1013,13 +1015,13 @@ async def api_health_check():
             "status": "healthy",
             "service": "dt-xtras-api",
             "taxonomies_loaded": len(taxonomies),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "message": str(e),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
 

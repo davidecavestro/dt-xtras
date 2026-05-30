@@ -152,10 +152,10 @@ def test_update_tag_migrates_projects_with_dependency_track_tag_api(client, mock
 
 
 def test_proxy_write_methods_return_dependency_track_response(client, mock_jwt_secret, respx_mock):
-    """The write proxy forwards DT response content and status."""
+    """The write proxy forwards DT response content and status for editors."""
     import main
 
-    token = main.create_jwt_token("admin", "mock-dt-token-12345", ["VIEW_PORTFOLIO"])
+    token = main.create_jwt_token("admin", "mock-dt-token-12345", ["PORTFOLIO_MANAGEMENT"])
     headers = {"Authorization": f"Bearer {token}"}
     proxied = respx_mock.post(f"{DT_API_URL}/api/v1/project/refresh").mock(
         return_value=httpx.Response(202, json={"queued": True})
@@ -166,3 +166,19 @@ def test_proxy_write_methods_return_dependency_track_response(client, mock_jwt_s
     assert response.status_code == 202
     assert response.json() == {"queued": True}
     assert proxied.called
+
+
+def test_proxy_write_methods_require_edit_permissions(client, mock_jwt_secret, respx_mock):
+    """A view-only user must not be able to mutate DT through the generic proxy."""
+    import main
+
+    token = main.create_jwt_token("viewer", "mock-dt-token-12345", ["VIEW_PORTFOLIO"])
+    headers = {"Authorization": f"Bearer {token}"}
+    proxied = respx_mock.post(f"{DT_API_URL}/api/v1/project/refresh").mock(
+        return_value=httpx.Response(202, json={"queued": True})
+    )
+
+    response = client.post("/api/v1/project/refresh", json={"force": True}, headers=headers)
+
+    assert response.status_code == 403
+    assert not proxied.called

@@ -7,6 +7,7 @@ import os
 import yaml
 import regex
 import httpx
+from datetime import datetime
 from typing import Dict, Optional, List, Any, Tuple
 from urllib.parse import quote
 from logger_config import logger
@@ -15,17 +16,14 @@ from models import Taxonomy, TaxonomyRelation
 
 # Configuration
 DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
-DT_API_KEY = os.getenv("DT_API_KEY", "")
 TAXONOMIES_FILE = os.getenv("TAXONOMIES_FILE", "../data/taxonomies.yaml")
 
 
 def build_dt_headers(dt_token: str) -> Dict[str, str]:
-    """Build Dependency-Track authentication headers."""
+    """Build Dependency-Track authentication headers from the caller's DT token."""
     headers = {}
     if dt_token:
         headers["Authorization"] = f"Bearer {dt_token}"
-    elif DT_API_KEY:
-        headers["X-Api-Key"] = DT_API_KEY
     return headers
 
 
@@ -108,7 +106,7 @@ def save_taxonomies(taxonomies: List[Taxonomy]):
     with open(TAXONOMIES_FILE, "w") as f:
         taxonomy_data = []
         for t in taxonomies:
-            item = t.dict()
+            item = t.model_dump()
             taxonomy_data.append(item)
         yaml.dump({"taxonomies": taxonomy_data}, f, default_flow_style=False)
 
@@ -122,15 +120,15 @@ async def get_dt_projects(
     limit: int = 50,
     search: Optional[str] = None,
     excludeInactive: Optional[str] = "false",
-) -> List[Dict]:
-    """Get projects from DT API with proper authentication and pagination"""
+) -> Tuple[List[Dict], Optional[int]]:
+    """Get projects from DT API with proper authentication and pagination.
+
+    Returns the enriched projects for the requested page and the total project
+    count reported by DT via the X-Total-Count header (None if not provided).
+    """
     headers = build_dt_headers(dt_token)
-    if dt_token:
-        logger.info(f"Using DT token for authentication")
-    elif DT_API_KEY:
-        logger.info(f"Using API key for authentication")
-    else:
-        logger.info(f"No authentication available")
+    if not dt_token:
+        logger.warning("No DT token available for authentication")
 
     params = {"pageNumber": str(page), "pageSize": str(limit)}
     if excludeInactive is not None:
@@ -146,6 +144,9 @@ async def get_dt_projects(
         projects_data = response.json()
         logger.info(f"Successfully parsed {len(projects_data)} projects")
 
+    total_count_header = response.headers.get("X-Total-Count")
+    total_count = int(total_count_header) if total_count_header is not None else None
+
     # Enrich projects
     enriched_projects = []
     for project in projects_data:
@@ -156,8 +157,6 @@ async def get_dt_projects(
         if "lastBomImport" in enriched_project:
             last_bom_import = enriched_project["lastBomImport"]
             if isinstance(last_bom_import, (int, float)):
-                from datetime import datetime
-
                 enriched_project["lastActivity"] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
                 enriched_project["lastSbomUpload"] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
             else:
@@ -166,8 +165,6 @@ async def get_dt_projects(
         elif "created" in enriched_project:
             created = enriched_project["created"]
             if isinstance(created, (int, float)):
-                from datetime import datetime
-
                 enriched_project["lastActivity"] = datetime.fromtimestamp(created / 1000).isoformat()
             else:
                 enriched_project["lastActivity"] = str(created)
@@ -177,7 +174,7 @@ async def get_dt_projects(
 
         enriched_projects.append(enriched_project)
 
-    return enriched_projects
+    return enriched_projects, total_count
 
 
 async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
@@ -544,25 +541,6 @@ def build_hierarchical_tree(tags, hierarchical_taxonomies, all_taxonomies, root_
 
     logger.info(f"Tree complete: {len(tree_roots)} roots, {len(node_cache)} total nodes")
     return tree_roots
-
-# PASS 3: Aggregate metrics up the tree
-def aggregate_node(node):
-    """Recursively aggregate from children."""
-    all_uuids = set(node["projectUUIDs"])
-    all_metrics = dict(node["metrics"])
-
-    for child in node["children"]:
-        child_uuids, child_metrics = aggregate_node(child)
-        all_uuids.update(child_uuids)
-        for sev, count in child_metrics.items():
-            all_metrics[sev] = all_metrics.get(sev, 0) + count
-
-    node["projectUUIDs"] = list(all_uuids)
-    node["projectsCount"] = len(all_uuids)
-    node["metrics"] = all_metrics
-
-    return all_uuids, all_metrics
-
 
 
 async def deactivate_project(project_uuid: str, dt_token: str) -> None:

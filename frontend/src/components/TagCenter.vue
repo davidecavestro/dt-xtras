@@ -196,106 +196,25 @@
 
       <!-- List View -->
       <div v-else-if="tagsViewMode === 'list'" class="space-y-3">
-        <div
+        <TagCard
           v-for="tag in paginatedTags"
           :key="tag.name"
-          class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
-        >
-          <div class="flex-1">
-            <!-- Show tag name or edit input -->
-            <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
-              <input
-                :data-tag-name="tag.name"
-                v-model="editingTagName"
-                @keyup.enter="saveEditTag"
-                @keyup.escape="cancelEditTag"
-                class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
-                placeholder="Tag name"
-              />
-              <button
-                @click="saveEditTag"
-                class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 cursor-pointer hover:shadow-sm transition-all"
-                title="Save"
-              >
-                ✓
-              </button>
-              <button
-                @click="cancelEditTag"
-                class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 cursor-pointer hover:shadow-sm transition-all"
-                title="Cancel"
-              >
-                ✕
-              </button>
-            </div>
-            <div v-else>
-              <div class="font-medium text-gray-900 dark:text-white flex items-center flex-wrap gap-2">
-                {{ tag.name }}
-                <span v-if="getTagTaxonomy(tag)"
-                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
-                      :style="getTaxonomyBadgeStyle(getTagTaxonomy(tag))">
-                      {{ getTagTaxonomy(tag).name }}
-                </span>
-              </div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">
-                Used by {{ tag.projectsCount || 0 }} projects
-              </div>
-            </div>
-          </div>
-
-          <div class="flex gap-1 p-2 flex-shrink-0">
-            <button
-              @click="viewTagProjects(tag)"
-              class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="View Projects"
-            >
-              <Folder class="w-3 h-3" />
-            </button>
-            <button
-              @click="startEditTag(tag)"
-              class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Edit Tag"
-            >
-              <Edit2 class="w-3 h-3" />
-            </button>
-            <button
-              v-if="tagBelongsToTaxonomy(tag)"
-              @click="startAidedEditTag(tag)"
-              class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Aided Edit"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-              </svg>
-            </button>
-            <button
-              @click="startCloneTag(tag)"
-              class="p-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Clone Tag"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012-2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-              </svg>
-            </button>
-            <button
-              v-if="tag.projectsCount > 0"
-              @click="startCopyProjectsToTag(tag)"
-              class="p-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Copy Projects to Tag"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2a2 2 0 00-2-2h-2M8 7a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21l-4-4 4-4M4 13l4 4 4 4"></path>
-              </svg>
-            </button>
-            <button
-              @click="handleDeleteTag(tag)"
-              class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Delete"
-            >
-              <Trash2 class="w-3 h-3" />
-            </button>
-          </div>
-        </div>
+          mode="list"
+          :tag="tag"
+          :is-editing="editingTag && editingTag.name === tag.name"
+          v-model:edit-name="editingTagName"
+          :taxonomy="getTagTaxonomy(tag)"
+          :taxonomy-badge-style="getTagTaxonomy(tag) ? getTaxonomyBadgeStyle(getTagTaxonomy(tag)) : {}"
+          :belongs-to-taxonomy="tagBelongsToTaxonomy(tag)"
+          @view="viewTagProjects"
+          @edit="startEditTag"
+          @aided-edit="startAidedEditTag"
+          @clone="startCloneTag"
+          @copy="startCopyProjectsToTag"
+          @delete="handleDeleteTag"
+          @save-edit="saveEditTag"
+          @cancel-edit="cancelEditTag"
+        />
       </div>
 
       <!-- Grid View -->
@@ -318,178 +237,36 @@
 
       <!-- Deck View (Current Default) -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
+        <TagCard
           v-for="tag in paginatedTags"
           :key="tag.name"
-          class="bg-white dark:bg-gray-700 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow flex flex-col"
-        >
-          <div class="flex-1">
-            <!-- Show tag name or edit input -->
-            <div v-if="editingTag && editingTag.name === tag.name" class="flex items-center">
-              <input
-                :data-tag-name="tag.name"
-                v-model="editingTagName"
-                @keyup.enter="saveEditTag"
-                @keyup.escape="cancelEditTag"
-                class="font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none flex-1"
-                placeholder="Tag name"
-              />
-              <button
-                @click="saveEditTag"
-                class="ml-2 p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 cursor-pointer hover:shadow-sm transition-all"
-                title="Save"
-              >
-                ✓
-              </button>
-              <button
-                @click="cancelEditTag"
-                class="ml-1 p-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 cursor-pointer hover:shadow-sm transition-all"
-                title="Cancel"
-              >
-                ✕
-              </button>
-            </div>
-            <div v-else>
-              <div class="font-medium text-gray-900 dark:text-white mb-2 flex items-center flex-wrap gap-2">
-                {{ tag.name }}
-                <span v-if="getTagTaxonomy(tag)"
-                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
-                      :style="getTaxonomyBadgeStyle(getTagTaxonomy(tag))">
-                      {{ getTagTaxonomy(tag).name }}
-                </span>
-              </div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">
-                Used by {{ tag.projectsCount || 0 }} projects
-              </div>
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-1 pt-2 mt-2 border-t border-gray-200 dark:border-gray-600">
-            <button
-              @click="viewTagProjects(tag)"
-              class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="View Projects"
-            >
-              <Folder class="w-3 h-3" />
-            </button>
-            <button
-              @click="startEditTag(tag)"
-              class="p-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Edit Tag"
-            >
-              <Edit2 class="w-3 h-3" />
-            </button>
-            <button
-              v-if="tagBelongsToTaxonomy(tag)"
-              @click="startAidedEditTag(tag)"
-              class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Aided Edit"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-              </svg>
-            </button>
-            <button
-              @click="startCloneTag(tag)"
-              class="p-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Clone Tag"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012-2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-              </svg>
-            </button>
-            <button
-              v-if="tag.projectsCount > 0"
-              @click="startCopyProjectsToTag(tag)"
-              class="p-1 bg-teal-600 text-white text-xs rounded hover:bg-teal-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Copy Projects to Tag"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2a2 2 0 00-2-2h-2M8 7a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21l-4-4 4-4M4 13l4 4 4 4"></path>
-              </svg>
-            </button>
-            <button
-              @click="handleDeleteTag(tag)"
-              class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-all cursor-pointer hover:shadow-sm"
-              title="Delete"
-            >
-              <Trash2 class="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-
+          mode="deck"
+          :tag="tag"
+          :is-editing="editingTag && editingTag.name === tag.name"
+          v-model:edit-name="editingTagName"
+          :taxonomy="getTagTaxonomy(tag)"
+          :taxonomy-badge-style="getTagTaxonomy(tag) ? getTaxonomyBadgeStyle(getTagTaxonomy(tag)) : {}"
+          :belongs-to-taxonomy="tagBelongsToTaxonomy(tag)"
+          @view="viewTagProjects"
+          @edit="startEditTag"
+          @aided-edit="startAidedEditTag"
+          @clone="startCloneTag"
+          @copy="startCopyProjectsToTag"
+          @delete="handleDeleteTag"
+          @save-edit="saveEditTag"
+          @cancel-edit="cancelEditTag"
+        />
       </div>
     </div>
 
 
     <!-- Projects Modal -->
-    <div v-if="showProjectsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-              Projects with tag: {{ selectedTag?.name }}
-            </h3>
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-              Click project names to view in Dependency Track UI
-            </div>
-            <button
-              @click="closeProjectsModal"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer hover:underline transition-all"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div v-if="tagProjects.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-            No projects found with this tag.
-          </div>
-
-          <div v-else class="space-y-3">
-            <div
-              v-for="project in tagProjects"
-              :key="project.uuid"
-              class="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
-            >
-              <div class="flex items-start justify-between">
-                <div class="flex-1 min-w-0">
-                  <div class="font-medium text-gray-900 dark:text-white mb-1">
-                    <a
-                      :href="buildDTProjectUrl(project.uuid)"
-                      target="_blank"
-                      class="text-blue-600 hover:text-blue-800 hover:underline"
-                      title="View in Dependency Track"
-                    >
-                      {{ project.name }}
-                    </a>
-                  </div>
-                  <div class="text-sm text-gray-600 dark:text-gray-400 flex items-center flex-wrap gap-2">
-                    <span>Version: {{ project.version }}</span>
-                    <a
-                      :href="buildDTProjectUrl(project.uuid)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
-                      title="View in Dependency-Track"
-                    >
-                      <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-3z"/>
-                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
-                      </svg>
-                      DT
-                    </a>
-                    <span v-if="project.tags && project.tags.length > 0">
-                      Tags: {{ project.tags.join(', ') }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <TagProjectsModal
+      :show="showProjectsModal"
+      :tag="selectedTag"
+      :projects="tagProjects"
+      @close="closeProjectsModal"
+    />
 
     <!-- Create Tag Modal (Aided Edit) -->
     <div v-if="showCreateTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -760,97 +537,13 @@
     </div>
 
     <!-- Copy Projects to Tag Modal -->
-    <div v-if="showCopyProjectsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-auto max-h-[calc(100vh-2rem)] overflow-y">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-              Copy Projects from "{{ sourceTag?.name }}" to Another Tag
-            </h3>
-            <button
-              @click="closeCopyProjectsModal"
-              class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- Source Tag Display -->
-          <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
-            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Source Tag:</div>
-            <div class="font-medium text-gray-900 dark:text-white">{{ sourceTag?.name }}</div>
-          </div>
-
-          <!-- Target Tag Selection -->
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Select Target Tag
-              </label>
-              <div class="relative">
-                <input
-                  v-model="targetTagSearch"
-                  @input="filterTargetTags"
-                  @focus="showTargetTagDropdown = true"
-                  @blur="hideTargetTagDropdown"
-                  type="text"
-                  placeholder="Search and select a tag..."
-                  class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                />
-
-                <!-- Dropdown for filtered tags - uses full viewport -->
-                <div v-if="showTargetTagDropdown" class="absolute z-[60] w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
-                  <div class="max-h-96 overflow-y-auto">
-                    <div
-                      v-for="tag in filteredTargetTags"
-                      :key="tag.name"
-                      @click="selectTargetTag(tag)"
-                      class="px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-600 last:border-b-0"
-                    >
-                      <div class="font-medium">{{ tag.name }}</div>
-                      <span v-if="tag.projectsCount" class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ tag.projectsCount }} projects
-                      </span>
-                    </div>
-                    <div v-if="filteredTargetTags.length === 0" class="px-4 py-3 text-gray-500 dark:text-gray-400">
-                      No tags found
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Selected target tag display -->
-              <div v-if="targetTag" class="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                <div class="text-sm text-blue-600 dark:text-blue-400">Selected target tag:</div>
-                <div class="font-medium text-blue-900 dark:text-blue-300">{{ targetTag.name }}</div>
-              </div>
-            </div>
-
-            <div v-if="copyProjectsValidation.message" class="text-sm" :class="copyProjectsValidation.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-              {{ copyProjectsValidation.message }}
-            </div>
-          </div>
-
-          <div class="flex justify-end space-x-3 mt-6">
-            <button
-              @click="closeCopyProjectsModal"
-              class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              @click="confirmCopyProjectsToTag"
-              :disabled="!sourceTag || !targetTag"
-              class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Copy Projects
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <CopyProjectsToTagModal
+      :show="showCopyProjectsModal"
+      :source-tag="sourceTag"
+      :tags="tags"
+      @close="closeCopyProjectsModal"
+      @copy="handleCopyProjectsToTag"
+    />
   </div>
 
     <!-- Confirmation Dialog -->
@@ -880,6 +573,9 @@ import { useConfirmDialog } from '../composables/useConfirmDialog'
 import { createJsRegExp } from '../utils/taxonomyParser'
 import { RefreshCw, Edit2, Copy, Tag, Grid3X3, List, Square, Folder, Trash2, AlertTriangle } from 'lucide-vue-next'
 import Modal from './Modal.vue'
+import TagProjectsModal from './TagProjectsModal.vue'
+import CopyProjectsToTagModal from './CopyProjectsToTagModal.vue'
+import TagCard from './TagCard.vue'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { buildDTProjectUrl } from '../config.js'
 
@@ -903,7 +599,10 @@ export default {
     Trash2,
     RefreshCw,
     AlertTriangle,
-    Modal
+    Modal,
+    TagProjectsModal,
+    CopyProjectsToTagModal,
+    TagCard
   },
   setup() {
     const logger = createLogger('tag-center')
@@ -961,8 +660,6 @@ export default {
     const cloneTagValidation = ref({ valid: false, message: '' })
     const linkProjects = ref(false)
     const sourceTag = ref(null)
-    const targetTag = ref(null)
-    const copyProjectsValidation = ref({ valid: false, message: '' })
 
     // Local state not in store
     const projects = ref([])
@@ -1158,7 +855,7 @@ export default {
       showProjectsModal.value = true
 
       try {
-        tagProjects.value = await tagStore.getProjectsByTag(tag.name)
+        tagProjects.value = await tagStore.getTagProjects(tag.name)
       } catch (error) {
         logger.error('Error loading tag projects:', error)
         tagProjects.value = []
@@ -1328,66 +1025,21 @@ export default {
       linkProjects.value = false
     }
 
-    // Copy Projects to Tag functionality
+    // Copy Projects to Tag functionality. Target-tag selection and its search
+    // dropdown live in the CopyProjectsToTagModal child; the parent only owns the
+    // source tag, open/close state, and the actual copy API call.
     const showCopyProjectsModal = ref(false)
-
-    // Searchable dropdown state
-    const targetTagSearch = ref('')
-    const showTargetTagDropdown = ref(false)
-    const filteredTargetTags = ref([])
-
-    const filterTargetTags = () => {
-      const searchTerm = targetTagSearch.value.toLowerCase()
-      const sourceTagName = sourceTag.value?.name || ''
-
-      filteredTargetTags.value = tags.value.filter(tag => {
-        const isNotSourceTag = tag.name !== sourceTagName
-        const matchesSearch = tag.name.toLowerCase().includes(searchTerm)
-        return isNotSourceTag && matchesSearch
-      })
-    }
-
-    const selectTargetTag = (tag) => {
-      targetTag.value = tag
-      targetTagSearch.value = tag.name
-      showTargetTagDropdown.value = false
-    }
-
-    const hideTargetTagDropdown = () => {
-      // Delay hiding to allow click events to register
-      setTimeout(() => {
-        showTargetTagDropdown.value = false
-      }, 200)
-    }
 
     const startCopyProjectsToTag = (tag) => {
       logger.info('🔗 Starting copy projects to tag for:', tag)
       // Handle both reactive proxy and regular objects
       const tagObj = tag.name ? tag : { name: tag, taxonomy: tag.taxonomy, projectsCount: tag.projectsCount }
       sourceTag.value = tagObj
-      targetTag.value = null
-      targetTagSearch.value = ''
-      copyProjectsValidation.value = { valid: true, message: '' }
       showCopyProjectsModal.value = true
-
-      // Initialize filtered tags
-      filterTargetTags()
     }
 
-    const confirmCopyProjectsToTag = async () => {
-      if (!sourceTag.value || !targetTag.value) {
-        copyProjectsValidation.value = { valid: false, message: 'Please select a target tag' }
-        return
-      }
-
-      // Handle both reactive proxy and regular objects
-      const sourceTagName = sourceTag.value.name ? sourceTag.value.name : sourceTag.value
-      const targetTagName = targetTag.value.name ? targetTag.value.name : targetTag.value
-
-      if (sourceTagName === targetTagName) {
-        copyProjectsValidation.value = { valid: false, message: 'Cannot copy projects to the same tag' }
-        return
-      }
+    const handleCopyProjectsToTag = async (targetTagName) => {
+      const sourceTagName = sourceTag.value?.name ? sourceTag.value.name : sourceTag.value
 
       try {
         // Get all projects that have source tag
@@ -1395,7 +1047,7 @@ export default {
         const projectsToCopy = sourceTagProjects || []
 
         if (projectsToCopy.length === 0) {
-          copyProjectsValidation.value = { valid: false, message: 'No projects found to copy' }
+          showError('No projects found to copy')
           return
         }
 
@@ -1407,20 +1059,13 @@ export default {
         await loadTags() // Refresh tags to update project counts
       } catch (error) {
         logger.error('Error copying projects:', error)
-        copyProjectsValidation.value = {
-          valid: false,
-          message: `❌ Error: ${error.response?.data?.message || error.message || 'Unknown error'}`
-        }
+        showError('Failed to copy projects', error.response?.data?.message || error.message || 'Unknown error')
       }
     }
 
     const closeCopyProjectsModal = () => {
       showCopyProjectsModal.value = false
       sourceTag.value = null
-      targetTag.value = null
-      targetTagSearch.value = ''
-      showTargetTagDropdown.value = false
-      copyProjectsValidation.value = { valid: false, message: '' }
     }
 
     const cloneTagFromBuilder = async () => {
@@ -1837,17 +1482,9 @@ export default {
       // Copy Projects to Tag state
       showCopyProjectsModal,
       sourceTag,
-      targetTag,
-      copyProjectsValidation,
-      targetTagSearch,
-      showTargetTagDropdown,
-      filteredTargetTags,
       startCopyProjectsToTag,
-      confirmCopyProjectsToTag,
+      handleCopyProjectsToTag,
       closeCopyProjectsModal,
-      filterTargetTags,
-      selectTargetTag,
-      hideTargetTagDropdown,
 
       // Taxonomy store functions
       taxonomies,

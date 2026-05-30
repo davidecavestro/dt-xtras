@@ -1,5 +1,8 @@
 import axios from 'axios'
 import { getConfig } from '../config.js'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('auth')
 
 class AuthService {
   constructor() {

@@ -336,7 +336,7 @@ export default {
     DateCell
   },
   setup() {
-    const logger = createLogger('ProjectBulkActions')
+    const logger = createLogger('ProjectCenter')
     const projectStore = useProjectStore()
     const { projects, isLoading, error, totalProjects } = storeToRefs(projectStore)
     const { showSuccess, showError } = useToast()
