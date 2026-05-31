@@ -259,15 +259,18 @@ async def get_projects(
     limit: int = 50,
     search: Optional[str] = None,
     excludeInactive: Optional[str] = "false",
+    tag: Optional[str] = None,
     dt_token: str = Depends(get_dt_token_from_request),
 ):
     """Get projects from DT API with optional filtering.
 
-    The total project count reported by DT is surfaced via the X-Total-Count
-    response header so the frontend can paginate against the real total.
+    Supports server-side pagination (page/limit), name search, active filtering
+    (excludeInactive) and a single-tag filter. The total project count reported
+    by DT is surfaced via the X-Total-Count response header so the frontend can
+    paginate against the real total.
     """
     projects, total_count = await get_dt_projects(
-        dt_token, page=page, limit=limit, search=search, excludeInactive=excludeInactive
+        dt_token, page=page, limit=limit, search=search, excludeInactive=excludeInactive, tag=tag
     )
     if total_count is not None:
         response.headers["X-Total-Count"] = str(total_count)
@@ -447,45 +450,63 @@ async def batch_refresh_projects(
 
 @app.get("/api/tag")
 async def get_tags(dt_token: str = Depends(get_dt_token_from_request)):
-    """Get all tags from DT with project counts and taxonomy information"""
+    """Get all tags from DT with project counts and taxonomy information.
+
+    Pages through DT's tag endpoint to completion: the tag list feeds UI filters
+    (e.g. Project Center's tag picker) and can reach hundreds of entries, so a
+    single default page would silently truncate it.
+    """
     headers = build_dt_headers(dt_token)
+    page_size = 100
+    page_number = 1
+    dt_tags = []
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers)
-
-        if response.status_code == 401:
-            raise HTTPException(status_code=401, detail="DT API authentication failed")
-        elif response.status_code == 403:
-            raise HTTPException(status_code=403, detail="DT API access forbidden")
-        elif response.status_code >= 500:
-            raise HTTPException(status_code=502, detail=f"DT API server error: {response.status_code}")
-
-        response.raise_for_status()
-        dt_tags = response.json()
-
-        taxonomies = load_taxonomies()
-        # Precompile each taxonomy pattern once, not once per tag (O(tags) instead of O(tags*taxonomies) compiles)
-        compiled_taxonomies = [(t.id, regex.compile(t.regex_pattern)) for t in taxonomies]
-
-        tags_with_taxonomy = []
-        for dt_tag in dt_tags:
-            tag_name = dt_tag.get("name", "")
-            taxonomy_id = None
-
-            for tax_id, pattern in compiled_taxonomies:
-                if pattern.match(tag_name):
-                    taxonomy_id = tax_id
-                    break
-
-            tags_with_taxonomy.append(
-                {
-                    "name": tag_name,
-                    "projectsCount": dt_tag.get("projectCount", 0),
-                    "taxonomy": taxonomy_id,
-                }
+        while True:
+            response = await client.get(
+                f"{DT_API_URL}/api/v1/tag",
+                headers=headers,
+                params={"pageNumber": str(page_number), "pageSize": str(page_size)},
+                timeout=30.0,
             )
 
-        return tags_with_taxonomy
+            if response.status_code == 401:
+                raise HTTPException(status_code=401, detail="DT API authentication failed")
+            elif response.status_code == 403:
+                raise HTTPException(status_code=403, detail="DT API access forbidden")
+            elif response.status_code >= 500:
+                raise HTTPException(status_code=502, detail=f"DT API server error: {response.status_code}")
+
+            response.raise_for_status()
+            batch = response.json()
+            dt_tags.extend(batch)
+            if len(batch) < page_size:
+                break
+            page_number += 1
+
+    taxonomies = load_taxonomies()
+    # Precompile each taxonomy pattern once, not once per tag (O(tags) instead of O(tags*taxonomies) compiles)
+    compiled_taxonomies = [(t.id, regex.compile(t.regex_pattern)) for t in taxonomies]
+
+    tags_with_taxonomy = []
+    for dt_tag in dt_tags:
+        tag_name = dt_tag.get("name", "")
+        taxonomy_id = None
+
+        for tax_id, pattern in compiled_taxonomies:
+            if pattern.match(tag_name):
+                taxonomy_id = tax_id
+                break
+
+        tags_with_taxonomy.append(
+            {
+                "name": tag_name,
+                "projectsCount": dt_tag.get("projectCount", 0),
+                "taxonomy": taxonomy_id,
+            }
+        )
+
+    return tags_with_taxonomy
 
 
 @app.put("/api/tag/{tag_name}")

@@ -126,11 +126,16 @@ async def get_dt_projects(
     limit: int = 50,
     search: Optional[str] = None,
     excludeInactive: Optional[str] = "false",
+    tag: Optional[str] = None,
 ) -> Tuple[List[Dict], Optional[int]]:
     """Get projects from DT API with proper authentication and pagination.
 
     Returns the enriched projects for the requested page and the total project
     count reported by DT via the X-Total-Count header (None if not provided).
+
+    When `tag` is provided, DT's dedicated per-tag endpoint is used (the project
+    list endpoint cannot filter by tag). DT's per-tag endpoint has no `name`
+    filter, so `search` is ignored while a tag filter is active.
     """
     headers = build_dt_headers(dt_token)
     if not dt_token:
@@ -139,11 +144,16 @@ async def get_dt_projects(
     params = {"pageNumber": str(page), "pageSize": str(limit)}
     if excludeInactive is not None:
         params["excludeInactive"] = excludeInactive
-    if search:
-        params["name"] = search
+
+    if tag:
+        url = f"{DT_API_URL}/api/v1/project/tag/{quote(tag, safe='')}"
+    else:
+        if search:
+            params["name"] = search
+        url = f"{DT_API_URL}/api/v1/project"
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{DT_API_URL}/api/v1/project", headers=headers, params=params, timeout=30.0)
+        response = await client.get(url, headers=headers, params=params, timeout=30.0)
         logger.info(f"DT API response status: {response.status_code}")
         response.raise_for_status()
 

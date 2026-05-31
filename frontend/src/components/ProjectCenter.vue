@@ -69,7 +69,7 @@
       <!-- Search and Filters -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <!-- Search -->
+          <!-- Search (by name, server-side) -->
           <div class="md:col-span-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Search Projects
@@ -78,9 +78,62 @@
               v-model="filters.search"
               @input="debouncedSearch"
               type="text"
-              placeholder="Search by name or tags..."
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Search by project name..."
+              :disabled="!!selectedTag"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
             />
+          </div>
+
+          <!-- Tag filter: searchable combobox (server-side filter via DT's
+               per-tag endpoint). Scales to hundreds of tags. -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Filter by Tag
+            </label>
+
+            <!-- Selected tag shown as a clearable chip -->
+            <div
+              v-if="selectedTag"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white flex items-center justify-between gap-2"
+            >
+              <span class="truncate" :title="selectedTag">{{ selectedTag }}</span>
+              <button
+                @click="clearTag"
+                class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none shrink-0"
+                title="Clear tag filter"
+              >
+                ×
+              </button>
+            </div>
+
+            <!-- Searchable input + results -->
+            <template v-else>
+              <input
+                v-model="tagQuery"
+                @focus="tagDropdownOpen = true"
+                @blur="tagDropdownOpen = false"
+                type="text"
+                placeholder="Search tags…"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white"
+              />
+              <ul
+                v-if="tagDropdownOpen && filteredTagOptions.length"
+                class="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg"
+              >
+                <li
+                  v-for="t in filteredTagOptions"
+                  :key="t.name"
+                  @mousedown.prevent="selectTag(t.name)"
+                  class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm flex items-center justify-between gap-2"
+                >
+                  <span class="truncate" :title="t.name">{{ t.name }}</span>
+                  <span v-if="t.projectsCount != null" class="text-xs text-gray-500 dark:text-gray-400 shrink-0">{{ t.projectsCount }}</span>
+                </li>
+                <li v-if="tagResultsTruncated" class="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">
+                  Refine your search to see more…
+                </li>
+              </ul>
+            </template>
           </div>
 
           <!-- Quick Actions -->
@@ -324,6 +377,7 @@ import { useToast } from '../composables/useToast'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 import { useProjectStore } from '../stores/projects'
 import { useTaxonomyStore } from '../stores/taxonomies'
+import { useTagStore } from '../stores/tags'
 import { createJsRegExp } from '../utils/taxonomyParser'
 
 export default {
@@ -344,17 +398,27 @@ export default {
   setup() {
     const logger = createLogger('ProjectCenter')
     const projectStore = useProjectStore()
-    const { projects, isLoading, error, totalProjects } = storeToRefs(projectStore)
+    const { error } = storeToRefs(projectStore)
     const { showSuccess, showError } = useToast()
     const taxonomyStore = useTaxonomyStore()
     const { taxonomies } = storeToRefs(taxonomyStore)
     const { getTaxonomyBadgeStyle, getTagTaxonomy, loadTaxonomies } = taxonomyStore
+    const tagStore = useTagStore()
 
     const filters = ref({
       search: '',
-      showInactive: false,
-      activityFilter: 'all'
+      showInactive: false
     })
+
+    // Server-side browsing state (see fetchProjects): the current page's rows,
+    // DT's real total, a loading flag, the selected tag filter and its options.
+    const loading = ref(false)
+    const selectedTag = ref('')
+    const tagOptions = ref([])
+    // Searchable tag combobox state.
+    const tagQuery = ref('')
+    const tagDropdownOpen = ref(false)
+    const TAG_RESULTS_LIMIT = 50
 
     const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
 
@@ -411,50 +475,30 @@ export default {
       }
     ])
 
-    // Reactive data for grid and deck views
-    const data = computed(() => {
-      let filteredProjects = projects.value || []
+    // The current server page of projects and DT's real total. Populated by
+    // fetchProjects(); there is no client-side filtering or slicing any more.
+    const data = ref([])
+    const filteredTotal = ref(0)
 
-      // Apply search filter
-      if (filters.value.search) {
-        const query = filters.value.search.toLowerCase()
-        filteredProjects = filteredProjects.filter(project =>
-          (project.name && project.name.toLowerCase().includes(query)) ||
-          (project.tags && project.tags.some(tag => tag.name && tag.name.toLowerCase().includes(query)))
-        )
-      }
-
-      // Apply show inactive filter
-      if (!filters.value.showInactive) {
-        filteredProjects = filteredProjects.filter(project => project.active !== false)
-      }
-
-      // Apply pagination
-      const startIndex = (projectStore.currentPage - 1) * projectStore.pageSize
-      const endIndex = startIndex + projectStore.pageSize
-      return filteredProjects.slice(startIndex, endIndex)
+    // Tag combobox: filter the (complete) tag list as the user types, capped so
+    // the menu stays light even with hundreds of tags.
+    const matchingTags = computed(() => {
+      const q = tagQuery.value.trim().toLowerCase()
+      const list = tagOptions.value || []
+      return q ? list.filter(t => t.name.toLowerCase().includes(q)) : list
     })
+    const filteredTagOptions = computed(() => matchingTags.value.slice(0, TAG_RESULTS_LIMIT))
+    const tagResultsTruncated = computed(() => matchingTags.value.length > TAG_RESULTS_LIMIT)
 
-    // Computed property for filtered total count
-    const filteredTotal = computed(() => {
-      let filteredProjects = projects.value || []
-
-      // Apply search filter
-      if (filters.value.search) {
-        const query = filters.value.search.toLowerCase()
-        filteredProjects = filteredProjects.filter(project =>
-          (project.name && project.name.toLowerCase().includes(query)) ||
-          (project.tags && project.tags.some(tag => tag.name && tag.name.toLowerCase().includes(query)))
-        )
-      }
-
-      // Apply show inactive filter
-      if (!filters.value.showInactive) {
-        filteredProjects = filteredProjects.filter(project => project.active !== false)
-      }
-
-      return filteredProjects.length
-    })
+    const selectTag = (name) => {
+      selectedTag.value = name
+      tagQuery.value = ''
+      tagDropdownOpen.value = false
+    }
+    const clearTag = () => {
+      selectedTag.value = ''
+      tagQuery.value = ''
+    }
 
     // Dark mode detection for grid
     const isDarkMode = ref(document.documentElement.classList.contains('dark'))
@@ -477,14 +521,32 @@ export default {
     const debouncedSearch = () => {
       clearTimeout(searchTimeout)
       searchTimeout = setTimeout(() => {
-        fetchProjects()
+        projectStore.currentPage = 1 // new query -> first page
+        fetchProjects().catch(() => {})
       }, 500)
     }
 
-    // Use store directly instead of composable
+    // Server-side fetch of a single page: name search, the active filter and the
+    // selected tag are all applied by DT. DT's per-tag endpoint has no name
+    // search, so when a tag is selected the search box is ignored (and disabled).
     const fetchProjects = async () => {
-      await projectStore.loadProjects()
-      return projectStore.projects
+      loading.value = true
+      try {
+        const { rows, total } = await projectStore.fetchProjectsPage({
+          page: projectStore.currentPage,
+          pageSize: projectStore.pageSize,
+          search: filters.value.search,
+          excludeInactive: !filters.value.showInactive,
+          tag: selectedTag.value
+        })
+        data.value = rows
+        filteredTotal.value = total
+        projectStore.totalProjects = total
+        projectStore.totalPages = Math.max(1, Math.ceil(total / projectStore.pageSize))
+        return rows
+      } finally {
+        loading.value = false
+      }
     }
 
     const handlePageChange = (page) => {
@@ -494,6 +556,7 @@ export default {
 
     const handlePageSizeChange = (pageSize) => {
       projectStore.pageSize = pageSize
+      projectStore.currentPage = 1 // page count changed; restart from the first page
       fetchProjects().catch(() => {}) // Ignore errors for page size changes
     }
 
@@ -553,15 +616,16 @@ export default {
     // Computed property to check if any filters are active
     const hasActiveFilters = computed(() => {
       return filters.value.search ||
-             filters.value.showInactive
+             filters.value.showInactive ||
+             selectedTag.value
     })
 
-    // Clear all filters
+    // Clear all filters and reload the first page.
     const clearFilters = () => {
-      filters.value = {
-        search: '',
-        showInactive: false
-      }
+      filters.value = { search: '', showInactive: false }
+      selectedTag.value = ''
+      projectStore.currentPage = 1
+      fetchProjects().catch(() => {})
     }
 
     // Tag styling function
@@ -625,26 +689,44 @@ export default {
       }
     }
 
-    // Watch for filter changes and refetch data
-    watch(filters, async () => {
-      // Use store pagination instead
-      projectStore.currentPage = 1 // Reset to first page when filters change
-      await fetchProjects()
-    }, { deep: true })
+    // The active filter and tag filter refetch immediately (resetting to page 1).
+    // Name search is debounced separately via debouncedSearch().
+    watch(() => filters.value.showInactive, () => {
+      projectStore.currentPage = 1
+      fetchProjects().catch(() => {})
+    })
+    watch(selectedTag, () => {
+      projectStore.currentPage = 1
+      fetchProjects().catch(() => {})
+    })
 
-    onMounted(() => {
-      fetchProjects()
+    onMounted(async () => {
+      fetchProjects().catch(() => {})
       loadTaxonomies()
+      // Load the tag list for the filter dropdown.
+      try {
+        await tagStore.loadTags()
+        tagOptions.value = tagStore.tags || []
+      } catch (e) {
+        logger.error('Failed to load tags for filter:', e)
+      }
     })
 
     return {
       data,
-      totalProjects,
       filteredTotal,
-      isLoading,
+      isLoading: loading,
       error,
       projectStore,
       filters,
+      selectedTag,
+      tagOptions,
+      tagQuery,
+      tagDropdownOpen,
+      filteredTagOptions,
+      tagResultsTruncated,
+      selectTag,
+      clearTag,
       projectsViewMode,
       gridColumns,
       isDarkMode,
