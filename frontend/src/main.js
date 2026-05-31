@@ -32,7 +32,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/dependency-graph',
+    path: '/tags-graph',
     component: TagsGraph,
     meta: { requiresAuth: true }
   },

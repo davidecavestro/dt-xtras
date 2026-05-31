@@ -1,10 +1,10 @@
 <template>
-  <div class="px-4 py-6 sm:px-0">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+  <div class="px-4 sm:px-0">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div class="flex justify-between items-start mb-6">
         <div>
-          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Project Center</h2>
-          <p class="text-gray-600 dark:text-gray-400">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Project Center</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Browse and manage Dependency-Track projects
           </p>
         </div>
@@ -20,7 +20,7 @@
     </div>
 
     <!-- Projects List -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Projects</h2>
         <div class="flex items-center gap-2">

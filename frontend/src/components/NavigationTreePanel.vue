@@ -1,5 +1,5 @@
 <template>
-  <div class="lg:w-2/5 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
+  <div class="lg:w-2/5 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex flex-col">
     <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
       <div class="flex justify-between items-center mb-3">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white">Navigation Tree</h3>

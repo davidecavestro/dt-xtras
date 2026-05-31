@@ -3,23 +3,22 @@ import { test, expect } from '@playwright/test'
 test.describe('Modal Component', () => {
   test.beforeEach(async ({ page }) => {
     // Mock projects endpoint
-    await page.route('/api/projects*', async (route) => {
+    await page.route('/api/project*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          projects: [
-            {
-              uuid: 'test-project',
-              name: 'Test Project',
-              version: '1.0.0',
-              active: true,
-              tags: [],
-              metrics: { components: 10, vulnerableComponents: 0 }
-            }
-          ],
-          total: 1
-        })
+        // The /api/project endpoint returns a bare array (List[DTProject]);
+        // the store reads response.data directly, not a { projects } wrapper.
+        body: JSON.stringify([
+          {
+            uuid: 'test-project',
+            name: 'Test Project',
+            version: '1.0.0',
+            active: true,
+            tags: [],
+            metrics: { components: 10, vulnerableComponents: 0 }
+          }
+        ])
       })
     })
 
@@ -41,7 +40,7 @@ test.describe('Modal Component', () => {
       })
     })
 
-    await page.goto('/bulk-actions')
+    await page.goto('/project-bulk-actions')
     await page.waitForLoadState('networkidle')
   })
 

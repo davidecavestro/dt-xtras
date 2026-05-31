@@ -1,15 +1,15 @@
 <template>
   <!-- Bounded flex column sized to the viewport (minus the app wrapper's py-6 = 3rem)
        so the header/selection stay pinned at the top while the two lists scroll
-       independently below. Stays inside the standard max-w-7xl content column
-       (App.vue) instead of breaking out to full width with fixed positioning. -->
-  <div class="flex flex-col h-[calc(100dvh-3rem)] min-h-0 bg-gray-50 dark:bg-gray-900">
+       independently below. Styled as a rounded card (rounded-lg shadow) to match
+       the other views; overflow-hidden clips the panels to the rounded corners. -->
+  <div class="flex flex-col h-[calc(100dvh-3rem)] min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
     <!-- Pinned Header with Title, Buttons, and Selected Items -->
-    <div class="flex-shrink-0 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+    <div class="shrink-0 border-b border-gray-200 dark:border-gray-700 p-4">
       <!-- Title and Description -->
       <div class="mb-4">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tag Bulk Actions</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-1">Link and unlink tags from projects in bulk</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Link and unlink tags from projects in bulk</p>
       </div>
 
       <!-- Action Buttons -->
@@ -22,7 +22,7 @@
               :disabled="selectedTags.length === 0 || selectedProjects.length === 0 || loading"
               class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center sm:justify-start"
             >
-              <Link class="w-4 h-4 mr-2 flex-shrink-0" />
+              <Link class="w-4 h-4 mr-2 shrink-0" />
               <span class="text-sm sm:text-base">Link Selected</span>
             </button>
 
@@ -31,7 +31,7 @@
               :disabled="selectedTags.length === 0 || selectedProjects.length === 0 || loading"
               class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center sm:justify-start"
             >
-              <Unlink class="w-4 h-4 mr-2 flex-shrink-0" />
+              <Unlink class="w-4 h-4 mr-2 shrink-0" />
               <span class="text-sm sm:text-base">Unlink Selected</span>
             </button>
 
@@ -49,7 +49,7 @@
             :disabled="loading"
             class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center sm:justify-start"
           >
-            <RefreshCw :class="['w-4 h-4 mr-2 flex-shrink-0', loading && 'animate-spin']" />
+            <RefreshCw :class="['w-4 h-4 mr-2 shrink-0', loading && 'animate-spin']" />
             <span class="text-sm sm:text-base">Refresh</span>
           </button>
         </div>
@@ -76,7 +76,7 @@
               <span class="truncate max-w-20 sm:max-w-none">{{ tagName }}</span>
               <button
                 @click.stop="toggleTagSelection(tagName)"
-                class="ml-1 sm:ml-2 text-red-500 hover:text-red-700 text-xs font-bold flex-shrink-0"
+                class="ml-1 sm:ml-2 text-red-500 hover:text-red-700 text-xs font-bold shrink-0"
                 title="Remove tag"
               >
                 ×
@@ -104,7 +104,7 @@
               <span class="truncate max-w-24 sm:max-w-none">{{ getProjectName(projectUuid) }}:{{ getProjectVersion(projectUuid) }}</span>
               <button
                 @click.stop="toggleProjectSelection(projectUuid)"
-                class="ml-1 sm:ml-2 text-red-500 hover:text-red-700 text-xs font-bold flex-shrink-0"
+                class="ml-1 sm:ml-2 text-red-500 hover:text-red-700 text-xs font-bold shrink-0"
                 title="Remove project"
               >
                 ×
@@ -116,7 +116,7 @@
     </div>
 
     <!-- Status Message -->
-    <div v-if="statusMessage" :class="['flex-shrink-0 px-6 py-3 text-sm', statusMessageClass]">
+    <div v-if="statusMessage" :class="['shrink-0 px-6 py-3 text-sm', statusMessageClass]">
       {{ statusMessage }}
     </div>
 
@@ -1050,7 +1050,12 @@ export default {
       refreshData,
 
       // Local state
-      selectedProjectFilter
+      selectedProjectFilter,
+
+      // Icons referenced as :icon values (must be on the instance, not just
+      // registered as components - component registration only covers tags).
+      Link,
+      Unlink
     }
   }
 }
