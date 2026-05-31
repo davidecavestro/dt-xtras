@@ -183,6 +183,39 @@ export const useProjectStore = defineStore('projects', () => {
     }
   }
 
+  // True server-side page fetch for the Project Center browser. Returns only the
+  // requested page plus DT's real total (from the X-Total-Count header), so the
+  // view never has to load the whole portfolio. Filtering (name search, active,
+  // single tag) is delegated to DT. A `tag` filter routes through DT's per-tag
+  // endpoint, which has no name search - so `tag` takes precedence over `search`.
+  // This does NOT mutate the shared `projects` state (the bulk-action views rely
+  // on that holding the full portfolio); the caller owns the returned rows.
+  const fetchProjectsPage = async ({
+    page = 1,
+    pageSize = 20,
+    search = '',
+    excludeInactive = true,
+    tag = ''
+  } = {}) => {
+    const params = { page, limit: pageSize, excludeInactive: String(excludeInactive) }
+    if (tag) {
+      params.tag = tag
+    } else if (search) {
+      params.search = search
+    }
+
+    try {
+      const response = await axios.get('/api/project', { params })
+      const rows = response.data?.data || response.data || []
+      const header = response.headers?.['x-total-count']
+      const total = header != null ? parseInt(header, 10) : rows.length
+      return { rows, total }
+    } catch (err) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to load projects'
+      throw err
+    }
+  }
+
   const updatePaginationInfo = () => {
     const filteredCount = filteredProjects.value.length
     totalProjects.value = filteredCount
@@ -587,6 +620,7 @@ export const useProjectStore = defineStore('projects', () => {
     // Methods
     loadProjects,
     fetchProjectsPaginated,
+    fetchProjectsPage,
     getProjectById,
     getProjectByName,
     getProjectsByTags,

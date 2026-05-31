@@ -36,6 +36,27 @@ class TestGetProjects:
             assert "uuid" in project
             assert "name" in project
 
+    def test_get_projects_surfaces_total_count_header(self, client, mock_dt_apis, auth_headers):
+        """The DT X-Total-Count header must be surfaced for server-side paging."""
+        response = client.get("/api/project?page=1&limit=2", headers=auth_headers)
+        assert response.status_code == 200
+        assert "X-Total-Count" in response.headers
+
+    def test_get_projects_tag_filter_uses_tag_endpoint(self, client, auth_headers, respx_mock):
+        """A `tag` filter routes to DT's per-tag endpoint and forwards its total."""
+        route = respx_mock.get(url__startswith=f"{DT_API_URL}/api/v1/project/tag/").mock(
+            return_value=Response(
+                200,
+                json=[{"name": "baz", "version": "1.0", "uuid": "u1", "tags": [{"name": "site:x"}]}],
+                headers={"X-Total-Count": "1"},
+            )
+        )
+        response = client.get("/api/project?tag=site:x&page=1&limit=20", headers=auth_headers)
+        assert response.status_code == 200
+        assert route.called
+        assert response.headers.get("X-Total-Count") == "1"
+        assert [p["name"] for p in response.json()] == ["baz"]
+
 
 class TestBatchActivateProjects:
     """Tests for PATCH /api/project/batch/activate."""
