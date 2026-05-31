@@ -787,15 +787,18 @@ async def get_hierarchical_tree(
         logger.warning("No hierarchical taxonomies found, returning empty tree")
         return {"nodes": [], "edges": [], "tree": []}
 
-    # If root_taxonomy is specified, ensure it's included in hierarchical_taxonomies
-    # but don't filter out other hierarchical taxonomies as they may be needed for relations
+    # If root_taxonomy is specified it must exist, but it does NOT have to be
+    # hierarchical: tree roots are the relation *targets* of hierarchical
+    # taxonomies (e.g. `brand`), which are typically non-hierarchical. The
+    # hierarchical taxonomies themselves (e.g. `site`) generate paths and never
+    # appear as nodes, so requiring root_taxonomy to be hierarchical would reject
+    # every taxonomy that can actually be a root - which is why this selector
+    # used to "lead to an empty graph". build_hierarchical_tree() does the
+    # filtering by node taxonomy below.
     if root_taxonomy:
         root_tax = next((t for t in taxonomies if t.id == root_taxonomy), None)
         if not root_tax:
             logger.warning(f"Root taxonomy '{root_taxonomy}' not found")
-            return {"nodes": [], "edges": [], "tree": []}
-        if not root_tax.hierarchical:
-            logger.warning(f"Root taxonomy '{root_taxonomy}' is not hierarchical")
             return {"nodes": [], "edges": [], "tree": []}
 
     # Fetch enriched tags with project UUIDs and metrics

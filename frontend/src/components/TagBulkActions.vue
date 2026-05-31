@@ -1,7 +1,11 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
-    <!-- Fixed Header with Title, Buttons, and Selected Items -->
-    <div class="fixed top-0 left-64 right-0 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4 z-10" style="--header-height: auto">
+  <!-- Bounded flex column sized to the viewport (minus the app wrapper's py-6 = 3rem)
+       so the header/selection stay pinned at the top while the two lists scroll
+       independently below. Stays inside the standard max-w-7xl content column
+       (App.vue) instead of breaking out to full width with fixed positioning. -->
+  <div class="flex flex-col h-[calc(100dvh-3rem)] min-h-0 bg-gray-50 dark:bg-gray-900">
+    <!-- Pinned Header with Title, Buttons, and Selected Items -->
+    <div class="flex-shrink-0 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
       <!-- Title and Description -->
       <div class="mb-4">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tag Bulk Actions</h1>
@@ -112,14 +116,14 @@
     </div>
 
     <!-- Status Message -->
-    <div v-if="statusMessage" :class="['fixed top-80 left-64 right-0 px-6 py-3 text-sm z-20', statusMessageClass]">
+    <div v-if="statusMessage" :class="['flex-shrink-0 px-6 py-3 text-sm', statusMessageClass]">
       {{ statusMessage }}
     </div>
 
     <!-- Main Content - Two Scrollable Columns -->
-    <div class="flex-1 flex overflow-hidden" style="padding-top: var(--header-height, 12rem)">
+    <div class="flex-1 flex overflow-hidden min-h-0">
       <!-- Left Column - Tags -->
-      <div class="w-1/2 flex flex-col border-r border-gray-200 dark:border-gray-700">
+      <div class="w-1/2 flex flex-col min-h-0 border-r border-gray-200 dark:border-gray-700">
         <div class="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Tags</h2>
 
@@ -236,13 +240,14 @@
               Select All Tags (Current Page)
             </span>
           </label>
+        </div>
 
-          <div v-if="tagsLoading" class="text-center py-4">
-            <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading tags...</p>
-          </div>
+        <div v-if="tagsLoading" class="text-center py-4 px-4 bg-white dark:bg-gray-800">
+          <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading tags...</p>
+        </div>
 
-          <div v-else class="flex-1 overflow-y-auto">
+        <div v-else class="flex-1 overflow-y-auto min-h-0 px-4 pb-4">
             <div class="space-y-2">
               <div
                 v-for="tag in paginatedTags"
@@ -272,11 +277,10 @@
               </div>
             </div>
           </div>
-        </div>
       </div>
 
       <!-- Right Column - Projects -->
-      <div class="w-1/2 flex flex-col bg-white dark:bg-gray-800">
+      <div class="w-1/2 flex flex-col min-h-0 bg-white dark:bg-gray-800">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Projects</h2>
 
@@ -414,7 +418,7 @@
           <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading projects...</p>
         </div>
 
-        <div v-else class="flex-1 overflow-y-auto px-4 pb-4 bg-white dark:bg-gray-800">
+        <div v-else class="flex-1 overflow-y-auto min-h-0 px-4 pb-4 bg-white dark:bg-gray-800">
           <div class="space-y-2">
             <div
               v-for="project in paginatedProjects"

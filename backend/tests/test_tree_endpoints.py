@@ -278,3 +278,62 @@ class TestTreeComparison:
             if qualcoz_eu and y_eu:
                 # They should be different node objects
                 assert qualcoz_eu is not y_eu
+
+
+class TestRootTaxonomyFilter:
+    """The root_taxonomy query param filters which roots are returned.
+
+    Regression: the endpoint used to reject any non-hierarchical root_taxonomy,
+    but tree roots are the relation *targets* of hierarchical taxonomies (e.g.
+    `brand`), which are typically non-hierarchical - so the selector always
+    "led to an empty graph". These use a production-like taxonomy file where
+    `brand` is a non-hierarchical root and `site` is the hierarchical generator.
+    """
+
+    @pytest.fixture
+    def prod_like_taxonomies(self, tmp_path, monkeypatch):
+        import services
+        import yaml
+
+        taxonomies = {
+            "taxonomies": [
+                {"id": "brand", "name": "Brand", "regex_pattern": r"^brand:(?P<value>.+)$",
+                 "color": "#f00", "priority": 1, "hierarchical": False, "relations": []},
+                {"id": "region", "name": "Region", "regex_pattern": r"^region:(?P<id>\w+)$",
+                 "color": "#0f0", "priority": 2, "hierarchical": False, "relations": []},
+                {"id": "bundle_version", "name": "Bundle version",
+                 "regex_pattern": r"^(?!(?:brand|region|bundle|cust|env|deploy):)(?P<bundle_name>[\w-]+):(?P<version>[\d\w\.-]+)$",
+                 "color": "#00f", "priority": 3, "hierarchical": False, "relations": []},
+                {"id": "site", "name": "Site",
+                 "regex_pattern": r"^site:(?P<brand>\w+):(?P<region>\w+):(?P<bundle_version>[\w-]+:[\d\.]+)$",
+                 "color": "#0ff", "priority": 4, "hierarchical": True,
+                 "relations": [
+                     {"group": "brand", "targets": "brand"},
+                     {"group": "region", "targets": "region"},
+                     {"group": "bundle_version", "targets": "bundle_version"},
+                 ]},
+            ]
+        }
+        f = tmp_path / "prod_tax.yaml"
+        with open(f, "w") as fh:
+            yaml.dump(taxonomies, fh)
+        monkeypatch.setattr(services, "TAXONOMIES_FILE", str(f))
+        return f
+
+    def test_non_hierarchical_root_taxonomy_not_rejected(
+        self, client, mock_dt_apis, auth_headers, prod_like_taxonomies
+    ):
+        """Forcing a non-hierarchical root (brand) returns its roots, not empty."""
+        response = client.get("/api/tree/hierarchical?root_taxonomy=brand", headers=auth_headers)
+        assert response.status_code == 200
+        roots = response.json().get("tree") or []
+        assert len(roots) > 0  # was [] before the guard fix
+        assert all(n.get("taxonomy") == "brand" for n in roots)
+
+    def test_unknown_root_taxonomy_returns_empty(
+        self, client, mock_dt_apis, auth_headers, prod_like_taxonomies
+    ):
+        """A root_taxonomy that does not exist yields an empty tree."""
+        response = client.get("/api/tree/hierarchical?root_taxonomy=nope", headers=auth_headers)
+        assert response.status_code == 200
+        assert (response.json().get("tree") or []) == []
