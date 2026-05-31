@@ -13,17 +13,60 @@
       <!-- Main Content - Always Visible -->
       <div class="flex flex-col lg:flex-row gap-6">
           <!-- Taxonomy Graph Visualization -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex-1 lg:basis-1/2">
+          <!-- Graph gets the larger share (2/3); the list keeps 1/3. "Expand"
+               grows the graph in-flow to the full content width and hides the
+               list, rather than a viewport-fixed overlay (which would render
+               behind the sidebar). min-w-0 lets it shrink back on restore. -->
+          <div
+            :class="['bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col min-w-0',
+                     graphExpanded ? 'w-full basis-full' : 'flex-1 lg:basis-2/3']"
+          >
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium text-gray-900 dark:text-white">Taxonomy Relations Graph</h3>
+              <!-- Graph controls: zoom in/out, fit to view, expand/collapse -->
+              <div class="flex items-center gap-1">
+                <button
+                  @click="zoomIn"
+                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  title="Zoom in"
+                >
+                  <ZoomIn class="w-4 h-4" />
+                </button>
+                <button
+                  @click="zoomOut"
+                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  title="Zoom out"
+                >
+                  <ZoomOut class="w-4 h-4" />
+                </button>
+                <button
+                  @click="fitGraph"
+                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  title="Fit to view"
+                >
+                  <Scan class="w-4 h-4" />
+                </button>
+                <button
+                  @click="toggleGraphExpand"
+                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  :title="graphExpanded ? 'Collapse graph' : 'Expand graph'"
+                >
+                  <component :is="graphExpanded ? Minimize2 : Maximize2" class="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 overflow-hidden" style="height: 400px;">
+            <div
+              :class="[
+                'border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 overflow-hidden',
+                graphExpanded ? 'h-[80vh]' : 'h-[60vh] min-h-[24rem]'
+              ]"
+            >
               <div ref="cytoscapeContainer" class="w-full h-full"></div>
             </div>
           </div>
 
-          <!-- Taxonomies List -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex-1 lg:basis-1/2">
+          <!-- Taxonomies List (hidden while the graph is expanded) -->
+          <div v-show="!graphExpanded" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex-1 lg:basis-1/3 min-w-0">
           <div class="px-1 py-5 sm:px-1 flex justify-between items-start">
             <div>
               <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Existing Taxonomies</h3>
@@ -432,6 +475,19 @@
         </div>
       </div>
     </div>
+
+    <!-- Confirmation Dialog -->
+    <Modal
+      :show="showConfirmDialog"
+      :title="confirmDialogTitle"
+      :message="confirmDialogMessage"
+      :confirm-text="confirmDialogConfirmText"
+      :cancel-text="confirmDialogCancelText"
+      :icon="AlertTriangle"
+      icon-color="red"
+      @confirm="handleConfirm"
+      @close="handleCancel"
+    />
   </div>
 </template>
 
@@ -439,13 +495,25 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useTaxonomyStore } from '../stores/taxonomies'
 import { useTagStore } from '../stores/tags'
-import { Plus, Trash2, Edit2, Folder } from 'lucide-vue-next'
+import { Plus, Trash2, Edit2, Folder, Maximize2, Minimize2, AlertTriangle, ZoomIn, ZoomOut, Scan } from 'lucide-vue-next'
 import cytoscape from 'cytoscape'
+import Modal from './Modal.vue'
 import { useToast } from '../composables/useToast'
+import { useConfirmDialog } from '../composables/useConfirmDialog'
 import { createLogger } from '../utils/logger'
 import { createJsRegExp } from '../utils/taxonomyParser'
 
 const { showSuccess, showError } = useToast()
+const {
+  showConfirmDialog,
+  confirmDialogTitle,
+  confirmDialogMessage,
+  confirmDialogConfirmText,
+  confirmDialogCancelText,
+  showConfirm,
+  handleConfirm,
+  handleCancel
+} = useConfirmDialog()
 const logger = createLogger('tag-center')
 
 // Store instances
@@ -468,6 +536,41 @@ const taxonomies = ref([])
 const draggedIndex = ref(null)
 const cytoscapeContainer = ref(null)
 const cytoscapeInstance = ref(null)
+const graphExpanded = ref(false) // Fullscreen graph toggle
+
+// Toggle the graph between its inline size and the expanded (full content
+// width) size. resize()+fit() must run AFTER the browser applies the new layout
+// or cytoscape keeps the previous zoom/size, so we wait a frame past nextTick.
+// fit() resets the zoom so restoring returns to the original view.
+const toggleGraphExpand = () => {
+  graphExpanded.value = !graphExpanded.value
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      if (cytoscapeInstance.value) {
+        cytoscapeInstance.value.resize()
+        cytoscapeInstance.value.fit(undefined, 50)
+      }
+    })
+  })
+}
+
+// Zoom controls (mirror TagsGraph): animate so the change is smooth, and use
+// the same fit padding as expand/restore so "fit" behaves consistently.
+const zoomIn = () => {
+  if (cytoscapeInstance.value) {
+    cytoscapeInstance.value.animate({ zoom: cytoscapeInstance.value.zoom() * 1.2 }, { duration: 200 })
+  }
+}
+const zoomOut = () => {
+  if (cytoscapeInstance.value) {
+    cytoscapeInstance.value.animate({ zoom: cytoscapeInstance.value.zoom() / 1.2 }, { duration: 200 })
+  }
+}
+const fitGraph = () => {
+  if (cytoscapeInstance.value) {
+    cytoscapeInstance.value.animate({ fit: { padding: 50 } }, { duration: 300 })
+  }
+}
 
 
 // Mobile detection
@@ -589,7 +692,13 @@ const graphGroup = ref(null)
     }
 
     const deleteTaxonomy = async (id) => {
-      if (!confirm('Are you sure you want to delete this taxonomy?')) {
+      const confirmed = await showConfirm({
+        title: 'Delete Taxonomy',
+        message: 'Are you sure you want to delete this taxonomy?',
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      })
+      if (!confirmed) {
         return
       }
 

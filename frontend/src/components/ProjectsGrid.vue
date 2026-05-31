@@ -192,6 +192,19 @@
         </div>
       </div>
     </div>
+
+    <!-- Confirmation Dialog -->
+    <Modal
+      :show="showConfirmDialog"
+      :title="confirmDialogTitle"
+      :message="confirmDialogMessage"
+      :confirm-text="confirmDialogConfirmText"
+      :cancel-text="confirmDialogCancelText"
+      :icon="AlertTriangle"
+      icon-color="red"
+      @confirm="handleConfirm"
+      @close="handleCancel"
+    />
   </div>
 </template>
 
@@ -204,18 +217,32 @@ import NameCell from './grid-cells/NameCell.vue'
 import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
+import Modal from './Modal.vue'
+import { useConfirmDialog } from '../composables/useConfirmDialog'
+import { AlertTriangle } from 'lucide-vue-next'
 import { createLogger } from '../utils/logger'
 
 export default {
   name: 'ProjectsGrid',
   components: {
-    Vue3Datagrid
+    Vue3Datagrid,
+    Modal
   },
   setup() {
     const logger = createLogger('ProjectsGrid')
     // Use project store
     const projectStore = useProjectStore()
     const { projects, isLoading, error } = projectStore
+    const {
+      showConfirmDialog,
+      confirmDialogTitle,
+      confirmDialogMessage,
+      confirmDialogConfirmText,
+      confirmDialogCancelText,
+      showConfirm,
+      handleConfirm,
+      handleCancel
+    } = useConfirmDialog()
 
     const loadingBulk = ref(false)
     const selectedRows = ref([])
@@ -447,7 +474,13 @@ export default {
     const bulkDelete = async () => {
       if (selectedRows.value.length === 0) return
 
-      if (!confirm(`Delete ${selectedRows.value.length} selected projects? This action cannot be undone.`)) {
+      const confirmed = await showConfirm({
+        title: 'Delete Projects',
+        message: `Delete ${selectedRows.value.length} selected projects? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      })
+      if (!confirmed) {
         return
       }
 
@@ -516,7 +549,16 @@ export default {
       formatDate,
       refreshProjects,
       applyFilters,
-      clearFilters
+      clearFilters,
+      // Confirmation dialog
+      showConfirmDialog,
+      confirmDialogTitle,
+      confirmDialogMessage,
+      confirmDialogConfirmText,
+      confirmDialogCancelText,
+      handleConfirm,
+      handleCancel,
+      AlertTriangle
     }
   }
 }

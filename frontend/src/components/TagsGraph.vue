@@ -35,24 +35,24 @@
           </div>
         </div>
 
-        <!-- Taxonomy Selector -->
-        <!-- Commented out - currently leads to empty graph -->
-        <!--
-        <div class="flex items-center space-x-2">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Force Root Taxonomy:</label>
+        <!-- Root Taxonomy Selector (hierarchical mode only) -->
+        <!-- Only lists taxonomies that appear as tree roots, so every choice
+             yields a non-empty tree. "All" clears the filter. -->
+        <div v-if="hierarchicalMode && rootTaxonomyOptions.length" class="flex items-center space-x-2">
+          <label for="root-taxonomy" class="text-sm font-medium text-gray-700 dark:text-gray-300">Root:</label>
           <select
+            id="root-taxonomy"
             v-model="selectedTaxonomy"
             @change="updateVisualization"
+            :disabled="loading"
             class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            v-if="!loading"
-            :disabled="!hierarchicalMode"
           >
-            <option v-for="taxonomy in taxonomies" :key="taxonomy.id" :value="taxonomy.id">
+            <option :value="null">All</option>
+            <option v-for="taxonomy in rootTaxonomyOptions" :key="taxonomy.id" :value="taxonomy.id">
               {{ taxonomy.name || taxonomy.id }}
             </option>
           </select>
         </div>
-        -->
       </div>
 
       <!-- Mode Description -->
@@ -76,7 +76,10 @@
       <!-- Graph and Related Projects Side by Side -->
       <div class="flex flex-col lg:flex-row gap-6">
         <!-- Left: Graph Section -->
-        <div class="flex-1">
+        <!-- min-w-0 lets this flex item shrink back to its share; without it an
+             oversized cytoscape canvas keeps the item wide on restore, pushing
+             the list out and adding scrollbars. -->
+        <div class="flex-1 min-w-0">
           <!-- Collapsible Graph Controls -->
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-4">
             <button
@@ -131,14 +134,55 @@
           </div>
 
           <!-- Cytoscape Graph -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3">
-            <div ref="cytoscapeContainer" class="w-full h-64 lg:h-80 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 overflow-hidden"></div>
+          <!-- "Expand" grows the graph in-flow inside the content area (which is
+               already offset past the sidebar) and hides the side list, rather
+               than using a viewport-fixed overlay - that would render behind the
+               sidebar (trapped under the content's z-10 stacking context). -->
+          <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3">
+            <!-- Graph controls: zoom in/out, fit to view, expand/collapse -->
+            <div class="absolute top-5 right-5 z-10 flex flex-col gap-1">
+              <button
+                @click="zoomIn"
+                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+                title="Zoom in"
+              >
+                <ZoomIn class="w-4 h-4" />
+              </button>
+              <button
+                @click="zoomOut"
+                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+                title="Zoom out"
+              >
+                <ZoomOut class="w-4 h-4" />
+              </button>
+              <button
+                @click="resetZoom"
+                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+                title="Fit to view"
+              >
+                <Scan class="w-4 h-4" />
+              </button>
+              <button
+                @click="toggleGraphExpand"
+                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+                :title="graphExpanded ? 'Collapse graph' : 'Expand graph'"
+              >
+                <component :is="graphExpanded ? Minimize2 : Maximize2" class="w-4 h-4" />
+              </button>
+            </div>
+            <div
+              ref="cytoscapeContainer"
+              :class="[
+                'w-full border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 overflow-hidden',
+                graphExpanded ? 'h-[80vh]' : 'h-[60vh] min-h-[24rem]'
+              ]"
+            ></div>
           </div>
         </div>
         <!-- End Left: Graph Section -->
 
-        <!-- Right: Related Projects Section -->
-        <div v-if="hierarchicalMode" class="lg:w-96">
+        <!-- Right: Related Projects Section (hidden while the graph is expanded) -->
+        <div v-if="hierarchicalMode && !graphExpanded" class="lg:w-96">
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
             <h2 class="text-xl font-semibold mb-1 text-gray-900 dark:text-white">Related Projects</h2>
 
@@ -293,7 +337,7 @@
 <script>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { List, Grid3X3, Square } from 'lucide-vue-next';
+import { List, Grid3X3, Square, Maximize2, Minimize2, ZoomIn, ZoomOut, Scan } from 'lucide-vue-next';
 import cytoscape from 'cytoscape';
 import { buildDTProjectUrl } from '../config.js';
 import dagre from 'cytoscape-dagre';
@@ -313,7 +357,10 @@ export default {
   components: {
     List,
     Grid3X3,
-    Square
+    Square,
+    ZoomIn,
+    ZoomOut,
+    Scan
   },
   setup() {
     // Use stores
@@ -334,6 +381,16 @@ export default {
     const loading = ref(true);
     const error = ref(null);
     const selectedTaxonomy = ref(null);
+    // Taxonomy ids that actually appear as hierarchical-tree roots. These are the
+    // only values that produce a non-empty tree when forced as root (the path
+    // generators like `site` never appear as nodes). Captured from the unfiltered
+    // load so the dropdown stays stable regardless of the current selection.
+    const rootEligibleTaxonomyIds = ref([]);
+    const rootTaxonomyOptions = computed(() =>
+      rootEligibleTaxonomyIds.value
+        .map(id => taxonomies.value.find(t => t.id === id))
+        .filter(Boolean)
+    );
     const hierarchicalMode = ref(true);
     const selectedNode = ref(null);
     const cytoscapeContainer = ref(null);
@@ -348,6 +405,24 @@ export default {
     const loadingRelatedProjects = ref(false);
     const viewMode = ref('graph'); // 'graph', 'list', 'grid', or 'deck'
     const controlsCollapsed = ref(true); // Collapsed by default
+    const graphExpanded = ref(false); // Fullscreen graph toggle
+
+    // Toggle the graph between its inline size and the expanded (full content
+    // width) size. resize()+fit() must run AFTER the browser has applied the new
+    // layout, otherwise cytoscape keeps the previous zoom/size - so we wait a
+    // frame past nextTick. fit() resets the zoom so restoring returns to the
+    // original view instead of keeping the expanded zoom level.
+    const toggleGraphExpand = () => {
+      graphExpanded.value = !graphExpanded.value;
+      nextTick(() => {
+        requestAnimationFrame(() => {
+          if (cytoscapeInstance.value) {
+            cytoscapeInstance.value.resize();
+            cytoscapeInstance.value.fit(undefined, 50);
+          }
+        });
+      });
+    };
 
     // Use graph store reactive references
     const { nodes, edges, treeData, loading: graphLoading, error: graphError } = storeToRefs(graphStore);
@@ -398,6 +473,12 @@ export default {
             rootTaxonomy: selectedTaxonomy.value
           });
           logger.info('Hierarchical tree loaded:', treeData.value?.length, 'roots');
+          // Capture the root-eligible taxonomies from the unfiltered tree.
+          if (!selectedTaxonomy.value) {
+            rootEligibleTaxonomyIds.value = [
+              ...new Set((treeData.value || []).map(r => r.taxonomy).filter(Boolean))
+            ];
+          }
         } else {
           // Raw mode: use network graph endpoint
           await graphStore.loadTagGraph({
@@ -1055,6 +1136,11 @@ export default {
       loadingRelatedProjects,
       viewMode,
       controlsCollapsed,
+      rootTaxonomyOptions,
+      graphExpanded,
+      toggleGraphExpand,
+      Maximize2,
+      Minimize2,
 
       // Methods
       loadData,

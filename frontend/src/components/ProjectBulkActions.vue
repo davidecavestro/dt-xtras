@@ -548,6 +548,19 @@
         </div>
       </template>
     </Modal>
+
+    <!-- Confirmation Dialog -->
+    <Modal
+      :show="showConfirmDialog"
+      :title="confirmDialogTitle"
+      :message="confirmDialogMessage"
+      :confirm-text="confirmDialogConfirmText"
+      :cancel-text="confirmDialogCancelText"
+      :icon="AlertTriangle"
+      icon-color="red"
+      @confirm="handleConfirm"
+      @close="handleCancel"
+    />
 </template>
 
 <script>
@@ -556,9 +569,10 @@ import { storeToRefs } from 'pinia'
 import { useProjectStore } from '../stores/projects'
 import { useTaxonomyStore } from '../stores/taxonomies'
 import { useToast } from '../composables/useToast'
+import { useConfirmDialog } from '../composables/useConfirmDialog'
 import { createLogger } from '../utils/logger'
 import { createJsRegExp } from '../utils/taxonomyParser'
-import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, Trash2, Power, PowerOff, List as ListIcon, Square as SquareIcon, Edit3 } from 'lucide-vue-next'
+import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, AlertTriangle, Trash2, Power, PowerOff, List as ListIcon, Square as SquareIcon, Edit3 } from 'lucide-vue-next'
 import ProjectCard from './ProjectCard.vue'
 import Modal from './Modal.vue'
 
@@ -585,6 +599,16 @@ export default {
     const { projects, isLoading, currentPage, pageSize, totalProjects, totalPages, searchQuery, paginatedProjects } = storeToRefs(projectStore)
     const { taxonomies } = storeToRefs(taxonomyStore)
     const { showSuccess, showError } = useToast()
+    const {
+      showConfirmDialog,
+      confirmDialogTitle,
+      confirmDialogMessage,
+      confirmDialogConfirmText,
+      confirmDialogCancelText,
+      showConfirm,
+      handleConfirm,
+      handleCancel
+    } = useConfirmDialog()
     const logger = createLogger('ProjectBulkActions')
     const activityFilter = ref('all')
     const sbomFilter = ref('all')
@@ -944,14 +968,20 @@ export default {
     }
 
     const deleteProject = async (project) => {
-      if (confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
-        try {
-          await projectStore.deleteProject(project.uuid)
-          selectedProjects.value = selectedProjects.value.filter(uuid => uuid !== project.uuid)
-        } catch (error) {
-          logger.error('Failed to delete project:', error)
-          showError('Failed to delete project. Please try again.')
-        }
+      const confirmed = await showConfirm({
+        title: 'Delete Project',
+        message: `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      })
+      if (!confirmed) return
+
+      try {
+        await projectStore.deleteProject(project.uuid)
+        selectedProjects.value = selectedProjects.value.filter(uuid => uuid !== project.uuid)
+      } catch (error) {
+        logger.error('Failed to delete project:', error)
+        showError('Failed to delete project. Please try again.')
       }
     }
 
@@ -1169,11 +1199,20 @@ export default {
       viewProject,
       viewSecurityDetails,
       analyzeProject,
+      // Confirmation dialog (single-project delete)
+      showConfirmDialog,
+      confirmDialogTitle,
+      confirmDialogMessage,
+      confirmDialogConfirmText,
+      confirmDialogCancelText,
+      handleConfirm,
+      handleCancel,
       // Icons for Modal components
       Power,
       PowerOff,
       Edit3,
-      AlertCircle
+      AlertCircle,
+      AlertTriangle
     }
   }
 }
