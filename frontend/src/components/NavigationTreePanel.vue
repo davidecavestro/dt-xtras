@@ -56,6 +56,25 @@
         placeholder="Search tags, projects..."
         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       />
+
+      <!-- Expand / collapse all (tree view only) -->
+      <div
+        v-if="treeViewMode === 'tree' && treeData && treeData.length > 0"
+        class="flex justify-end gap-3 mt-2"
+      >
+        <button
+          @click="$emit('expand-all')"
+          class="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+        >
+          Expand all
+        </button>
+        <button
+          @click="$emit('collapse-all')"
+          class="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+        >
+          Collapse all
+        </button>
+      </div>
     </div>
 
     <div class="flex-1 overflow-y-auto p-4">
@@ -116,7 +135,7 @@ export default {
   },
   // 'set-tree-mode' triggers a data reload in the parent (it owns treeData);
   // tree view mode and the search box are purely local to this panel.
-  emits: ['set-tree-mode', 'select', 'toggle', 'clear'],
+  emits: ['set-tree-mode', 'select', 'toggle', 'clear', 'expand-all', 'collapse-all'],
   setup() {
     const treeViewMode = ref('tree') // 'tree' or 'table'
     const searchQuery = ref('')

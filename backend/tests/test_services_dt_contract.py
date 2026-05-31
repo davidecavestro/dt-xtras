@@ -28,19 +28,44 @@ async def test_get_dt_projects_sends_filters_and_enriches_timestamps(respx_mock)
     )
 
     projects, total_count = await services.get_dt_projects(
-        "dt-token", page=3, limit=25, search="App", excludeInactive="true"
+        "dt-token", page=3, limit=25, excludeInactive="true"
     )
 
     request = route.calls.last.request
     assert request.headers["Authorization"] == "Bearer dt-token"
     assert request.url.params["pageNumber"] == "3"
     assert request.url.params["pageSize"] == "25"
-    assert request.url.params["name"] == "App"
     assert request.url.params["excludeInactive"] == "true"
     assert projects[0]["active"] is True
     assert projects[0]["lastActivity"] == "2023-11-14T22:13:20"
     assert projects[0]["lastSbomUpload"] == "2023-11-14T22:13:20"
     assert total_count == 42
+
+
+@pytest.mark.asyncio
+async def test_get_dt_projects_search_uses_lucene_and_refetches(respx_mock):
+    """`search` must route to DT's Lucene endpoint (the list `name` filter is
+    exact-match only) and re-fetch each match to a full enriched project."""
+    search_route = respx_mock.get(f"{DT_API_URL}/api/v1/search/project").mock(
+        return_value=httpx.Response(
+            200, json={"results": {"project": [{"name": "argocd", "uuid": "u1", "version": "2.8.0"}]}}
+        )
+    )
+    detail_route = respx_mock.get(f"{DT_API_URL}/api/v1/project/u1").mock(
+        return_value=httpx.Response(
+            200,
+            json={"uuid": "u1", "name": "argocd", "version": "2.8.0", "tags": [], "lastBomImport": 1700000000000},
+        )
+    )
+
+    projects, total_count = await services.get_dt_projects("dt-token", page=1, limit=20, search="argo")
+
+    assert search_route.calls.last.request.url.params["query"] == "argo"
+    assert detail_route.called
+    assert total_count == 1
+    assert projects[0]["name"] == "argocd"
+    assert projects[0]["active"] is True
+    assert projects[0]["lastActivity"] == "2023-11-14T22:13:20"
 
 
 @pytest.mark.asyncio

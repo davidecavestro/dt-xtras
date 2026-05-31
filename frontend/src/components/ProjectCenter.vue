@@ -84,57 +84,16 @@
             />
           </div>
 
-          <!-- Tag filter: searchable combobox (server-side filter via DT's
+          <!-- Tag filter: searchable select (server-side filter via DT's
                per-tag endpoint). Scales to hundreds of tags. -->
-          <div class="relative">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Filter by Tag
-            </label>
-
-            <!-- Selected tag shown as a clearable chip -->
-            <div
-              v-if="selectedTag"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white flex items-center justify-between gap-2"
-            >
-              <span class="truncate" :title="selectedTag">{{ selectedTag }}</span>
-              <button
-                @click="clearTag"
-                class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none shrink-0"
-                title="Clear tag filter"
-              >
-                ×
-              </button>
-            </div>
-
-            <!-- Searchable input + results -->
-            <template v-else>
-              <input
-                v-model="tagQuery"
-                @focus="tagDropdownOpen = true"
-                @blur="tagDropdownOpen = false"
-                type="text"
-                placeholder="Search tags…"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white"
-              />
-              <ul
-                v-if="tagDropdownOpen && filteredTagOptions.length"
-                class="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg"
-              >
-                <li
-                  v-for="t in filteredTagOptions"
-                  :key="t.name"
-                  @mousedown.prevent="selectTag(t.name)"
-                  class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm flex items-center justify-between gap-2"
-                >
-                  <span class="truncate" :title="t.name">{{ t.name }}</span>
-                  <span v-if="t.projectsCount != null" class="text-xs text-gray-500 dark:text-gray-400 shrink-0">{{ t.projectsCount }}</span>
-                </li>
-                <li v-if="tagResultsTruncated" class="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">
-                  Refine your search to see more…
-                </li>
-              </ul>
-            </template>
-          </div>
+          <SearchableSelect
+            v-model="selectedTag"
+            :options="tagOptions"
+            label="Filter by Tag"
+            id="tag-filter"
+            placeholder="Search tags…"
+            hint-key="projectsCount"
+          />
 
           <!-- Quick Actions -->
           <div class="flex items-end space-x-2">
@@ -368,6 +327,7 @@ import { storeToRefs } from 'pinia'
 import { RefreshCw, FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
 import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import ProjectCard from './ProjectCard.vue'
+import SearchableSelect from './SearchableSelect.vue'
 import NameCell from './grid-cells/NameCell.vue'
 import StatusCell from './grid-cells/StatusCell.vue'
 import TagsCell from './grid-cells/TagsCell.vue'
@@ -390,6 +350,7 @@ export default {
     RefreshCw,
     Vue3Datagrid,
     ProjectCard,
+    SearchableSelect,
     NameCell,
     StatusCell,
     TagsCell,
@@ -415,10 +376,6 @@ export default {
     const loading = ref(false)
     const selectedTag = ref('')
     const tagOptions = ref([])
-    // Searchable tag combobox state.
-    const tagQuery = ref('')
-    const tagDropdownOpen = ref(false)
-    const TAG_RESULTS_LIMIT = 50
 
     const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
 
@@ -479,26 +436,6 @@ export default {
     // fetchProjects(); there is no client-side filtering or slicing any more.
     const data = ref([])
     const filteredTotal = ref(0)
-
-    // Tag combobox: filter the (complete) tag list as the user types, capped so
-    // the menu stays light even with hundreds of tags.
-    const matchingTags = computed(() => {
-      const q = tagQuery.value.trim().toLowerCase()
-      const list = tagOptions.value || []
-      return q ? list.filter(t => t.name.toLowerCase().includes(q)) : list
-    })
-    const filteredTagOptions = computed(() => matchingTags.value.slice(0, TAG_RESULTS_LIMIT))
-    const tagResultsTruncated = computed(() => matchingTags.value.length > TAG_RESULTS_LIMIT)
-
-    const selectTag = (name) => {
-      selectedTag.value = name
-      tagQuery.value = ''
-      tagDropdownOpen.value = false
-    }
-    const clearTag = () => {
-      selectedTag.value = ''
-      tagQuery.value = ''
-    }
 
     // Dark mode detection for grid
     const isDarkMode = ref(document.documentElement.classList.contains('dark'))
@@ -721,12 +658,6 @@ export default {
       filters,
       selectedTag,
       tagOptions,
-      tagQuery,
-      tagDropdownOpen,
-      filteredTagOptions,
-      tagResultsTruncated,
-      selectTag,
-      clearTag,
       projectsViewMode,
       gridColumns,
       isDarkMode,

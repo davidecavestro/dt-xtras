@@ -79,6 +79,8 @@
         @select="selectTreeNode"
         @toggle="toggleTreeNode"
         @clear="clearSelection"
+        @expand-all="expandAllTreeNodes"
+        @collapse-all="collapseAllTreeNodes"
       />
 
       <!-- Related Projects (2/3) -->
@@ -821,6 +823,25 @@ export default {
       }
     };
 
+    // Collect every node id in the tree (recursively) so we can expand all at once.
+    const collectTreeNodeIds = (nodes, acc = new Set()) => {
+      for (const node of nodes || []) {
+        if (node && node.id) acc.add(node.id);
+        if (node && node.children && node.children.length) {
+          collectTreeNodeIds(node.children, acc);
+        }
+      }
+      return acc;
+    };
+
+    const expandAllTreeNodes = () => {
+      expandedNodes.value = collectTreeNodeIds(treeData.value);
+    };
+
+    const collapseAllTreeNodes = () => {
+      expandedNodes.value = new Set();
+    };
+
     const selectTreeNode = (node) => {
       if (node && node.id) {
         selectedTreeNode.value = node
@@ -946,6 +967,8 @@ export default {
       refreshData,
       selectTreeNode,
       toggleTreeNode,
+      expandAllTreeNodes,
+      collapseAllTreeNodes,
       clearSelection,
       setAssociativeMode,
       buildTreeFromTaxonomies,
