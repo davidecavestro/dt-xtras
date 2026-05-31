@@ -1,7 +1,8 @@
 <template>
   <div
-    class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-lg transition-shadow min-w-0 h-full flex flex-col cursor-pointer"
-    @click="$emit('select', project)"
+    class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 transition-shadow min-w-0 h-full flex flex-col"
+    :class="clickable ? 'hover:shadow-lg cursor-pointer' : ''"
+    @click="clickable && $emit('select', project)"
   >
     <!-- Compact Header -->
     <div class="flex items-start justify-between gap-2 mb-2">
@@ -119,6 +120,13 @@ export default {
       default: () => ({})
     },
     showActions: {
+      type: Boolean,
+      default: true
+    },
+    // When true, clicking anywhere on the card emits `select`. Disable it where
+    // whole-card navigation isn't wanted (e.g. Project Center, where browsing to
+    // DT is non-essential) - the explicit action buttons still work.
+    clickable: {
       type: Boolean,
       default: true
     }

@@ -38,28 +38,28 @@
               <div class="flex items-center gap-1">
                 <button
                   @click="zoomIn"
-                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   title="Zoom in"
                 >
                   <ZoomIn class="w-4 h-4" />
                 </button>
                 <button
                   @click="zoomOut"
-                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   title="Zoom out"
                 >
                   <ZoomOut class="w-4 h-4" />
                 </button>
                 <button
                   @click="fitGraph"
-                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   title="Fit to view"
                 >
                   <Scan class="w-4 h-4" />
                 </button>
                 <button
                   @click="toggleGraphExpand"
-                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  class="p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   :title="graphExpanded ? 'Collapse graph' : 'Expand graph'"
                 >
                   <component :is="graphExpanded ? Minimize2 : Maximize2" class="w-4 h-4" />
@@ -117,28 +117,28 @@
                     <div class="flex gap-1 p-2 shrink-0">
                       <button
                         @click="showTaxonomyTags(taxonomy)"
-                        class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-colors"
+                        class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-colors cursor-pointer"
                         title="Show Tags"
                       >
                         <Folder class="w-3 h-3" />
                       </button>
                       <button
                         @click="createTaxonomyTag(taxonomy)"
-                        class="p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 inline-flex items-center justify-center transition-colors"
+                        class="p-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 inline-flex items-center justify-center transition-colors cursor-pointer"
                         title="Create Tag"
                       >
                         <Plus class="w-3 h-3" />
                       </button>
                       <button
                         @click="editTaxonomy(taxonomy)"
-                        class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-colors"
+                        class="p-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 inline-flex items-center justify-center transition-colors cursor-pointer"
                         title="Edit"
                       >
                         <Edit2 class="w-3 h-3" />
                       </button>
                       <button
                         @click="deleteTaxonomy(taxonomy.id)"
-                        class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors"
+                        class="p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center justify-center transition-colors cursor-pointer"
                         title="Remove"
                       >
                         <Trash2 class="w-3 h-3" />

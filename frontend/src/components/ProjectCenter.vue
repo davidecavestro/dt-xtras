@@ -192,8 +192,7 @@
         <div
           v-for="project in data"
           :key="project.uuid"
-          class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border border-gray-200 dark:border-gray-600"
-          @click="viewProject(project)"
+          class="p-3 bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
         >
           <div class="flex justify-between items-start gap-2">
             <div class="flex-1 min-w-0">
@@ -256,6 +255,13 @@
                 </template>
               </div>
             </div>
+            <!-- View affordance (browse to the project in DT) -->
+            <button
+              @click="viewProject(project)"
+              class="shrink-0 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:underline hover:shadow-sm transition-all px-2 py-1 rounded"
+            >
+              View
+            </button>
           </div>
         </div>
       </div>
@@ -289,9 +295,9 @@
             v-for="project in data"
             :key="project.uuid"
             :project="project"
+            :clickable="false"
             :getTagStyle="getTagStyle"
             :getTagDynamicStyle="getTagDynamicStyle"
-            @select="viewProject"
             @view="viewProject"
             @security-details="viewSecurityDetails"
             @analyze="analyzeProject"
@@ -527,9 +533,16 @@ export default {
       window.open(buildDTProjectFindingsUrl(project.uuid), '_blank')
     }
 
-    const analyzeProject = (project) => {
-      // Navigate to project analysis page
-      window.open(buildDTProjectFindingsUrl(project.uuid), '_blank')
+    const analyzeProject = async (project) => {
+      // Trigger a re-analysis in Dependency-Track (via the batch refresh endpoint
+      // with a single project) rather than browsing to DT's findings view.
+      try {
+        await projectStore.bulkRefreshProjects([project.uuid])
+        showSuccess(`Re-analysis triggered for ${project.name}`)
+      } catch (error) {
+        logger.error('Error triggering analysis:', error)
+        showError('Failed to trigger analysis', 'Please try again.')
+      }
     }
 
     const getProjectVulnerabilities = (metrics) => {
