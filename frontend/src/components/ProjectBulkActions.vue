@@ -53,26 +53,14 @@
       <!-- Filters -->
       <div class="px-4 py-4 sm:px-6 border-b border-gray-200 dark:border-gray-700">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- Project Name Filter -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Project Name
-            </label>
-            <select
-              v-model="projectFilter"
-              @change="handleProjectFilterChange(projectFilter)"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="">All Projects</option>
-              <option
-                v-for="projectName in uniqueProjectNames"
-                :key="projectName"
-                :value="projectName"
-              >
-                {{ projectName }}
-              </option>
-            </select>
-          </div>
+          <!-- Project Name Filter: searchable select (scales to hundreds) -->
+          <SearchableSelect
+            v-model="projectFilter"
+            :options="uniqueProjectNames"
+            label="Project Name"
+            id="project-name-filter"
+            placeholder="All projects — search to filter…"
+          />
 
           <!-- Search -->
           <div>
@@ -152,11 +140,23 @@
         </div>
       </div>
 
+      <!-- Large-portfolio notice: this view loads the whole portfolio because its
+           activity-age / SBOM-age cleanup filters are computed client-side (DT
+           can't filter on those server-side). Fine for typical sizes; flag it
+           when it gets big so the load time isn't a surprise. -->
+      <div
+        v-if="projects.length >= 1000"
+        class="mx-4 mt-4 px-4 py-2 text-sm rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800"
+      >
+        Loaded {{ projects.length }} projects. This view loads the full portfolio to support
+        time-based cleanup filters, so it may be slow at very large scale.
+      </div>
+
       <!-- Pagination Controls -->
-      <div v-if="totalProjects > 0" class="flex items-center justify-between mb-6 px-4 pt-4">
+      <div v-if="totalFiltered > 0" class="flex items-center justify-between mb-6 px-4 pt-4">
         <div class="flex items-center space-x-4">
           <div class="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
-            Showing {{ projects.length }} of {{ totalProjects }} projects
+            Showing {{ data.length }} of {{ totalFiltered }} projects
           </div>
           <div class="flex items-center space-x-2">
             <label class="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
@@ -186,7 +186,7 @@
           <!-- Page Numbers -->
           <div class="flex items-center space-x-1">
             <button
-              v-for="page in Math.min(5, totalPages)"
+              v-for="page in Math.min(5, localTotalPages)"
               :key="page"
               @click="goToPage(page)"
               :class="[
@@ -198,24 +198,24 @@
             >
               {{ page }}
             </button>
-            <span v-if="totalPages > 5" class="px-2 text-gray-500">...</span>
+            <span v-if="localTotalPages > 5" class="px-2 text-gray-500">...</span>
             <button
-              v-if="totalPages > 5"
-              @click="goToPage(totalPages)"
+              v-if="localTotalPages > 5"
+              @click="goToPage(localTotalPages)"
               :class="[
                 'px-3 py-1 text-sm border rounded-md',
-                totalPages === currentPage
+                localTotalPages === currentPage
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
               ]"
             >
-              {{ totalPages }}
+              {{ localTotalPages }}
             </button>
           </div>
 
           <button
             @click="nextPage"
-            :disabled="currentPage >= totalPages"
+            :disabled="currentPage >= localTotalPages"
             class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,7 +359,7 @@
         <!-- Deck View -->
         <div v-else-if="viewMode === 'deck'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-4">
           <div
-            v-for="project in paginatedProjects"
+            v-for="project in data"
             :key="project.uuid"
             class="relative cursor-pointer"
             @click="toggleProjectSelection(project.uuid)"
@@ -574,6 +574,7 @@ import { createLogger } from '../utils/logger'
 import { createJsRegExp } from '../utils/taxonomyParser'
 import { RefreshCw, FolderOpen, Clock, Package, AlertCircle, AlertTriangle, Trash2, Power, PowerOff, List as ListIcon, Square as SquareIcon, Edit3 } from 'lucide-vue-next'
 import ProjectCard from './ProjectCard.vue'
+import SearchableSelect from './SearchableSelect.vue'
 import Modal from './Modal.vue'
 
 export default {
@@ -591,6 +592,7 @@ export default {
     SquareIcon,
     Edit3,
     ProjectCard,
+    SearchableSelect,
     Modal
   },
   setup() {
@@ -719,73 +721,17 @@ export default {
       return filtered
     })
 
-    // Use store's paginatedProjects but apply additional filters
+    // Paginate the locally-filtered set. `filteredProjects` applies all filters
+    // (name / search / activity / SBOM) over the WHOLE loaded portfolio; we then
+    // slice the requested page from that. Filtering before pagination is what
+    // makes the filters actually take effect - previously the filters were
+    // applied to an already-paginated single page, so they did nothing once the
+    // match wasn't on the current page.
+    const totalFiltered = computed(() => filteredProjects.value.length)
+    const localTotalPages = computed(() => Math.max(1, Math.ceil(totalFiltered.value / pageSize.value)))
     const data = computed(() => {
-      let projectsToShow = paginatedProjects.value || []
-
-      // Apply project name filter (exact match)
-      if (projectFilter.value) {
-        const filterName = projectFilter.value.toLowerCase()
-        projectsToShow = projectsToShow.filter(project =>
-          (project.name && project.name.toLowerCase() === filterName)
-        )
-      }
-
-      // Apply additional filters that aren't in store
-      const now = new Date()
-
-      // Activity filter
-      if (activityFilter.value === 'active-dt') {
-        projectsToShow = projectsToShow.filter(project => project.active === true)
-      } else if (activityFilter.value === 'inactive-dt') {
-        projectsToShow = projectsToShow.filter(project => project.active === false)
-      } else if (activityFilter.value === 'recent') {
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        projectsToShow = projectsToShow.filter(project =>
-          project.lastActivity && new Date(project.lastActivity) > thirtyDaysAgo
-        )
-      } else if (activityFilter.value === 'stale') {
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-        projectsToShow = projectsToShow.filter(project =>
-          project.lastActivity &&
-          new Date(project.lastActivity) > ninetyDaysAgo &&
-          new Date(project.lastActivity) <= thirtyDaysAgo
-        )
-      } else if (activityFilter.value === 'old') {
-        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-        projectsToShow = projectsToShow.filter(project =>
-          !project.lastActivity || new Date(project.lastActivity) <= ninetyDaysAgo
-        )
-      }
-
-      // SBOM filter
-      if (sbomFilter.value === 'recent') {
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        projectsToShow = projectsToShow.filter(project =>
-          project.lastSbomUpload && new Date(project.lastSbomUpload) > sevenDaysAgo
-        )
-      } else if (sbomFilter.value === 'normal') {
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        projectsToShow = projectsToShow.filter(project =>
-          project.lastSbomUpload &&
-          new Date(project.lastSbomUpload) > thirtyDaysAgo &&
-          new Date(project.lastSbomUpload) <= sevenDaysAgo
-        )
-      } else if (sbomFilter.value === 'old') {
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        projectsToShow = projectsToShow.filter(project =>
-          !project.lastSbomUpload || new Date(project.lastSbomUpload) <= thirtyDaysAgo
-        )
-      } else if (sbomFilter.value === 'very-old') {
-        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-        projectsToShow = projectsToShow.filter(project =>
-          !project.lastSbomUpload || new Date(project.lastSbomUpload) <= ninetyDaysAgo
-        )
-      }
-
-      return projectsToShow
+      const start = (currentPage.value - 1) * pageSize.value
+      return filteredProjects.value.slice(start, start + pageSize.value)
     })
 
     // Methods
@@ -1096,20 +1042,24 @@ export default {
       }
     }
 
+    // Pagination is local to this view (it filters the full loaded portfolio
+    // client-side, so it can't delegate paging to the store, whose page bounds
+    // are based on the store's own filters).
     const goToPage = (page) => {
-      projectStore.goToPage(page)
+      currentPage.value = Math.min(Math.max(1, page), localTotalPages.value)
     }
 
     const nextPage = () => {
-      projectStore.nextPage()
+      if (currentPage.value < localTotalPages.value) currentPage.value += 1
     }
 
     const prevPage = () => {
-      projectStore.previousPage()
+      if (currentPage.value > 1) currentPage.value -= 1
     }
 
     const handlePageSizeChange = (newPageSize) => {
-      projectStore.setPageSize(newPageSize)
+      pageSize.value = newPageSize
+      currentPage.value = 1
     }
 
     // ProjectCard event handlers
@@ -1129,14 +1079,14 @@ export default {
     }
 
     // Watch for filter changes and reset to first page
-    watch([activityFilter, sbomFilter], () => {
+    watch([activityFilter, sbomFilter, projectFilter], () => {
       // Reset to first page when filters change
       currentPage.value = 1
     }, { deep: true })
 
-    // Watch for search changes and update store
-    watch(() => searchQuery.value, (newValue) => {
-      projectStore.setSearchQuery(newValue)
+    // Search filters locally (via filteredProjects); reset to the first page.
+    watch(() => searchQuery.value, () => {
+      currentPage.value = 1
     })
 
     onMounted(() => {
@@ -1148,6 +1098,7 @@ export default {
       projects,
       searchQuery,
       projectFilter,
+      uniqueProjectNames,
       activityFilter,
       sbomFilter,
       selectedProjects,
@@ -1159,12 +1110,9 @@ export default {
       newProjectName,
       currentPage,
       pageSize,
-      totalProjects,
-      totalPages,
+      totalFiltered,
+      localTotalPages,
       viewMode,
-      uniqueProjectNames,
-      filteredProjects,
-      paginatedProjects,
       data,
       refreshProjects,
       setQuickFilter,

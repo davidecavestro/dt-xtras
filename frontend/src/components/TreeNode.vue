@@ -8,7 +8,7 @@
       }"
       @click="handleSelect"
     >
-      <div class="flex items-center flex-1">
+      <div class="flex items-center flex-1 min-w-0">
         <!-- Expand/Collapse Icon -->
         <button
           v-if="hasChildren"
@@ -32,59 +32,49 @@
 
         <!-- Node Name with Search Highlight -->
         <span
-          class="text-sm text-gray-900 dark:text-white"
+          class="text-sm text-gray-900 dark:text-white flex-1 min-w-0 truncate"
           v-html="highlightedName"
         ></span>
 
-        <!-- Metrics: Projects Count -->
-        <div
-          v-if="getNodeMetrics(node).projectsCount > 0"
-          class="ml-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
-          :title="`${getNodeMetrics(node).projectsCount} projects`"
-        >
-          <Package class="w-3 h-3" />
-          <span>{{ getNodeMetrics(node).projectsCount }}</span>
-        </div>
+        <!-- Metrics (right-aligned, fixed width so every row's counters line up):
+             projects count + the four severities. Zero renders as '-', counts
+             cap at '99+', so each slot is the same size on every node. -->
+        <div class="ml-2 flex items-center gap-1 shrink-0 tabular-nums">
+          <!-- Projects Count -->
+          <div
+            class="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
+            :class="metrics.projectsCount > 0
+              ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+              : 'text-gray-400 dark:text-gray-600'"
+            :title="`${metrics.projectsCount} projects`"
+          >
+            <Package class="w-3 h-3" />
+            <span class="inline-block min-w-6 text-right">{{ countLabel(metrics.projectsCount) }}</span>
+          </div>
 
-        <!-- Metrics: Vulnerabilities by Severity -->
-        <div
-          v-if="getNodeMetrics(node).vulnerabilities > 0"
-          class="ml-2 flex items-center gap-1"
-        >
+          <!-- Vulnerabilities by Severity (always shown for alignment) -->
           <span
-            v-if="getNodeMetrics(node).critical > 0"
-            class="px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-            :title="`${getNodeMetrics(node).critical} critical vulnerabilities`"
-          >
-            {{ getNodeMetrics(node).critical }}
-          </span>
+            class="inline-block min-w-8 text-center px-1.5 py-0.5 rounded text-xs font-medium"
+            :class="severityBadgeClass(metrics.critical, 'critical')"
+            :title="`${metrics.critical} critical vulnerabilities`"
+          >{{ countLabel(metrics.critical) }}</span>
           <span
-            v-if="getNodeMetrics(node).high > 0"
-            class="px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
-            :title="`${getNodeMetrics(node).high} high vulnerabilities`"
-          >
-            {{ getNodeMetrics(node).high }}
-          </span>
+            class="inline-block min-w-8 text-center px-1.5 py-0.5 rounded text-xs font-medium"
+            :class="severityBadgeClass(metrics.high, 'high')"
+            :title="`${metrics.high} high vulnerabilities`"
+          >{{ countLabel(metrics.high) }}</span>
           <span
-            v-if="getNodeMetrics(node).medium > 0"
-            class="px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
-            :title="`${getNodeMetrics(node).medium} medium vulnerabilities`"
-          >
-            {{ getNodeMetrics(node).medium }}
-          </span>
+            class="inline-block min-w-8 text-center px-1.5 py-0.5 rounded text-xs font-medium"
+            :class="severityBadgeClass(metrics.medium, 'medium')"
+            :title="`${metrics.medium} medium vulnerabilities`"
+          >{{ countLabel(metrics.medium) }}</span>
           <span
-            v-if="getNodeMetrics(node).low > 0"
-            class="px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
-            :title="`${getNodeMetrics(node).low} low vulnerabilities`"
-          >
-            {{ getNodeMetrics(node).low }}
-          </span>
+            class="inline-block min-w-8 text-center px-1.5 py-0.5 rounded text-xs font-medium"
+            :class="severityBadgeClass(metrics.low, 'low')"
+            :title="`${metrics.low} low vulnerabilities`"
+          >{{ countLabel(metrics.low) }}</span>
         </div>
-
-        <!-- Legacy: Vulnerability Indicator (fallback for old data) -->
-        <div v-else-if="node.vulnerabilities > 0" class="ml-2">
-          <div class="w-2 h-2 rounded-full" :class="getVulnColor(node.vulnerabilities)"></div>
-        </div>
+        <!-- /metrics -->
       </div>
     </div>
 
@@ -303,6 +293,24 @@ export default {
       emit('toggle', props.node.id)
     }
 
+    // This node's metrics, used by the right-aligned counters.
+    const metrics = computed(() => getNodeMetrics(props.node))
+
+    // Fixed-width counter label: '-' for zero, '99+' for anything over 99, so
+    // every node's counters occupy the same width and line up.
+    const countLabel = (n) => (n > 99 ? '99+' : (n > 0 ? String(n) : '-'))
+
+    const SEVERITY_COLORS = {
+      critical: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+      high: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
+      medium: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
+      low: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+    }
+    // Zero counts get no fill - just a faint dash on the default background, so
+    // an empty severity reads as a "hole", not a filled badge.
+    const MUTED_BADGE = 'text-gray-400 dark:text-gray-600'
+    const severityBadgeClass = (count, severity) => (count > 0 ? SEVERITY_COLORS[severity] : MUTED_BADGE)
+
     return {
       hasChildren,
       isExpanded,
@@ -313,7 +321,10 @@ export default {
       getNodeMetrics,
       getNodeIconColor,
       handleSelect,
-      handleToggle
+      handleToggle,
+      metrics,
+      countLabel,
+      severityBadgeClass
     }
   }
 }

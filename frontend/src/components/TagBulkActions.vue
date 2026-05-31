@@ -284,31 +284,15 @@
         <div class="p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Projects</h2>
 
-          <!-- Project Search -->
+          <!-- Project Search (by name, server-side) -->
           <div class="mb-3">
-            <div class="flex gap-2">
-              <select
-                v-model="projectFilter"
-                @change="handleProjectFilterChange(projectFilter)"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-0 sm:min-w-32"
-              >
-                <option value="">All Projects</option>
-                <option
-                  v-for="projectName in uniqueProjectNames"
-                  :key="projectName"
-                  :value="projectName"
-                >
-                  {{ projectName }}
-                </option>
-              </select>
-              <input
-                v-model="projectSearchQuery"
-                @input="setProjectSearchQuery(projectSearchQuery)"
-                type="text"
-                placeholder="Filter by project, version or tags..."
-                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
+            <input
+              v-model="projectSearchQuery"
+              @input="setProjectSearchQuery(projectSearchQuery)"
+              type="text"
+              placeholder="Search by project name..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
           </div>
 
           <!-- Active Filter -->
@@ -424,12 +408,12 @@
               v-for="project in paginatedProjects"
               :key="project.uuid"
               class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-              @click="toggleProjectSelection(project.uuid)"
+              @click="toggleProjectSelection(project)"
             >
               <input
                 type="checkbox"
-                :value="project.uuid"
-                v-model="selectedProjects"
+                :checked="selectedProjects.includes(project.uuid)"
+                @click.stop="toggleProjectSelection(project)"
                 class="mr-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
               <div class="flex-1">
@@ -603,37 +587,80 @@ export default {
       unlinkTagsFromProjects
     } = tagStore
 
-    // Use project store
-    const {
-      projects,
-      isLoading: projectsLoading,
-      error: projectsError,
-      currentPage: currentProjectPage,
-      pageSize: projectPageSize,
-      totalProjects,
-      totalPages: totalProjectPages,
-      searchQuery: projectSearchQuery,
-      projectFilter,
-      filteredProjects,
-      paginatedProjects,
-      hasPreviousPage: hasPreviousProjectPage,
-      hasNextPage: hasNextProjectPage,
-      activeOnly
-    } = storeToRefs(projectStore)
+    // Projects column: server-side pagination + filtering. DT can page and
+    // filter projects by name + active state, so this view never loads the
+    // whole portfolio (unlike the tag column, where the full tag list is cheap).
+    const { getActivityStatus, getActivityStatusClass } = projectStore
 
-    const {
-      loadProjects,
-      setSearchQuery: setProjectSearchQuery,
-      setProjectFilter,
-      setActiveFilter,
-      goToPage: goToProjectPage,
-      nextPage: nextProjectPage,
-      previousPage: previousProjectPage,
-      clearFilters: clearProjectFilters,
-      getActivityStatus,
-      getActivityStatusClass,
-      setPageSize: setProjectPageSize
-    } = projectStore
+    const projectRows = ref([])          // current server page
+    const projectTotal = ref(0)          // DT's real total for the active filter
+    const currentProjectPage = ref(1)
+    const projectPageSize = ref(20)
+    const projectSearchQuery = ref('')
+    const activeOnly = ref(false)
+    const projectsLoading = ref(false)
+    const projectsError = ref(null)
+    // Name/version for selected projects, kept so the selection chips and
+    // link/unlink previews resolve even when a selected project is on another
+    // page (server-side paging means it may not be in projectRows).
+    const selectedProjectInfo = ref({})
+
+    const paginatedProjects = computed(() => projectRows.value)
+    const totalProjects = computed(() => projectTotal.value)
+    const totalProjectPages = computed(() =>
+      Math.max(1, Math.ceil(projectTotal.value / projectPageSize.value))
+    )
+    const hasPreviousProjectPage = computed(() => currentProjectPage.value > 1)
+    const hasNextProjectPage = computed(() => currentProjectPage.value < totalProjectPages.value)
+
+    const loadProjectsPage = async () => {
+      projectsLoading.value = true
+      projectsError.value = null
+      try {
+        const { rows, total } = await projectStore.fetchProjectsPage({
+          page: currentProjectPage.value,
+          pageSize: projectPageSize.value,
+          search: projectSearchQuery.value,
+          excludeInactive: activeOnly.value
+        })
+        projectRows.value = rows
+        projectTotal.value = total
+      } catch (e) {
+        projectsError.value = e?.response?.data?.detail || e?.message || 'Failed to load projects'
+      } finally {
+        projectsLoading.value = false
+      }
+    }
+
+    let projectSearchTimeout = null
+    const setProjectSearchQuery = (q) => {
+      projectSearchQuery.value = q
+      clearTimeout(projectSearchTimeout)
+      projectSearchTimeout = setTimeout(() => {
+        currentProjectPage.value = 1
+        loadProjectsPage()
+      }, 400)
+    }
+    const setActiveFilter = (val) => {
+      activeOnly.value = val
+      currentProjectPage.value = 1
+      loadProjectsPage()
+    }
+    const goToProjectPage = (page) => {
+      currentProjectPage.value = page
+      loadProjectsPage()
+    }
+    const nextProjectPage = () => {
+      if (hasNextProjectPage.value) goToProjectPage(currentProjectPage.value + 1)
+    }
+    const previousProjectPage = () => {
+      if (hasPreviousProjectPage.value) goToProjectPage(currentProjectPage.value - 1)
+    }
+    const setProjectPageSize = (size) => {
+      projectPageSize.value = size
+      currentProjectPage.value = 1
+      loadProjectsPage()
+    }
 
     // Local state
     const selectedTags = ref([])
@@ -645,18 +672,20 @@ export default {
     const statusMessage = ref('')
     const statusMessageClass = ref('')
     const loading = ref(false)
-    const selectedProjectFilter = ref('')
 
-    // Computed property for unique project names
-    const uniqueProjectNames = computed(() => {
-      if (!projects.value) return []
-      const names = new Set()
-      projects.value.forEach(project => {
-        const name = project.displayName || project.name
-        if (name) names.add(name)
-      })
-      return Array.from(names).sort()
-    })
+    // Record (or forget) a project's display info so chips/labels resolve across
+    // pages even though only the current page is loaded.
+    const rememberProjectInfo = (project) => {
+      selectedProjectInfo.value = {
+        ...selectedProjectInfo.value,
+        [project.uuid]: { name: project.displayName || project.name, version: project.version }
+      }
+    }
+    const forgetProjectInfo = (uuid) => {
+      const next = { ...selectedProjectInfo.value }
+      delete next[uuid]
+      selectedProjectInfo.value = next
+    }
 
     // Local methods
     const toggleSelectAllTags = () => {
@@ -667,21 +696,34 @@ export default {
       }
     }
 
+    // "Select all" applies to the CURRENT server page; selections on other pages
+    // are preserved (selection persists across pages via selectedProjects).
     const toggleSelectAllProjects = () => {
       if (selectAllProjects.value) {
-        selectedProjects.value = paginatedProjects.value.map(project => project.uuid)
+        projectRows.value.forEach(project => {
+          if (!selectedProjects.value.includes(project.uuid)) {
+            selectedProjects.value.push(project.uuid)
+            rememberProjectInfo(project)
+          }
+        })
       } else {
-        selectedProjects.value = []
+        const pageUuids = new Set(projectRows.value.map(p => p.uuid))
+        selectedProjects.value = selectedProjects.value.filter(uuid => !pageUuids.has(uuid))
+        pageUuids.forEach(forgetProjectInfo)
       }
     }
 
     const getProjectName = (projectUuid) => {
-      const project = projects.value.find(p => p.uuid === projectUuid)
+      const info = selectedProjectInfo.value[projectUuid]
+      if (info) return info.name
+      const project = projectRows.value.find(p => p.uuid === projectUuid)
       return project ? (project.displayName || project.name) : 'Unknown Project'
     }
 
     const getProjectVersion = (projectUuid) => {
-      const project = projects.value.find(p => p.uuid === projectUuid)
+      const info = selectedProjectInfo.value[projectUuid]
+      if (info) return info.version
+      const project = projectRows.value.find(p => p.uuid === projectUuid)
       return project ? project.version : 'Unknown'
     }
 
@@ -733,7 +775,7 @@ export default {
         })
       }
 
-      const project = projects.value.find(p => p.uuid === projectUuid)
+      const project = projectRows.value.find(p => p.uuid === projectUuid)
       const tagExistsOnProject = project && project.tags && project.tags.some(t => t.name === tag.name)
 
       // Store taxonomy reference for style application
@@ -786,7 +828,7 @@ export default {
         })
       }
 
-      const project = projects.value.find(p => p.uuid === projectUuid)
+      const project = projectRows.value.find(p => p.uuid === projectUuid)
       const tagExistsOnProject = project && project.tags && project.tags.some(t => t.name === tag.name)
 
       // Return taxonomy style if it's a taxonomy tag
@@ -840,12 +882,17 @@ export default {
       }
     }
 
-    const toggleProjectSelection = (projectUuid) => {
-      const index = selectedProjects.value.indexOf(projectUuid)
+    // Accepts a project object (from the list rows, so we can remember its
+    // name/version) or a bare uuid (from the selection chips, removal only).
+    const toggleProjectSelection = (project) => {
+      const uuid = typeof project === 'string' ? project : project.uuid
+      const index = selectedProjects.value.indexOf(uuid)
       if (index > -1) {
         selectedProjects.value.splice(index, 1)
+        forgetProjectInfo(uuid)
       } else {
-        selectedProjects.value.push(projectUuid)
+        selectedProjects.value.push(uuid)
+        if (typeof project !== 'string') rememberProjectInfo(project)
       }
     }
 
@@ -902,36 +949,18 @@ export default {
       }
     }
 
-    const buildDTProjectUrl = (projectUuid) => {
-      const project = projects.value.find(p => p.uuid === projectUuid)
-      if (!project) return '#'
-      return buildDTProjectUrl(project.name, project.version)
-    }
-
     const clearSelection = () => {
       selectedTags.value = []
       selectedProjects.value = []
+      selectedProjectInfo.value = {}
       selectAllTags.value = false
       selectAllProjects.value = false
     }
 
-    const handleProjectFilterChange = (projectName) => {
-      if (projectName) {
-        // Set project filter to the selected project name
-        setProjectFilter(projectName)
-        selectedProjectFilter.value = projectName
-      } else {
-        // Clear filter
-        selectedProjectFilter.value = ''
-        setProjectFilter('')
-      }
-    }
-
-
     const refreshData = async () => {
       loading.value = true
       try {
-        await Promise.all([loadTaxonomies(), loadTags(), loadProjects()])
+        await Promise.all([loadTaxonomies(), loadTags(), loadProjectsPage()])
         clearSelection()
       } finally {
         loading.value = false
@@ -966,15 +995,14 @@ export default {
       statusMessage,
       statusMessageClass,
 
-      // Store states
+      // Store states (tags) + local server-side project state
       tags,
-      projects,
       tagsLoading,
       projectsLoading,
       tagsError,
       projectsError,
 
-      // Store pagination states
+      // Pagination states (tags from store, projects local/server-side)
       currentTagPage,
       currentProjectPage,
       tagPageSize,
@@ -985,10 +1013,8 @@ export default {
       totalProjectPages,
       tagSearchQuery,
       projectSearchQuery,
-      projectFilter,
       selectedTaxonomy,
       filteredTags,
-      filteredProjects,
       paginatedTags,
       paginatedProjects,
       hasPreviousTagPage,
@@ -997,16 +1023,11 @@ export default {
       hasNextProjectPage,
       activeOnly,
 
-      // Local computed
-      uniqueProjectNames,
-
-      // Store methods
+      // Methods (tags from store, projects local/server-side)
       loadTags,
-      loadProjects,
       setTagSearchQuery,
       setTaxonomyFilter,
       setProjectSearchQuery,
-      setProjectFilter,
       setActiveFilter,
       goToTagPage,
       goToProjectPage,
@@ -1015,7 +1036,6 @@ export default {
       previousTagPage,
       previousProjectPage,
       clearTagFilters,
-      clearProjectFilters,
       getActivityStatus,
       getActivityStatusClass,
       setTagPageSize,
@@ -1046,11 +1066,7 @@ export default {
       confirmUnlink,
       clearSelection,
       buildDTProjectUrl,
-      handleProjectFilterChange,
       refreshData,
-
-      // Local state
-      selectedProjectFilter,
 
       // Icons referenced as :icon values (must be on the instance, not just
       // registered as components - component registration only covers tags).

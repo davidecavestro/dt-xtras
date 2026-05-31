@@ -4,6 +4,7 @@ This module contains taxonomy management, DT API client, graph/tree building log
 """
 
 import os
+import asyncio
 import yaml
 import regex
 import httpx
@@ -120,6 +121,68 @@ def save_taxonomies(taxonomies: List[Taxonomy]):
 # DT API Client
 
 
+def _enrich_project(project: Dict) -> Dict:
+    """Add the derived fields the frontend expects (active default, lastActivity,
+    lastSbomUpload) to a raw DT project record."""
+    enriched_project = project.copy()
+    if "active" not in enriched_project:
+        enriched_project["active"] = True
+
+    if "lastBomImport" in enriched_project:
+        last_bom_import = enriched_project["lastBomImport"]
+        if isinstance(last_bom_import, (int, float)):
+            enriched_project["lastActivity"] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
+            enriched_project["lastSbomUpload"] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
+        else:
+            enriched_project["lastActivity"] = str(last_bom_import)
+            enriched_project["lastSbomUpload"] = str(last_bom_import)
+    elif "created" in enriched_project:
+        created = enriched_project["created"]
+        if isinstance(created, (int, float)):
+            enriched_project["lastActivity"] = datetime.fromtimestamp(created / 1000).isoformat()
+        else:
+            enriched_project["lastActivity"] = str(created)
+    else:
+        enriched_project["lastActivity"] = None
+        enriched_project["lastSbomUpload"] = None
+
+    return enriched_project
+
+
+async def _search_projects(dt_token: str, query: str, page: int = 1, limit: int = 50) -> Tuple[List[Dict], Optional[int]]:
+    """Partial project search via DT's Lucene endpoint.
+
+    DT's project LIST filter (`name`) is exact-match only, so substring/prefix
+    search must go through /api/v1/search/project. That endpoint returns only
+    name/uuid/version, so we fetch each matched project for the requested page to
+    rebuild the full enriched object. The active filter is intentionally NOT
+    applied here: a name search spans both active and inactive projects.
+    """
+    headers = build_dt_headers(dt_token)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{DT_API_URL}/api/v1/search/project",
+            headers=headers,
+            params={"query": query},
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        matches = response.json().get("results", {}).get("project", [])
+        total_count = len(matches)
+
+        start = max(0, (page - 1) * limit)
+        page_uuids = [m.get("uuid") for m in matches[start : start + limit] if m.get("uuid")]
+
+        async def fetch_one(project_uuid: str) -> Optional[Dict]:
+            resp = await client.get(f"{DT_API_URL}/api/v1/project/{project_uuid}", headers=headers, timeout=30.0)
+            return resp.json() if resp.status_code == 200 else None
+
+        fetched = await asyncio.gather(*(fetch_one(u) for u in page_uuids))
+
+    enriched_projects = [_enrich_project(p) for p in fetched if p]
+    return enriched_projects, total_count
+
+
 async def get_dt_projects(
     dt_token: str,
     page: int = 1,
@@ -131,25 +194,30 @@ async def get_dt_projects(
     """Get projects from DT API with proper authentication and pagination.
 
     Returns the enriched projects for the requested page and the total project
-    count reported by DT via the X-Total-Count header (None if not provided).
+    count (via DT's X-Total-Count header, or the match count for search).
 
-    When `tag` is provided, DT's dedicated per-tag endpoint is used (the project
-    list endpoint cannot filter by tag). DT's per-tag endpoint has no `name`
-    filter, so `search` is ignored while a tag filter is active.
+    Routing by filter:
+      - `tag`    -> DT's per-tag endpoint (the list endpoint can't filter by tag);
+                    `search` is ignored while a tag filter is active.
+      - `search` -> DT's Lucene search endpoint for partial matching (the list
+                    endpoint's `name` filter is exact-match only).
+      - neither  -> the regular project list endpoint.
     """
     headers = build_dt_headers(dt_token)
     if not dt_token:
         logger.warning("No DT token available for authentication")
 
-    params = {"pageNumber": str(page), "pageSize": str(limit)}
-    if excludeInactive is not None:
-        params["excludeInactive"] = excludeInactive
-
     if tag:
+        params = {"pageNumber": str(page), "pageSize": str(limit)}
+        if excludeInactive is not None:
+            params["excludeInactive"] = excludeInactive
         url = f"{DT_API_URL}/api/v1/project/tag/{quote(tag, safe='')}"
+    elif search:
+        return await _search_projects(dt_token, search, page=page, limit=limit)
     else:
-        if search:
-            params["name"] = search
+        params = {"pageNumber": str(page), "pageSize": str(limit)}
+        if excludeInactive is not None:
+            params["excludeInactive"] = excludeInactive
         url = f"{DT_API_URL}/api/v1/project"
 
     async with httpx.AsyncClient() as client:
@@ -163,32 +231,7 @@ async def get_dt_projects(
     total_count_header = response.headers.get("X-Total-Count")
     total_count = int(total_count_header) if total_count_header is not None else None
 
-    # Enrich projects
-    enriched_projects = []
-    for project in projects_data:
-        enriched_project = project.copy()
-        if "active" not in enriched_project:
-            enriched_project["active"] = True
-
-        if "lastBomImport" in enriched_project:
-            last_bom_import = enriched_project["lastBomImport"]
-            if isinstance(last_bom_import, (int, float)):
-                enriched_project["lastActivity"] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
-                enriched_project["lastSbomUpload"] = datetime.fromtimestamp(last_bom_import / 1000).isoformat()
-            else:
-                enriched_project["lastActivity"] = str(last_bom_import)
-                enriched_project["lastSbomUpload"] = str(last_bom_import)
-        elif "created" in enriched_project:
-            created = enriched_project["created"]
-            if isinstance(created, (int, float)):
-                enriched_project["lastActivity"] = datetime.fromtimestamp(created / 1000).isoformat()
-            else:
-                enriched_project["lastActivity"] = str(created)
-        else:
-            enriched_project["lastActivity"] = None
-            enriched_project["lastSbomUpload"] = None
-
-        enriched_projects.append(enriched_project)
+    enriched_projects = [_enrich_project(project) for project in projects_data]
 
     return enriched_projects, total_count
 

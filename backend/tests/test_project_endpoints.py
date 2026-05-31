@@ -42,6 +42,26 @@ class TestGetProjects:
         assert response.status_code == 200
         assert "X-Total-Count" in response.headers
 
+    def test_get_projects_search_uses_lucene(self, client, auth_headers, respx_mock):
+        """A `search` term routes to DT's Lucene endpoint (partial match) and
+        the matched projects are re-fetched to full, enriched objects."""
+        respx_mock.get(url__startswith=f"{DT_API_URL}/api/v1/search/project").mock(
+            return_value=Response(
+                200, json={"results": {"project": [{"name": "argocd", "uuid": "u1", "version": "2.8.0"}]}}
+            )
+        )
+        respx_mock.get(f"{DT_API_URL}/api/v1/project/u1").mock(
+            return_value=Response(
+                200,
+                json={"name": "argocd", "uuid": "u1", "version": "2.8.0", "active": True, "tags": [], "metrics": {}},
+            )
+        )
+        response = client.get("/api/project?search=argo&page=1&limit=20", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.headers.get("X-Total-Count") == "1"
+        data = response.json()
+        assert [p["name"] for p in data] == ["argocd"]
+
     def test_get_projects_tag_filter_uses_tag_endpoint(self, client, auth_headers, respx_mock):
         """A `tag` filter routes to DT's per-tag endpoint and forwards its total."""
         route = respx_mock.get(url__startswith=f"{DT_API_URL}/api/v1/project/tag/").mock(
