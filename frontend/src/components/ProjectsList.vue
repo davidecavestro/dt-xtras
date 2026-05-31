@@ -62,7 +62,7 @@
       </div>
 
       <!-- Projects Grid -->
-      <div v-else class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+      <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-4">
           <ProjectCard
             v-for="project in data"

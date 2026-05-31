@@ -3,12 +3,13 @@ import { test, expect } from '@playwright/test'
 test.describe('Project Bulk Actions', () => {
   test.beforeEach(async ({ page }) => {
     // Mock API responses for projects
-    await page.route('/api/projects*', async (route) => {
+    await page.route('/api/project*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          projects: [
+        // The /api/project endpoint returns a bare array (List[DTProject]);
+        // the store reads response.data directly, not a { projects } wrapper.
+        body: JSON.stringify([
             {
               uuid: 'project-1',
               name: 'Frontend App',
@@ -46,9 +47,7 @@ test.describe('Project Bulk Actions', () => {
                 low: 0
               }
             }
-          ],
-          total: 2
-        })
+        ])
       })
     })
 
@@ -79,7 +78,7 @@ test.describe('Project Bulk Actions', () => {
       })
     })
 
-    await page.goto('/bulk-actions')
+    await page.goto('/project-bulk-actions')
     await page.waitForLoadState('networkidle')
   })
 
@@ -126,12 +125,16 @@ test.describe('Project Bulk Actions', () => {
   })
 
   test('should bulk delete selected projects', async ({ page }) => {
-    // Mock the batch delete endpoint
-    await page.route('/api/projects/batch-delete', async (route) => {
+    // Mock the batch delete endpoint. The store reads response.data.results
+    // ({ success, failed }), so the mock must return that shape.
+    await page.route('/api/project/batch', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ deleted: 1, failed: 0 })
+        body: JSON.stringify({
+          message: 'Deleted 1 of 1 projects',
+          results: { success: ['project-1'], failed: [] }
+        })
       })
     })
 

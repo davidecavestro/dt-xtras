@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-6 sm:px-0">
+  <div class="px-4 sm:px-0">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Vulnerabilities</h2>
@@ -82,7 +82,7 @@
       </div>
 
       <!-- Vulnerabilities Table -->
-      <div v-else class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+      <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div class="px-4 py-5 sm:px-6">
           <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
             Vulnerabilities ({{ pagination.totalItems }} total)

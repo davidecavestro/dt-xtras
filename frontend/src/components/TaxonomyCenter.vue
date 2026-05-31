@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-6 sm:px-0 lg:px-8">
+  <div class="px-4 sm:px-0">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div class="flex justify-between items-center mb-6">
         <div>
@@ -58,7 +58,7 @@
             <div
               :class="[
                 'border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 overflow-hidden',
-                graphExpanded ? 'h-[80vh]' : 'h-[60vh] min-h-[24rem]'
+                graphExpanded ? 'h-[80vh]' : 'h-[60vh] min-h-96'
               ]"
             >
               <div ref="cytoscapeContainer" class="w-full h-full"></div>
@@ -97,7 +97,7 @@
               <div class="flex flex-col gap-2 py-2">
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex items-center space-x-3 flex-1 min-w-0">
-                    <div class="text-gray-400 dark:text-gray-500 flex-shrink-0">
+                    <div class="text-gray-400 dark:text-gray-500 shrink-0">
                       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
                       </svg>
@@ -106,11 +106,11 @@
                       <div class="font-medium text-gray-900 dark:text-white truncate">{{ taxonomy.name }}</div>
                     </div>
                   </div>
-                  <div class="flex items-center gap-3 flex-shrink-0">
+                  <div class="flex items-center gap-3 shrink-0">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
                       {{ taxonomy.id }}
                     </span>
-                    <div class="flex gap-1 p-2 flex-shrink-0">
+                    <div class="flex gap-1 p-2 shrink-0">
                       <button
                         @click="showTaxonomyTags(taxonomy)"
                         class="p-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 inline-flex items-center justify-center transition-colors"

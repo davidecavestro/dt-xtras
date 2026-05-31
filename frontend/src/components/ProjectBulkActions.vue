@@ -1,7 +1,7 @@
 <template>
-  <div class="relative">
+  <div class="relative px-4 sm:px-0">
     <!-- Main Content Area -->
-    <div class="bg-white dark:bg-gray-800 shadow sm:rounded-md mr-20">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mr-20">
       <!-- Header -->
       <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex justify-between items-center">

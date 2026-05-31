@@ -1,7 +1,7 @@
 <template>
-  <div class="px-3 py-4 sm:px-0">
+  <div class="px-4 sm:px-0">
     <!-- Security Dashboard -->
-    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <div class="flex justify-between items-center mb-4 p-4">
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Security Dashboard</h2>
@@ -82,8 +82,8 @@
       />
 
       <!-- Related Projects (2/3) -->
-      <div class="flex-1 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md flex flex-col">
-        <div class="p-4 flex-shrink-0">
+      <div class="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex flex-col">
+        <div class="p-4 shrink-0">
           <!-- Related Projects -->
           <div>
             <div class="flex justify-between items-center mb-4">

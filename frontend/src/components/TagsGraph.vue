@@ -1,14 +1,14 @@
 <template>
-  <div class="p-6 max-w-7xl mx-auto">
+  <div class="px-4 sm:px-0">
     <!-- Header -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
       <div class="flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Tags Graph</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tags Graph</h1>
 
       </div>
 
       <!-- Controls -->
-      <div class="flex items-center space-x-6">
+      <div class="flex items-center space-x-6 mt-4">
         <!-- Hierarchical Mode Toggle -->
         <div class="flex items-center space-x-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Mode:</label>
@@ -138,7 +138,7 @@
                already offset past the sidebar) and hides the side list, rather
                than using a viewport-fixed overlay - that would render behind the
                sidebar (trapped under the content's z-10 stacking context). -->
-          <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3">
+          <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow p-3">
             <!-- Graph controls: zoom in/out, fit to view, expand/collapse -->
             <div class="absolute top-5 right-5 z-10 flex flex-col gap-1">
               <button
@@ -174,7 +174,7 @@
               ref="cytoscapeContainer"
               :class="[
                 'w-full border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 overflow-hidden',
-                graphExpanded ? 'h-[80vh]' : 'h-[60vh] min-h-[24rem]'
+                graphExpanded ? 'h-[80vh]' : 'h-[60vh] min-h-96'
               ]"
             ></div>
           </div>
@@ -183,7 +183,7 @@
 
         <!-- Right: Related Projects Section (hidden while the graph is expanded) -->
         <div v-if="hierarchicalMode && !graphExpanded" class="lg:w-96">
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-1 text-gray-900 dark:text-white">Related Projects</h2>
 
             <!-- Selected Node Info -->

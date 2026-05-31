@@ -1,7 +1,7 @@
 <template>
-  <div class="p-6">
+  <div class="px-4 sm:px-0">
     <!-- Header with controls -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
       <div class="flex justify-between items-center mb-4">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Projects Grid</h1>
 
@@ -34,7 +34,7 @@
     </div>
 
     <!-- Grid Container -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <!-- Debug info -->
       <div class="mb-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
         <p>Projects: {{ projects.length }}</p>
@@ -150,7 +150,7 @@
     </div>
 
     <!-- Bulk Actions -->
-    <div v-if="selectedRows.length > 0" class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+    <div v-if="selectedRows.length > 0" class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
           Selected: {{ selectedRows.length }} projects

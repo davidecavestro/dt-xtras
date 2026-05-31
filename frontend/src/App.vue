@@ -54,7 +54,7 @@
           ]"
           @click="closeSidebarOnMobile"
         >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
           </svg>
           <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Dashboard</span>
@@ -71,27 +71,10 @@
           ]"
           @click="closeSidebarOnMobile"
         >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
           </svg>
           <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Project Center</span>
-        </router-link>
-
-        <router-link
-          to="/project-bulk-actions"
-          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
-          :class="[
-            $route.path === '/project-bulk-actions'
-              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
-            sidebarOpen ? 'px-3' : 'px-2 justify-center'
-          ]"
-          @click="closeSidebarOnMobile"
-        >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
-          </svg>
-          <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Project Bulk Actions</span>
         </router-link>
 
         <router-link
@@ -105,41 +88,24 @@
           ]"
           @click="closeSidebarOnMobile"
         >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
           </svg>
           <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Tag Center</span>
         </router-link>
 
         <router-link
-          to="/tag-bulk-actions"
+          to="/tags-graph"
           class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
           :class="[
-            $route.path === '/tag-bulk-actions'
-              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
-            sidebarOpen ? 'px-3' : 'px-2 justify-center'
-          ]"
-          @click="closeSidebarOnMobile"
-        >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-          </svg>
-          <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Tag Bulk Actions</span>
-        </router-link>
-
-        <router-link
-          to="/dependency-graph"
-          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
-          :class="[
-            $route.path === '/dependency-graph'
+            $route.path === '/tags-graph'
               ? 'bg-gray-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
             sidebarOpen ? 'px-3' : 'px-2 justify-center'
           ]"
           @click="closeSidebarOnMobile"
         >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002 2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2 2z"></path>
           </svg>
           <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Tags Graph</span>
@@ -156,11 +122,46 @@
           ]"
           @click="closeSidebarOnMobile"
         >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7a4 4 0 00-4 4h7M4 6h16"></path>
           </svg>
           <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Taxonomy Center</span>
         </router-link>
+
+        <router-link
+          to="/tag-bulk-actions"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
+          :class="[
+            $route.path === '/tag-bulk-actions'
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
+            sidebarOpen ? 'px-3' : 'px-2 justify-center'
+          ]"
+          @click="closeSidebarOnMobile"
+        >
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+          </svg>
+          <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Tag Bulk Actions</span>
+        </router-link>
+
+        <router-link
+          to="/project-bulk-actions"
+          class="flex items-center text-sm font-medium rounded-md transition-all duration-200 cursor-pointer"
+          :class="[
+            $route.path === '/project-bulk-actions'
+              ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-300 shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md',
+            sidebarOpen ? 'px-3' : 'px-2 justify-center'
+          ]"
+          @click="closeSidebarOnMobile"
+        >
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+          </svg>
+          <span :class="{ 'lg:hidden': !sidebarOpen, 'ml-3': sidebarOpen }">Project Bulk Actions</span>
+        </router-link>
+
       </nav>
 
       <!-- User Section -->
@@ -170,7 +171,7 @@
       ]">
         <div class="flex items-center justify-between">
           <div v-if="isAuthenticated" class="flex items-center space-x-3">
-            <div class="flex-shrink-0">
+            <div class="shrink-0">
               <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                 <span class="text-white text-sm font-medium">
                   {{ currentUser.charAt(0).toUpperCase() }}
