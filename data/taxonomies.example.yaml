@@ -10,21 +10,21 @@ taxonomies:
   color: '#b942f0'
   id: region
   name: Region
-  priority: 1
+  priority: 2
   regex_pattern: ^region:(?<id>\w+)$
   relations: []
 - hierarchical: false
   color: '#42bcf0'
   id: bundle_version
   name: Bundle version
-  priority: 1
+  priority: 3
   regex_pattern: ^(?!(?:brand|region|bundle|cust|env|deploy):)(?<bundle_name>[\w-]+):(?<version>[\d\w\.-]+)$
   relations: []
 - hierarchical: true
   color: '#42f057'
   id: site
   name: Site
-  priority: 1
+  priority: 4
   regex_pattern: ^site:(?<brand>\w+):(?<region>\w+):(?<bundle_version>[\w-]+:[\d\.]+)$
   relations:
   - group: brand

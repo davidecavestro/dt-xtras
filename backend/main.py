@@ -201,6 +201,28 @@ async def create_taxonomy(taxonomy: Taxonomy, permissions: List[str] = Depends(r
     return taxonomy
 
 
+# NOTE: this static route MUST be declared before the dynamic
+# `/api/taxonomies/{taxonomy_id}` PUT below. Starlette matches routes in
+# registration order, so if `{taxonomy_id}` came first it would capture
+# `PUT /api/taxonomies/reorder` (taxonomy_id="reorder") and reject the list body
+# with a 422 - making reorder unreachable.
+@app.put("/api/taxonomies/reorder")
+async def reorder_taxonomies(
+    taxonomy_order: List[TaxonomyPriority] = Body(...),
+    permissions: List[str] = Depends(require_edit_permissions),
+):
+    """Reorder taxonomies based on the provided order"""
+    taxonomies = load_taxonomies()
+    order_map = {item.id: item.priority for item in taxonomy_order}
+
+    for taxonomy in taxonomies:
+        if taxonomy.id in order_map:
+            taxonomy.priority = order_map[taxonomy.id]
+
+    save_taxonomies(taxonomies)
+    return {"message": "Taxonomies reordered successfully"}
+
+
 @app.put("/api/taxonomies/{taxonomy_id}", response_model=Taxonomy)
 async def update_taxonomy(
     taxonomy_id: str,
@@ -225,23 +247,6 @@ async def delete_taxonomy(taxonomy_id: str, permissions: List[str] = Depends(req
     taxonomies.pop(index)
     save_taxonomies(taxonomies)
     return {"message": "Taxonomy deleted successfully"}
-
-
-@app.put("/api/taxonomies/reorder")
-async def reorder_taxonomies(
-    taxonomy_order: List[TaxonomyPriority] = Body(...),
-    permissions: List[str] = Depends(require_edit_permissions),
-):
-    """Reorder taxonomies based on the provided order"""
-    taxonomies = load_taxonomies()
-    order_map = {item.id: item.priority for item in taxonomy_order}
-
-    for taxonomy in taxonomies:
-        if taxonomy.id in order_map:
-            taxonomy.priority = order_map[taxonomy.id]
-
-    save_taxonomies(taxonomies)
-    return {"message": "Taxonomies reordered successfully"}
 
 
 # Project endpoints

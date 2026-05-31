@@ -772,15 +772,10 @@ export default {
       if (node.type === 'taxonomy' && node.taxonomy) {
         return taxonomies.value.find(t => t.id === node.taxonomy)
       }
-      // Try to find taxonomy sorted by priority by matching regex pattern
-      // Use node.name (tree nodes) or node.id (Cytoscape graph nodes) for matching
+      // Resolve by node name, honouring priority (shared store resolver).
+      // Use node.name (tree nodes) or node.id (Cytoscape graph nodes) for matching.
       const nodeName = node.name || node.id || ''
-      return taxonomies.value
-        .filter(t => {
-          const regex = createJsRegExp(t.regex_pattern)
-          return regex && nodeName.match(regex)
-        })
-        .sort((a, b) => a.priority - b.priority)[0]
+      return getTaxonomyForTag(nodeName)
     }
 
     // Helper function to get taxonomy name for nodes
@@ -922,16 +917,12 @@ export default {
     };
 
     // Tag styling functions
-    const { getTaxonomyBadgeStyle, getTaxonomyByName } = taxonomyStore;
+    const { getTaxonomyBadgeStyle, getTaxonomyByName, getTaxonomyForTag } = taxonomyStore;
 
     const getTagStyle = (tag) => {
       let hasTaxonomy = tag.taxonomy
       if (!hasTaxonomy) {
-        hasTaxonomy = taxonomies.value.find(taxonomy => {
-          if (!taxonomy.regex_pattern) return false
-          const regex = createJsRegExp(taxonomy.regex_pattern)
-          return regex ? regex.test(tag.name) : false
-        })
+        hasTaxonomy = getTaxonomyForTag(tag.name)
       }
       if (hasTaxonomy) {
         tag._taxonomy = hasTaxonomy
@@ -945,11 +936,7 @@ export default {
     const getTagDynamicStyle = (tag) => {
       let hasTaxonomy = tag.taxonomy
       if (!hasTaxonomy) {
-        hasTaxonomy = taxonomies.value.find(taxonomy => {
-          if (!taxonomy.regex_pattern) return false
-          const regex = createJsRegExp(taxonomy.regex_pattern)
-          return regex ? regex.test(tag.name) : false
-        })
+        hasTaxonomy = getTaxonomyForTag(tag.name)
       }
       if (hasTaxonomy) {
         return getTaxonomyBadgeStyle(hasTaxonomy)
