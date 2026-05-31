@@ -125,9 +125,33 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      const response = await axios.get('/api/project')
-      logger.debug('Projects API response:', response.data)
-      projects.value = response.data.data || response.data || []
+      // Fetch ALL projects across pages. The list/deck views filter and
+      // paginate client-side, so they need the complete portfolio - otherwise
+      // the UI only ever shows the backend's default page (50) even when DT has
+      // more. The backend honours `limit`/`page` and reports the real total via
+      // the X-Total-Count header, which we follow until everything is fetched.
+      const FETCH_PAGE_SIZE = 100
+      const all = []
+      let pageNumber = 1
+      let totalCount = null
+
+      while (true) {
+        const response = await axios.get('/api/project', {
+          params: { page: pageNumber, limit: FETCH_PAGE_SIZE }
+        })
+        const batch = response.data?.data || response.data || []
+        all.push(...batch)
+
+        const header = response.headers?.['x-total-count']
+        if (header != null) totalCount = parseInt(header, 10)
+
+        const reachedTotal = totalCount != null && all.length >= totalCount
+        if (batch.length === 0 || batch.length < FETCH_PAGE_SIZE || reachedTotal) break
+        pageNumber += 1
+      }
+
+      logger.debug(`Loaded ${all.length} projects (total reported: ${totalCount})`)
+      projects.value = all
 
       // Update pagination info
       updatePaginationInfo()
@@ -135,7 +159,7 @@ export const useProjectStore = defineStore('projects', () => {
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()
 
-      return response.data
+      return all
     } catch (err) {
       error.value = err.response?.data?.detail || err.message || 'Failed to load projects'
       projects.value = []

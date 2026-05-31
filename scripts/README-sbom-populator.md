@@ -47,11 +47,12 @@ The catalog includes 60+ popular OSS projects across categories:
 
 ## How It Works
 
-1. **Generates SBOMs**: Creates CycloneDX SBOMs with realistic component structures using known vulnerable versions
-2. **Injects Vulnerabilities**: Adds fake CVEs to components (70% chance by default) for testing purposes
-3. **Real Vulnerabilities**: Uses actual vulnerable component versions that DT can detect in its vulnerability database
-4. **Uploads to DT**: Creates projects in DT and uploads the SBOMs
-5. **DT Analysis**: DT will analyze the SBOMs and find both real and injected vulnerabilities
+1. **Generates SBOMs**: Creates CycloneDX SBOMs whose components use **intentionally outdated, vulnerable versions** (catalogued in `VULNERABLE_COMPONENTS`), with valid ecosystem PURLs (maven/npm/pypi/golang/gem/composer).
+2. **Guarantees findings**: Projects with no language/framework tag (e.g. infrastructure tools) are seeded with a default vulnerable set, so every uploaded SBOM produces CVEs — not just the ones tagged with a language.
+3. **Uploads to DT**: Creates projects in DT and uploads the SBOMs, then triggers analysis.
+4. **DT Analysis**: DT's own analyzers find the CVEs by matching each component's **PURL against OSS Index** (enabled by default, no NVD mirror required) and its **CPE against the NVD mirror** (for the native libraries).
+
+> Dependency-Track derives findings from its analyzers, **not** from a `vulnerabilities` section declared in the uploaded BOM. Earlier versions of this script used already-patched versions (so DT found nothing) and relied on synthetic injected CVEs (which DT ignores). Synthetic injection is now **off by default** — pass `--inject-fake-vulns` to include it for BOM-content testing.
 
 ## Re-running
 
@@ -64,8 +65,8 @@ You can run this script multiple times:
 
 Edit `populate_dt_with_sboms.py` to:
 - Add more projects to `OSS_PROJECTS` list
-- Adjust vulnerability injection probability (default: 70%)
-- Enable/disable vulnerability injection (`INJECT_VULNERABILITIES = True/False`)
+- Add/adjust vulnerable component versions in `VULNERABLE_COMPONENTS`
+- Toggle synthetic injection (`--inject-fake-vulns`, or `INJECT_VULNERABILITIES`); note DT does not surface BOM-declared vulnerabilities as findings
 - Add more component types per language/framework
 - Change DT endpoint/credentials (default: localhost:8080, admin/password)
 

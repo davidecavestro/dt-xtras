@@ -33,9 +33,15 @@ DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
 DT_USERNAME = "admin"
 DT_PASSWORD = "password"
 
-# Vulnerability injection for testing
-VULN_PROBABILITY = 0.7  # 70% chance of adding a vulnerability to a component
-INJECT_VULNERABILITIES = True  # Set to False to disable vulnerability injection
+# Synthetic vulnerability injection (writes a CycloneDX `vulnerabilities` section).
+# NOTE: Dependency-Track derives findings from its OWN analyzers - it matches each
+# component's PURL against OSS Index (on by default, no mirror needed) and its CPE
+# against the NVD mirror. It does NOT turn a BOM-declared `vulnerabilities` section
+# into findings, so these synthetic CVEs never show up in DT. Real findings come
+# from the intentionally-outdated versions in VULNERABLE_COMPONENTS below, so
+# injection is OFF by default; pass --inject-fake-vulns to include them anyway.
+VULN_PROBABILITY = 0.7  # 70% chance of adding a synthetic vuln to a component
+INJECT_VULNERABILITIES = False
 
 # Sample projects with their SBOM sources
 # Format: (name, version, sbom_url_or_source, tags)
@@ -141,114 +147,121 @@ async def login_to_dt() -> str:
         return None
 
 
+# --- Known-vulnerable component catalog --------------------------------------
+# Every version below has at least one PUBLISHED CVE that Dependency-Track can
+# detect out of the box via the OSS Index analyzer (PURL-based, no NVD mirror
+# required). Earlier revisions of this script used already-patched versions
+# (e.g. gin@1.9.1, jackson-databind@2.12.7, lodash@4.17.20), which is why DT
+# reported no findings. Keep these intentionally outdated. CVE refs are
+# illustrative, not exhaustive.
+VULNERABLE_COMPONENTS = {
+    "java": [
+        ("log4j-core", "2.14.1", "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"),               # CVE-2021-44228 (Log4Shell)
+        ("jackson-databind", "2.9.10", "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9.10"), # multiple deserialization CVEs
+        ("commons-collections", "3.2.1", "pkg:maven/commons-collections/commons-collections@3.2.1"),    # CVE-2015-7501 (RCE)
+        ("guava", "30.1-jre", "pkg:maven/com.google.guava/guava@30.1-jre"),                             # CVE-2023-2976
+        ("struts2-core", "2.5.22", "pkg:maven/org.apache.struts/struts2-core@2.5.22"),                  # CVE-2020-17530, CVE-2021-31805
+    ],
+    "nodejs": [
+        ("lodash", "4.17.15", "pkg:npm/lodash@4.17.15"),      # CVE-2020-8203, CVE-2021-23337
+        ("minimist", "1.2.5", "pkg:npm/minimist@1.2.5"),      # CVE-2021-44906
+        ("axios", "0.21.1", "pkg:npm/axios@0.21.1"),          # CVE-2021-3749
+        ("ejs", "3.1.6", "pkg:npm/ejs@3.1.6"),                # CVE-2022-29078 (RCE)
+        ("node-fetch", "2.6.6", "pkg:npm/node-fetch@2.6.6"),  # CVE-2022-0235
+    ],
+    "python": [
+        ("urllib3", "1.26.4", "pkg:pypi/urllib3@1.26.4"),  # CVE-2021-33503
+        ("PyYAML", "5.3.1", "pkg:pypi/pyyaml@5.3.1"),      # CVE-2020-14343
+        ("Pillow", "9.0.0", "pkg:pypi/pillow@9.0.0"),      # CVE-2022-22817 et al.
+        ("requests", "2.25.0", "pkg:pypi/requests@2.25.0"),# CVE-2023-32681
+        ("Django", "3.2.0", "pkg:pypi/django@3.2.0"),      # multiple CVEs
+    ],
+    "go": [
+        ("gin", "1.6.0", "pkg:golang/github.com/gin-gonic/gin@1.6.0"),       # CVE-2020-28483
+        ("jwt-go", "3.2.0", "pkg:golang/github.com/dgrijalva/jwt-go@3.2.0"), # CVE-2020-26160
+        ("yaml.v2", "2.2.2", "pkg:golang/gopkg.in/yaml.v2@2.2.2"),           # CVE-2019-11254
+    ],
+    "ruby": [
+        ("rack", "2.2.3", "pkg:gem/rack@2.2.3"),           # CVE-2022-44570/44571/44572
+        ("nokogiri", "1.13.0", "pkg:gem/nokogiri@1.13.0"), # CVE-2022-23437 et al.
+        ("rails", "6.1.0", "pkg:gem/rails@6.1.0"),         # CVE-2021-22880 et al.
+    ],
+    "php": [
+        ("guzzlehttp/guzzle", "6.5.5", "pkg:composer/guzzlehttp/guzzle@6.5.5"),     # CVE-2022-31090/31091
+        ("laravel/framework", "8.4.0", "pkg:composer/laravel/framework@8.4.0"),     # CVE-2021-21263 et al.
+        ("symfony/http-kernel", "5.3.0", "pkg:composer/symfony/http-kernel@5.3.0"), # multiple CVEs
+    ],
+}
+
+# Native libraries identified by CPE so DT's internal/NVD analyzer can match them
+# (when the NVD mirror is enabled). Used for "infrastructure" projects, which are
+# typically C/native and have no ecosystem PURL.
+VULNERABLE_NATIVE_COMPONENTS = [
+    {"type": "library", "name": "openssl", "version": "1.0.1f",
+     "purl": "pkg:generic/openssl@1.0.1f",
+     "cpe": "cpe:2.3:a:openssl:openssl:1.0.1f:*:*:*:*:*:*:*"},  # CVE-2014-0160 (Heartbleed)
+    {"type": "library", "name": "zlib", "version": "1.2.11",
+     "purl": "pkg:generic/zlib@1.2.11",
+     "cpe": "cpe:2.3:a:zlib:zlib:1.2.11:*:*:*:*:*:*:*"},        # CVE-2018-25032
+]
+
+# Project tags that map to an ecosystem bucket above.
+TAG_ECOSYSTEMS = {
+    "java": "java", "spring": "java",
+    "nodejs": "nodejs", "javascript": "nodejs",
+    "python": "python", "flask": "python", "django": "python", "fastapi": "python",
+    "go": "go",
+    "ruby": "ruby", "rails": "ruby",
+    "php": "php", "laravel": "php",
+}
+
+# Buckets used to seed CVEs for projects with no recognised ecosystem tag (e.g.
+# many infrastructure tools), so every uploaded SBOM still produces findings.
+DEFAULT_VULNERABLE_BUCKETS = ["java", "nodejs", "python"]
+
+
+def component_from_entry(entry: tuple) -> dict:
+    """Turn a (name, version, purl) catalog entry into a CycloneDX component."""
+    name, version, purl = entry
+    return {"type": "library", "name": name, "version": version, "purl": purl}
+
+
 def generate_cyclonedx_sbom(project_name: str, version: str, tags: List[str]) -> dict:
     """Generate a CycloneDX SBOM for a project."""
     bom_ref = f"{project_name}-{version}"
 
-    # Create components based on tags (simulated)
+    # Build the component list from the project's tags, drawing versions from
+    # VULNERABLE_COMPONENTS so DT's analyzers (OSS Index by default) actually
+    # report CVEs.
     components = []
     vulnerabilities: list[dict] = []
-    if "java" in tags:
-        components.extend(
-            [
-                {
-                    "type": "library",
-                    "name": "spring-core",
-                    "version": "5.3.23",  # Known vulnerable version
-                    "purl": "pkg:maven/org.springframework/spring-core@5.3.23",
-                },
-                {
-                    "type": "library",
-                    "name": "spring-boot",
-                    "version": "2.7.14",  # Known vulnerable version
-                    "purl": "pkg:maven/org.springframework.boot/spring-boot@2.7.14",
-                },
-                {
-                    "type": "library",
-                    "name": "log4j-core",
-                    "version": "2.14.1",  # Log4Shell vulnerable version
-                    "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
-                },
-                {
-                    "type": "library",
-                    "name": "jackson-databind",
-                    "version": "2.12.7",  # Known vulnerable version
-                    "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.12.7",
-                },
-            ]
-        )
-    if "nodejs" in tags or "javascript" in tags:
-        components.extend(
-            [
-                {"type": "library", "name": "express", "version": "4.17.1", "purl": "pkg:npm/express@4.17.1"},  # Known vulnerable version
-                {"type": "library", "name": "lodash", "version": "4.17.20", "purl": "pkg:npm/lodash@4.17.20"},  # Prototype pollution vuln
-                {"type": "library", "name": "axios", "version": "0.21.1", "purl": "pkg:npm/axios@0.21.1"},  # Known vulnerable version
-            ]
-        )
-    if "python" in tags:
-        components.extend(
-            [
-                {"type": "library", "name": "flask", "version": "2.0.1", "purl": "pkg:pypi/flask@2.0.1"},  # Known vulnerable version
-                {"type": "library", "name": "requests", "version": "2.25.0", "purl": "pkg:pypi/requests@2.25.0"},  # Known vulnerable version
-                {"type": "library", "name": "urllib3", "version": "1.26.4", "purl": "pkg:pypi/urllib3@1.26.4"},  # Known vulnerable version
-            ]
-        )
-    if "go" in tags:
-        components.extend(
-            [
-                {
-                    "type": "library",
-                    "name": "gin",
-                    "version": "1.9.1",
-                    "purl": "pkg:golang/github.com/gin-gonic/gin@1.9.1",
-                },
-                {
-                    "type": "library",
-                    "name": "cobra",
-                    "version": "1.7.0",
-                    "purl": "pkg:golang/github.com/spf13/cobra@1.7.0",
-                },
-                {
-                    "type": "library",
-                    "name": "viper",
-                    "version": "1.16.0",
-                    "purl": "pkg:golang/github.com/spf13/viper@1.16.0",
-                },
-            ]
-        )
-    if "ruby" in tags:
-        components.extend(
-            [
-                {"type": "library", "name": "rails", "version": "7.0.7", "purl": "pkg:gem/rails@7.0.7"},
-                {"type": "library", "name": "activerecord", "version": "7.0.7", "purl": "pkg:gem/activerecord@7.0.7"},
-            ]
-        )
-    if "php" in tags:
-        components.extend(
-            [
-                {
-                    "type": "library",
-                    "name": "laravel/framework",
-                    "version": "10.20.0",
-                    "purl": "pkg:composer/laravel/framework@10.20.0",
-                },
-                {
-                    "type": "library",
-                    "name": "symfony/http-kernel",
-                    "version": "6.3.0",
-                    "purl": "pkg:composer/symfony/http-kernel@6.3.0",
-                },
-            ]
-        )
+    seen_purls = set()
 
-    # Add some common infrastructure components
+    def add_component(comp: dict) -> None:
+        if comp["purl"] not in seen_purls:
+            seen_purls.add(comp["purl"])
+            components.append(dict(comp))
+
+    # Ecosystem components implied by the project's language/framework tags.
+    ecosystems = {TAG_ECOSYSTEMS[t] for t in tags if t in TAG_ECOSYSTEMS}
+    for eco in sorted(ecosystems):
+        for entry in VULNERABLE_COMPONENTS[eco]:
+            add_component(component_from_entry(entry))
+
+    # Native libraries (matched by CPE via the internal/NVD analyzer) for
+    # infrastructure-style projects.
     if "infrastructure" in tags:
-        components.extend(
-            [
-                {"type": "library", "name": "openssl", "version": "3.1.2", "purl": "pkg:generic/openssl@3.1.2"},
-                {"type": "library", "name": "zlib", "version": "1.3", "purl": "pkg:generic/zlib@1.3"},
-            ]
-        )
+        for comp in VULNERABLE_NATIVE_COMPONENTS:
+            add_component(comp)
+
+    # Guarantee findings: a project with no recognised ecosystem tag (e.g. many
+    # infrastructure tools) would otherwise carry only generic-PURL or no
+    # PURL-matchable components and produce zero CVEs. Seed it with a default
+    # vulnerable set so every uploaded SBOM yields findings in DT.
+    if not ecosystems:
+        for eco in DEFAULT_VULNERABLE_BUCKETS:
+            for entry in VULNERABLE_COMPONENTS[eco]:
+                add_component(component_from_entry(entry))
 
     # Inject vulnerabilities for testing if enabled
     if INJECT_VULNERABILITIES:
@@ -465,7 +478,17 @@ async def main_async():
     parser.add_argument("--count", type=int, default=20, help="Number of projects to add (default: 20)")
     parser.add_argument("--projects", type=str, help="Comma-separated list of specific project names to add")
     parser.add_argument("--delay", type=float, default=0.5, help="Delay between uploads in seconds (default: 0.5)")
+    parser.add_argument(
+        "--inject-fake-vulns",
+        action="store_true",
+        help="Also embed synthetic CVEs in the BOM's vulnerabilities section "
+        "(DT does not use these for findings; off by default)",
+    )
     args = parser.parse_args()
+
+    if args.inject_fake_vulns:
+        global INJECT_VULNERABILITIES
+        INJECT_VULNERABILITIES = True
 
     # Test connection to DT
     try:
