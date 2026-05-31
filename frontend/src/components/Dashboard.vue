@@ -291,7 +291,6 @@ import { useTagStore } from '../stores/tags'
 import { useGraphStore } from '../stores/graph'
 import { useTaxonomyStore } from '../stores/taxonomies'
 import TreeNode from './TreeNode.vue'
-import { createJsRegExp } from '../utils/taxonomyParser'
 import TagsCell from './grid-cells/TagsCell.vue'
 import DateCell from './grid-cells/DateCell.vue'
 import StatusCell from './grid-cells/StatusCell.vue'
@@ -349,7 +348,7 @@ export default {
     const { isLoading: projectLoading, error, projects } = storeToRefs(projectStore)
     const { tags, isLoading: tagLoading } = storeToRefs(tagStore)
     const { taxonomies, loading: taxonomiesLoading } = storeToRefs(taxonomyStore)
-    const { getTaxonomyBadgeStyle, getTaxonomyByName } = taxonomyStore
+    const { getTaxonomyBadgeStyle, getTaxonomyByName, getTaxonomyForTag } = taxonomyStore
 
     // Coordinated loading state - wait for all stores to be ready
     const isDataReady = computed(() => {
@@ -396,13 +395,8 @@ export default {
       if (node.type=='taxonomy' && node.taxonomy) {
         return taxonomies.value.find(t => t.id === node.taxonomy)
       }
-      // Try to find taxonomy sorted by priority by matching regex pattern
-      return taxonomies.value
-        .filter(t => {
-          const regex = createJsRegExp(t.regex_pattern)
-          return regex && node.name.match(regex)
-        })
-        .sort((a, b) => a.priority - b.priority)[0]
+      // Resolve by tag name, honouring priority (shared store resolver).
+      return getTaxonomyForTag(node.name)
     }
 
     // Helper function to get taxonomy badge style for tree nodes
@@ -411,13 +405,9 @@ export default {
       // Try to get taxonomy from tag object first
       let hasTaxonomy = tag.taxonomy
 
-      // If tag doesn't have taxonomy info, try to find it by matching tag name with taxonomies
+      // If tag doesn't have taxonomy info, resolve by name (priority-aware).
       if (!hasTaxonomy) {
-        hasTaxonomy = taxonomies.value.find(taxonomy => {
-          if (!taxonomy.regex_pattern) return false
-          const regex = createJsRegExp(taxonomy.regex_pattern)
-          return regex ? regex.test(tag.name) : false
-        })
+        hasTaxonomy = getTaxonomyForTag(tag.name)
       }
 
       // Store taxonomy reference for style application
@@ -438,11 +428,7 @@ export default {
       // Get taxonomy using same logic as getTagStyle
       let hasTaxonomy = tag.taxonomy
       if (!hasTaxonomy) {
-        hasTaxonomy = taxonomies.value.find(taxonomy => {
-          if (!taxonomy.regex_pattern) return false
-          const regex = createJsRegExp(taxonomy.regex_pattern)
-          return regex ? regex.test(tag.name) : false
-        })
+        hasTaxonomy = getTaxonomyForTag(tag.name)
       }
 
       // Return taxonomy style if it's a taxonomy tag

@@ -109,7 +109,12 @@ class TestTaxonomyCRUD:
         assert response.status_code == 404
 
     def test_reorder_taxonomies(self, client, auth_headers):
-        """Test reordering taxonomies - may fail due to test environment filesystem issues."""
+        """Reorder must succeed: the route is static and the test uses a writable temp file.
+
+        This used to return 422 because /api/taxonomies/reorder was shadowed by the
+        dynamic /api/taxonomies/{taxonomy_id} route - keep this strict so that
+        regression is caught.
+        """
         order_data = [
             {"id": "brand", "priority": 1},
             {"id": "region", "priority": 2},
@@ -117,11 +122,9 @@ class TestTaxonomyCRUD:
         ]
         response = client.put("/api/taxonomies/reorder", json=order_data, headers=auth_headers)
 
-        # May succeed (200), fail validation (422), or fail filesystem (400)
-        assert response.status_code in [200, 400, 422]
-        if response.status_code == 200:
-            data = response.json()
-            assert "message" in data
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
 
     def test_reorder_taxonomies_unauthorized(self, client):
         """Test that reordering without auth fails."""

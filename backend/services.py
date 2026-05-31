@@ -94,6 +94,12 @@ def load_taxonomies() -> List[Taxonomy]:
                     )
 
                 taxonomies.append(Taxonomy(**item_data))
+            # Sort by priority (lower number wins) so every consumer resolves
+            # tag->taxonomy conflicts the same way. `id` is the stable tie-breaker
+            # when two taxonomies share a priority. This is the single place
+            # ordering is applied; downstream matching relies on first-match-wins
+            # over this order, so it MUST stay sorted here.
+            taxonomies.sort(key=lambda t: (t.priority, t.id))
             return taxonomies
         else:
             logger.info(f"Unknown taxonomy format in file: {type(data)}")

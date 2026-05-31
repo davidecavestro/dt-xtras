@@ -521,11 +521,16 @@ const graphGroup = ref(null)
     })
 
     const addTaxonomy = () => {
+      // Default to the next free priority so new taxonomies don't all collide at
+      // 1 (priority is the conflict-resolution order - lower number wins).
+      const nextPriority = taxonomies.value.length
+        ? Math.max(...taxonomies.value.map(t => t.priority || 0)) + 1
+        : 1
       editingTaxonomy.value = {
         id: '',
         name: '',
         regex_pattern: '^.*$', // Default regex_pattern - matches anything
-        priority: 1,
+        priority: nextPriority,
         color: '#ef4444',
         relations: []
       }

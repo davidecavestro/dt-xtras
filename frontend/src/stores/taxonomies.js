@@ -30,6 +30,16 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     return taxonomyMap
   })
 
+  // Taxonomies in conflict-resolution order (lowest priority number first).
+  // The backend already returns them sorted, but we re-sort defensively so the
+  // frontend resolves tag->taxonomy the same way no matter the payload order.
+  // `id` is the stable tie-breaker, matching the backend's load_taxonomies().
+  const sortedTaxonomies = computed(() =>
+    [...taxonomies.value].sort(
+      (a, b) => (a.priority - b.priority) || String(a.id).localeCompare(String(b.id))
+    )
+  )
+
   // Methods
   const loadTaxonomies = async () => {
     if (loading.value) return
@@ -138,6 +148,21 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     // Tags use taxonomy IDs, so match by ID
     const taxonomyId = tag.taxonomy
     return getTaxonomyById(taxonomyId)
+  }
+
+  // Single source of truth for resolving which taxonomy owns a tag, by name.
+  // When a tag name matches several taxonomy patterns, the lower priority number
+  // wins (mirrors the backend's first-match-over-sorted-list conflict resolution).
+  // Use this instead of ad-hoc `taxonomies.find(...)` so every view agrees.
+  const getTaxonomyForTag = (tagName) => {
+    if (!tagName) return null
+    return (
+      sortedTaxonomies.value.find(t => {
+        if (!t.regex_pattern) return false
+        const regex = createJsRegExp(t.regex_pattern)
+        return regex ? regex.test(tagName) : false
+      }) || null
+    )
   }
 
   const refreshTaxonomies = async () => {
@@ -441,6 +466,7 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     // Computed
     taxonomyById,
     taxonomyByName,
+    sortedTaxonomies,
 
     // Methods
     loadTaxonomies,
@@ -448,6 +474,7 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
     getTaxonomyByName,
     getTaxonomyBadgeStyle,
     getTagTaxonomy,
+    getTaxonomyForTag,
     refreshTaxonomies,
     parseTaxonomyPattern,
     loadDropdownValues,
