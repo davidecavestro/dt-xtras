@@ -18,3 +18,4 @@ backend/tests/__pycache__/
 backend/.coverage
 backend/coverage.xml
 backend/coverage.json
+scripts/__pycache__/
