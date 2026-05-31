@@ -8,10 +8,10 @@ import yaml
 import regex
 import httpx
 from datetime import datetime
-from typing import Dict, Optional, List, Any, Tuple
+from typing import Dict, Optional, List, Tuple
 from urllib.parse import quote
 from logger_config import logger
-from models import Taxonomy, TaxonomyRelation
+from models import Taxonomy
 
 
 # Configuration

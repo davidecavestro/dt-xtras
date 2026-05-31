@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Tailwind v4's preflight no longer sets a pointer cursor on buttons, so every
+   interactive control would otherwise show the default arrow. Apply it globally
+   (enabled controls only) instead of sprinkling `cursor-pointer` on each button.
+   Disabled controls keep their not-allowed/default cursor. */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+label[for],
+summary {
+  cursor: pointer;
+}
+
 /* Global font size increases for better readability */
 html {
   font-size: 16px !important;

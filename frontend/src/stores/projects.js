@@ -351,7 +351,11 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
 
     try {
-      await axios.put(`/api/project/${projectUuid}/refresh`)
+      // There is no single-project refresh route; reuse the batch endpoint with
+      // a one-element list (it triggers DT's /analysis per project).
+      await axios.put('/api/project/batch/refresh', {
+        projectUuids: [projectUuid]
+      })
 
       // Update timestamp to trigger watchers
       lastUpdate.value = Date.now()

@@ -143,28 +143,28 @@
             <div class="absolute top-5 right-5 z-10 flex flex-col gap-1">
               <button
                 @click="zoomIn"
-                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm cursor-pointer"
                 title="Zoom in"
               >
                 <ZoomIn class="w-4 h-4" />
               </button>
               <button
                 @click="zoomOut"
-                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm cursor-pointer"
                 title="Zoom out"
               >
                 <ZoomOut class="w-4 h-4" />
               </button>
               <button
                 @click="resetZoom"
-                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm cursor-pointer"
                 title="Fit to view"
               >
                 <Scan class="w-4 h-4" />
               </button>
               <button
                 @click="toggleGraphExpand"
-                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+                class="p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 shadow-sm cursor-pointer"
                 :title="graphExpanded ? 'Collapse graph' : 'Expand graph'"
               >
                 <component :is="graphExpanded ? Minimize2 : Maximize2" class="w-4 h-4" />
