@@ -10,6 +10,17 @@
         </div>
       </div>
 
+      <!-- Add Taxonomy Button (positioned like "Create Tag" in Tag Center) -->
+      <div class="mb-6">
+        <button
+          @click="addTaxonomy"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all cursor-pointer hover:shadow-md flex items-center"
+        >
+          <Plus class="inline w-4 h-4 mr-2" />
+          Add Taxonomy
+        </button>
+      </div>
+
       <!-- Main Content - Always Visible -->
       <div class="flex flex-col lg:flex-row gap-6">
           <!-- Taxonomy Graph Visualization -->
@@ -67,20 +78,13 @@
 
           <!-- Taxonomies List (hidden while the graph is expanded) -->
           <div v-show="!graphExpanded" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex-1 lg:basis-1/3 min-w-0">
-          <div class="px-1 py-5 sm:px-1 flex justify-between items-start">
+          <div class="px-1 py-5 sm:px-1">
             <div>
               <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Existing Taxonomies</h3>
               <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
                 Taxonomies are processed in priority order (lower numbers first)
               </p>
             </div>
-            <button
-              @click="addTaxonomy"
-              class="px-1 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
-            >
-              <Plus class="inline w-4 h-4 mr-2" />
-              Add Taxonomy
-            </button>
           </div>
 
           <ul class="divide-y divide-gray-200 dark:border-gray-700">

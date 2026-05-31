@@ -1,7 +1,7 @@
 # Build stage
-FROM python:3.14-alpine3.23 as base
+FROM python:3.14-alpine3.23 AS base
 
-FROM base as builder
+FROM base AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
