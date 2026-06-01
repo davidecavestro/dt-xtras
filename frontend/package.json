@@ -7,23 +7,19 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-
     "test": "vitest",
     "test:run": "vitest run",
     "test:ci": "vitest run --coverage",
-
     "test:e2e": "npx playwright install && playwright test",
     "test:e2e:headed": "npx playwright install && playwright test --headed",
     "test:e2e:ui": "npx playwright install && playwright test --ui",
     "test:e2e:debug": "npx playwright install && playwright test --debug",
     "test:e2e:ci": "npm run build && npm run preview -- --port 4173 --host & sleep 3&& npx playwright install && npx playwright test; kill %1",
-
     "test:all": "npm run test:run && npm run test:e2e:ci",
     "test:all:local": "npm run test:run && npm run test:e2e"
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
-    "@revolist/vue3-datagrid": "^4.21.4",
     "@tailwindcss/postcss": "^4.2.2",
     "axios": "^1.15.0",
     "cytoscape": "^3.33.2",

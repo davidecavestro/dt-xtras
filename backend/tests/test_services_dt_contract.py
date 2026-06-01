@@ -28,7 +28,7 @@ async def test_get_dt_projects_sends_filters_and_enriches_timestamps(respx_mock)
     )
 
     projects, total_count = await services.get_dt_projects(
-        "dt-token", page=3, limit=25, excludeInactive="true"
+        "dt-token", page=3, limit=25, excludeInactive="true", sortName="name", sortOrder="desc"
     )
 
     request = route.calls.last.request
@@ -36,6 +36,8 @@ async def test_get_dt_projects_sends_filters_and_enriches_timestamps(respx_mock)
     assert request.url.params["pageNumber"] == "3"
     assert request.url.params["pageSize"] == "25"
     assert request.url.params["excludeInactive"] == "true"
+    assert request.url.params["sortName"] == "name"
+    assert request.url.params["sortOrder"] == "desc"
     assert projects[0]["active"] is True
     assert projects[0]["lastActivity"] == "2023-11-14T22:13:20"
     assert projects[0]["lastSbomUpload"] == "2023-11-14T22:13:20"
