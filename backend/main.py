@@ -260,17 +260,26 @@ async def get_projects(
     search: Optional[str] = None,
     excludeInactive: Optional[str] = "false",
     tag: Optional[str] = None,
+    sortName: Optional[str] = None,
+    sortOrder: Optional[str] = None,
     dt_token: str = Depends(get_dt_token_from_request),
 ):
     """Get projects from DT API with optional filtering.
 
     Supports server-side pagination (page/limit), name search, active filtering
-    (excludeInactive) and a single-tag filter. The total project count reported
-    by DT is surfaced via the X-Total-Count response header so the frontend can
-    paginate against the real total.
+    (excludeInactive), a single-tag filter and sorting (sortName/sortOrder). The
+    total project count reported by DT is surfaced via the X-Total-Count response
+    header so the frontend can paginate against the real total.
     """
     projects, total_count = await get_dt_projects(
-        dt_token, page=page, limit=limit, search=search, excludeInactive=excludeInactive, tag=tag
+        dt_token,
+        page=page,
+        limit=limit,
+        search=search,
+        excludeInactive=excludeInactive,
+        tag=tag,
+        sortName=sortName,
+        sortOrder=sortOrder,
     )
     if total_count is not None:
         response.headers["X-Total-Count"] = str(total_count)

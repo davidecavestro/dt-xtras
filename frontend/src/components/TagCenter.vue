@@ -61,17 +61,6 @@
             >
               <Square class="w-4 h-4" />
             </button>
-            <!-- <button
-              @click="tagsViewMode = 'grid'"
-              :class="[
-                'px-3 py-1 text-sm rounded-md',
-                tagsViewMode === 'grid'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              ]"
-            >
-              <GridIcon class="w-4 h-4" />
-            </button> -->
           </div>
         </div>
       </div>
@@ -215,24 +204,6 @@
           @save-edit="saveEditTag"
           @cancel-edit="cancelEditTag"
         />
-      </div>
-
-      <!-- Grid View -->
-      <div v-else-if="tagsViewMode === 'grid'" class="overflow-y-auto">
-        <vue3-datagrid
-          :columns="gridColumns"
-          :source="paginatedTags"
-          :row-height="60"
-          :virtual="false"
-          :theme="isDarkMode ? 'darkCompact' : 'compact'"
-          :filter="false"
-          :resize="true"
-          :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
-          :stretch="true"
-          :readonly="true"
-          :pagination="false"
-        />
-
       </div>
 
       <!-- Deck View (Current Default) -->
@@ -571,12 +542,11 @@ import useToast from '../composables/useToast'
 import { createLogger } from '../utils/logger'
 import { useConfirmDialog } from '../composables/useConfirmDialog'
 import { createJsRegExp } from '../utils/taxonomyParser'
-import { RefreshCw, Edit2, Copy, Tag, Grid3X3, List, Square, Folder, Trash2, AlertTriangle } from 'lucide-vue-next'
+import { RefreshCw, Edit2, Copy, Tag, List, Square, Folder, Trash2, AlertTriangle } from 'lucide-vue-next'
 import Modal from './Modal.vue'
 import TagProjectsModal from './TagProjectsModal.vue'
 import CopyProjectsToTagModal from './CopyProjectsToTagModal.vue'
 import TagCard from './TagCard.vue'
-import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
 import { buildDTProjectUrl } from '../config.js'
 
 // URL encoding utility
@@ -587,10 +557,7 @@ const encodeTagName = (tagName) => {
 export default {
   name: 'TagCenter',
   components: {
-    Vue3Datagrid,
-    VGridVueTemplate,
     List,
-    Grid3X3,
     Square,
     Edit2,
     Copy,
@@ -670,71 +637,6 @@ export default {
     const tagProjects = ref([])
     const tagsViewMode = ref('deck') // 'list', 'grid', or 'deck'
     const editingTagName = ref('')
-
-    // Dark mode detection
-    const isDarkMode = computed(() => {
-      if (typeof window !== 'undefined') {
-        return document.documentElement.classList.contains('dark')
-      }
-      return false
-    })
-
-    // Grid columns for tags grid view
-    const gridColumns = computed(() => [
-      {
-        prop: 'taxonomy',
-        name: 'Taxonomy',
-        sortable: true
-      },
-      {
-        prop: 'name',
-        name: 'Tag',
-        sortable: true
-      },
-      {
-        prop: 'projectsCount',
-        name: 'Projects Count',
-        sortable: true
-      },
-      /* ,
-      {
-        prop: 'actions',
-        name: 'Actions',
-        sortable: false,
-        cellTemplate: VGridVueTemplate(TagActionsCell)
-      } */
-    ])
-
-    // Tag actions cell template
-    const TagActionsCell = {
-      template: (props) => {
-        const taxonomy = props.model.taxonomy ?
-          (taxonomies.value.find(t => t.id === props.model.taxonomy) ||
-          { name: props.model.taxonomy }) :
-          { name: 'No taxonomy' };
-
-        return {
-          template: `
-            <div class="flex gap-2">
-              <button @click="viewProjects" class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">View</button>
-              <button @click="removeTag" class="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
-            </div>
-          `,
-          methods: {
-            viewProjects: () => {
-              // Emit event to parent or call directly
-              logger.info('View projects for tag:', props.model.name)
-            },
-            edit: () => {
-              logger.info('Edit tag:', props.model.name)
-            },
-            removeTag: () => {
-              logger.info('Delete tag:', props.model.name)
-            }
-          }
-        }
-      }
-    }
 
     // Methods
     const loadProjects = async () => {
@@ -1500,8 +1402,6 @@ export default {
       linkProjects,
 
       // Other functions
-      isDarkMode,
-      gridColumns,
       validateTag,
       selectSuggestedTag,
       handleCreateTag,

@@ -43,25 +43,27 @@
             <button
               @click="projectsViewMode = 'deck'"
               :class="[
-                'px-3 py-1 text-sm rounded-md',
+                'px-3 py-1 text-sm rounded-md cursor-pointer',
                 projectsViewMode === 'deck'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               ]"
+              title="Card view"
             >
               <SquareIcon class="w-4 h-4" />
             </button>
-            <!-- <button
-              @click="projectsViewMode = 'grid'"
+            <button
+              @click="projectsViewMode = 'table'"
               :class="[
-                'px-3 py-1 text-sm rounded-md',
-                projectsViewMode === 'grid'
+                'px-3 py-1 text-sm rounded-md cursor-pointer',
+                projectsViewMode === 'table'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               ]"
+              title="Table view (sortable)"
             >
-              <GridIcon class="w-4 h-4" />
-            </button> -->
+              <TableIcon class="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -278,26 +280,79 @@
         </div>
       </div>
 
-      <!-- Grid View -->
-      <div v-else-if="projectsViewMode === 'grid'" class="overflow-y-auto">
-        <vue3-datagrid
-          :columns="gridColumns"
-          :source="data"
-          :row-height="50"
-          :virtual="false"
-          :theme="isDarkMode ? 'darkCompact' : 'compact'"
-          :filter="false"
-          :resize="true"
-          :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
-          :stretch="true"
-          :pagination="false"
-          @row-click="onRowClick"
-          @row-select="onRowSelect"
-          :show-selection="true"
-          class="w-full border-gray-200 dark:border-gray-700"
-          style="height: 500px;"
-        >
-        </vue3-datagrid>
+      <!-- Table View: sortable columns (sorting is server-side; ignored while a
+           text search is active, since search results are relevance-ordered). -->
+      <div v-else-if="projectsViewMode === 'table'" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+              <th
+                @click="setSort('name')"
+                class="py-2 px-2 cursor-pointer select-none whitespace-nowrap"
+                title="Sort by name"
+              >
+                Name<span class="ml-1">{{ sortIcon('name') }}</span>
+              </th>
+              <th
+                @click="setSort('version')"
+                class="py-2 px-2 cursor-pointer select-none whitespace-nowrap"
+                title="Sort by version"
+              >
+                Version<span class="ml-1">{{ sortIcon('version') }}</span>
+              </th>
+              <th class="py-2 px-2 whitespace-nowrap">Status</th>
+              <th
+                @click="setSort('lastBomImport')"
+                class="py-2 px-2 cursor-pointer select-none whitespace-nowrap"
+                title="Sort by last activity"
+              >
+                Last activity<span class="ml-1">{{ sortIcon('lastBomImport') }}</span>
+              </th>
+              <th class="py-2 px-2 text-right whitespace-nowrap" title="Critical">C</th>
+              <th class="py-2 px-2 text-right whitespace-nowrap" title="High">H</th>
+              <th class="py-2 px-2 text-right whitespace-nowrap" title="Medium">M</th>
+              <th class="py-2 px-2 text-right whitespace-nowrap" title="Low">L</th>
+              <th class="py-2 px-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="project in data"
+              :key="project.uuid"
+              class="border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40"
+            >
+              <td class="py-2 px-2 font-medium text-gray-900 dark:text-white truncate max-w-xs" :title="project.name">
+                {{ project.displayName || project.name }}
+              </td>
+              <td class="py-2 px-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ project.version || 'latest' }}</td>
+              <td class="py-2 px-2 whitespace-nowrap">
+                <span
+                  :class="[
+                    'px-1.5 py-0.5 text-xs rounded-full',
+                    project.active !== false
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                  ]"
+                >
+                  {{ project.active !== false ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td class="py-2 px-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatDate(project.lastActivity) }}</td>
+              <td class="py-2 px-2 text-right tabular-nums" :class="project.metrics?.critical ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-400 dark:text-gray-600'">{{ cellCount(project.metrics?.critical) }}</td>
+              <td class="py-2 px-2 text-right tabular-nums" :class="project.metrics?.high ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-gray-400 dark:text-gray-600'">{{ cellCount(project.metrics?.high) }}</td>
+              <td class="py-2 px-2 text-right tabular-nums" :class="project.metrics?.medium ? 'text-yellow-600 dark:text-yellow-400 font-medium' : 'text-gray-400 dark:text-gray-600'">{{ cellCount(project.metrics?.medium) }}</td>
+              <td class="py-2 px-2 text-right tabular-nums" :class="project.metrics?.low ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-400 dark:text-gray-600'">{{ cellCount(project.metrics?.low) }}</td>
+              <td class="py-2 px-2 text-right whitespace-nowrap">
+                <button
+                  @click="viewProject(project)"
+                  class="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                >
+                  View
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- Deck View -->
@@ -322,16 +377,11 @@
 </template>
 
 <script>
-import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { RefreshCw, FolderOpen, List as ListIcon, Grid as GridIcon, Square as SquareIcon } from 'lucide-vue-next'
-import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
+import { RefreshCw, FolderOpen, List as ListIcon, Table as TableIcon, Square as SquareIcon } from 'lucide-vue-next'
 import ProjectCard from './ProjectCard.vue'
 import SearchableSelect from './SearchableSelect.vue'
-import NameCell from './grid-cells/NameCell.vue'
-import StatusCell from './grid-cells/StatusCell.vue'
-import TagsCell from './grid-cells/TagsCell.vue'
-import DateCell from './grid-cells/DateCell.vue'
 import { createLogger } from '../utils/logger'
 import { useToast } from '../composables/useToast'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
@@ -345,16 +395,11 @@ export default {
   components: {
     FolderOpen,
     ListIcon,
-    GridIcon,
+    TableIcon,
     SquareIcon,
     RefreshCw,
-    Vue3Datagrid,
     ProjectCard,
-    SearchableSelect,
-    NameCell,
-    StatusCell,
-    TagsCell,
-    DateCell
+    SearchableSelect
   },
   setup() {
     const logger = createLogger('ProjectCenter')
@@ -377,82 +422,16 @@ export default {
     const selectedTag = ref('')
     const tagOptions = ref([])
 
-    const projectsViewMode = ref('deck') // 'list', 'grid', or 'deck'
+    const projectsViewMode = ref('deck') // 'list', 'deck', or 'table'
 
-    // Grid columns for projects grid view
-    const gridColumns = computed(() => [
-      {
-        field: 'name',
-        headerName: 'Project',
-        flexGrow: 4,
-        minWidth: 200,
-        cellRenderer: NameCell
-      },
-      {
-        field: 'version',
-        headerName: 'Version',
-        width: 120,
-        cellRenderer: NameCell
-      },
-      {
-        field: 'lastActivity',
-        headerName: 'Last Activity',
-        width: 150,
-        cellRenderer: DateCell
-      },
-      {
-        field: 'vulnerabilities.critical',
-        headerName: 'Critical',
-        width: 100,
-        cellRenderer: StatusCell
-      },
-      {
-        field: 'vulnerabilities.high',
-        headerName: 'High',
-        width: 80,
-        cellRenderer: StatusCell
-      },
-      {
-        field: 'vulnerabilities.medium',
-        headerName: 'Medium',
-        width: 100,
-        cellRenderer: StatusCell
-      },
-      {
-        field: 'vulnerabilities.low',
-        headerName: 'Low',
-        width: 80,
-        cellRenderer: StatusCell
-      },
-      {
-        field: 'vulnerabilities',
-        headerName: 'Total',
-        width: 100,
-        cellRenderer: StatusCell
-      }
-    ])
+    // Server-side sort state for the table view (empty = DT's default order).
+    const sortName = ref('')
+    const sortOrder = ref('asc')
 
     // The current server page of projects and DT's real total. Populated by
     // fetchProjects(); there is no client-side filtering or slicing any more.
     const data = ref([])
     const filteredTotal = ref(0)
-
-    // Dark mode detection for grid
-    const isDarkMode = ref(document.documentElement.classList.contains('dark'))
-    const observer = new MutationObserver(() => {
-      isDarkMode.value = document.documentElement.classList.contains('dark')
-    })
-
-    onMounted(() => {
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      })
-    })
-
-    onUnmounted(() => {
-      observer.disconnect()
-    })
 
     let searchTimeout = null
     const debouncedSearch = () => {
@@ -474,7 +453,9 @@ export default {
           pageSize: projectStore.pageSize,
           search: filters.value.search,
           excludeInactive: !filters.value.showInactive,
-          tag: selectedTag.value
+          tag: selectedTag.value,
+          sortName: sortName.value,
+          sortOrder: sortOrder.value
         })
         data.value = rows
         filteredTotal.value = total
@@ -497,29 +478,27 @@ export default {
       fetchProjects().catch(() => {}) // Ignore errors for page size changes
     }
 
-    const onPageChanged = (page) => {
-      projectStore.currentPage = page
+    // Table view: sortable columns (server-side). Clicking a header toggles
+    // asc/desc; switching column starts at asc. Sorting resets to page 1.
+    const setSort = (field) => {
+      if (sortName.value === field) {
+        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+      } else {
+        sortName.value = field
+        sortOrder.value = 'asc'
+      }
+      projectStore.currentPage = 1
       fetchProjects().catch(() => {})
     }
-
-    // Grid event handlers
-    const onFilterChanged = (filters) => {
-      // Use store filters instead
-      projectStore.searchQuery = filters.search
-      fetchProjects().catch(() => {})
-    }
-
-    const onSearch = (searchTerm) => {
-      // Handle grid search
-      logger.info('Grid search:', searchTerm)
-    }
-
-    const onRowClick = (row, event) => {
-      viewProject(row.data)
-    }
-
-    const onRowSelect = (selectedRows) => {
-      logger.info('Selected rows:', selectedRows)
+    const sortIcon = (field) => (sortName.value === field ? (sortOrder.value === 'asc' ? '▲' : '▼') : '')
+    const cellCount = (n) => (n > 0 ? n : '-')
+    const formatDate = (dateString) => {
+      if (!dateString) return 'Never'
+      try {
+        return new Date(dateString).toLocaleDateString()
+      } catch {
+        return 'Invalid date'
+      }
     }
 
     // Project action handlers
@@ -659,8 +638,12 @@ export default {
       selectedTag,
       tagOptions,
       projectsViewMode,
-      gridColumns,
-      isDarkMode,
+      sortName,
+      sortOrder,
+      setSort,
+      sortIcon,
+      cellCount,
+      formatDate,
       hasActiveFilters,
       fetchProjects,
       refreshProjects,
@@ -668,11 +651,6 @@ export default {
       handlePageChange,
       handlePageSizeChange,
       clearFilters,
-      onPageChanged,
-      onFilterChanged,
-      onSearch,
-      onRowClick,
-      onRowSelect,
       viewProject,
       viewSecurityDetails,
       analyzeProject,

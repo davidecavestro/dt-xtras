@@ -195,13 +195,20 @@ export const useProjectStore = defineStore('projects', () => {
     pageSize = 20,
     search = '',
     excludeInactive = true,
-    tag = ''
+    tag = '',
+    sortName = '',
+    sortOrder = ''
   } = {}) => {
     const params = { page, limit: pageSize, excludeInactive: String(excludeInactive) }
     if (tag) {
       params.tag = tag
     } else if (search) {
       params.search = search
+    }
+    // Server-side sort (ignored by the search path, which is relevance-ordered).
+    if (sortName) {
+      params.sortName = sortName
+      params.sortOrder = sortOrder === 'desc' ? 'desc' : 'asc'
     }
 
     try {
