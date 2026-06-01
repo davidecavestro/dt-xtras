@@ -112,8 +112,21 @@
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                   ]"
+                  title="Card view"
                 >
                   <SquareIcon class="w-4 h-4" />
+                </button>
+                <button
+                  @click="projectsViewMode = 'table'"
+                  :class="[
+                    'px-3 py-1 text-sm rounded-md cursor-pointer hover:shadow-md transition-all',
+                    projectsViewMode === 'table'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  ]"
+                  title="Table view (sortable)"
+                >
+                  <Table class="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -242,6 +255,51 @@
                       @analyze="analyzeProject"
                     />
                   </div>
+                </div>
+              </div>
+
+              <!-- Table View (sortable; related projects are in-memory, so sort
+                   is client-side over the whole set, then paginated) -->
+              <div v-else-if="projectsViewMode === 'table'" class="h-full flex flex-col">
+                <div class="flex-1 overflow-auto p-4">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+                        <th @click="setProjectsSort('name')" class="py-2 px-2 cursor-pointer select-none whitespace-nowrap" title="Sort by name">
+                          Name<span class="ml-1">{{ projectsSortIcon('name') }}</span>
+                        </th>
+                        <th @click="setProjectsSort('version')" class="py-2 px-2 cursor-pointer select-none whitespace-nowrap" title="Sort by version">
+                          Version<span class="ml-1">{{ projectsSortIcon('version') }}</span>
+                        </th>
+                        <th @click="setProjectsSort('lastActivity')" class="py-2 px-2 cursor-pointer select-none whitespace-nowrap" title="Sort by last activity">
+                          Last activity<span class="ml-1">{{ projectsSortIcon('lastActivity') }}</span>
+                        </th>
+                        <th @click="setProjectsSort('critical')" class="py-2 px-2 text-right cursor-pointer select-none" title="Critical">C<span class="ml-0.5">{{ projectsSortIcon('critical') }}</span></th>
+                        <th @click="setProjectsSort('high')" class="py-2 px-2 text-right cursor-pointer select-none" title="High">H<span class="ml-0.5">{{ projectsSortIcon('high') }}</span></th>
+                        <th @click="setProjectsSort('medium')" class="py-2 px-2 text-right cursor-pointer select-none" title="Medium">M<span class="ml-0.5">{{ projectsSortIcon('medium') }}</span></th>
+                        <th @click="setProjectsSort('low')" class="py-2 px-2 text-right cursor-pointer select-none" title="Low">L<span class="ml-0.5">{{ projectsSortIcon('low') }}</span></th>
+                        <th class="py-2 px-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="project in projectTableRows"
+                        :key="project.uuid"
+                        class="border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40"
+                      >
+                        <td class="py-2 px-2 font-medium text-gray-900 dark:text-white truncate max-w-xs" :title="project.name">{{ project.name }}</td>
+                        <td class="py-2 px-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ project.version || 'latest' }}</td>
+                        <td class="py-2 px-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatDate(project.lastActivity) }}</td>
+                        <td class="py-2 px-2 text-right tabular-nums" :class="project.metrics?.critical ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-400 dark:text-gray-600'">{{ cellCount(project.metrics?.critical) }}</td>
+                        <td class="py-2 px-2 text-right tabular-nums" :class="project.metrics?.high ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-gray-400 dark:text-gray-600'">{{ cellCount(project.metrics?.high) }}</td>
+                        <td class="py-2 px-2 text-right tabular-nums" :class="project.metrics?.medium ? 'text-yellow-600 dark:text-yellow-400 font-medium' : 'text-gray-400 dark:text-gray-600'">{{ cellCount(project.metrics?.medium) }}</td>
+                        <td class="py-2 px-2 text-right tabular-nums" :class="project.metrics?.low ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-400 dark:text-gray-600'">{{ cellCount(project.metrics?.low) }}</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">
+                          <button @click="viewProject(project)" class="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View</button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -818,6 +876,42 @@ export default {
       return relatedProjects.value.slice(start, end)
     })
 
+    // Table view (client-side sort over the full related set, then paginate).
+    const projectsSortName = ref('')
+    const projectsSortOrder = ref('asc')
+    const SEVERITY_FIELDS = ['critical', 'high', 'medium', 'low']
+    const setProjectsSort = (field) => {
+      if (projectsSortName.value === field) {
+        projectsSortOrder.value = projectsSortOrder.value === 'asc' ? 'desc' : 'asc'
+      } else {
+        projectsSortName.value = field
+        projectsSortOrder.value = 'asc'
+      }
+      currentPage.value = 1
+    }
+    const projectsSortIcon = (field) => (projectsSortName.value === field ? (projectsSortOrder.value === 'asc' ? '▲' : '▼') : '')
+    const cellCount = (n) => (n > 0 ? n : '-')
+    const sortedRelatedProjects = computed(() => {
+      const list = [...(relatedProjects.value || [])]
+      const field = projectsSortName.value
+      if (!field) return list
+      const dir = projectsSortOrder.value === 'desc' ? -1 : 1
+      const numeric = SEVERITY_FIELDS.includes(field)
+      return list.sort((a, b) => {
+        if (numeric) {
+          return ((a.metrics?.[field] || 0) - (b.metrics?.[field] || 0)) * dir
+        }
+        const av = (a[field] ?? '').toString().toLowerCase()
+        const bv = (b[field] ?? '').toString().toLowerCase()
+        return av < bv ? -dir : av > bv ? dir : 0
+      })
+    })
+    const projectTableRows = computed(() => {
+      if (!currentPage.value || !pageSize.value) return []
+      const start = (currentPage.value - 1) * pageSize.value
+      return sortedRelatedProjects.value.slice(start, start + pageSize.value)
+    })
+
     return {
       // Coordinated loading state
       shouldShowLoading,
@@ -848,6 +942,13 @@ export default {
       // Project data
       relatedProjects,
       paginatedProjects,
+      projectTableRows,
+      projectsSortName,
+      projectsSortOrder,
+      setProjectsSort,
+      projectsSortIcon,
+      cellCount,
+      formatDate,
       filteredSecurityData,
       totalVulnerabilities,
       criticalVulns,
