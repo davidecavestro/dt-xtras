@@ -190,6 +190,8 @@ async def get_dt_projects(
     search: Optional[str] = None,
     excludeInactive: Optional[str] = "false",
     tag: Optional[str] = None,
+    sortName: Optional[str] = None,
+    sortOrder: Optional[str] = None,
 ) -> Tuple[List[Dict], Optional[int]]:
     """Get projects from DT API with proper authentication and pagination.
 
@@ -200,22 +202,32 @@ async def get_dt_projects(
       - `tag`    -> DT's per-tag endpoint (the list endpoint can't filter by tag);
                     `search` is ignored while a tag filter is active.
       - `search` -> DT's Lucene search endpoint for partial matching (the list
-                    endpoint's `name` filter is exact-match only).
+                    endpoint's `name` filter is exact-match only). Lucene results
+                    are relevance-ordered, so `sortName`/`sortOrder` are ignored.
       - neither  -> the regular project list endpoint.
+
+    `sortName`/`sortOrder` are forwarded to DT for the list and per-tag paths
+    (DT supports server-side sorting on both).
     """
     headers = build_dt_headers(dt_token)
     if not dt_token:
         logger.warning("No DT token available for authentication")
 
+    def _with_sort(params: Dict[str, str]) -> Dict[str, str]:
+        if sortName:
+            params["sortName"] = sortName
+            params["sortOrder"] = sortOrder if sortOrder in ("asc", "desc") else "asc"
+        return params
+
     if tag:
-        params = {"pageNumber": str(page), "pageSize": str(limit)}
+        params = _with_sort({"pageNumber": str(page), "pageSize": str(limit)})
         if excludeInactive is not None:
             params["excludeInactive"] = excludeInactive
         url = f"{DT_API_URL}/api/v1/project/tag/{quote(tag, safe='')}"
     elif search:
         return await _search_projects(dt_token, search, page=page, limit=limit)
     else:
-        params = {"pageNumber": str(page), "pageSize": str(limit)}
+        params = _with_sort({"pageNumber": str(page), "pageSize": str(limit)})
         if excludeInactive is not None:
             params["excludeInactive"] = excludeInactive
         url = f"{DT_API_URL}/api/v1/project"

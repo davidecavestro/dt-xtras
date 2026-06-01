@@ -115,17 +115,6 @@
                 >
                   <SquareIcon class="w-4 h-4" />
                 </button>
-                <!-- <button
-                  @click="projectsViewMode = 'grid'"
-                  :class="[
-                    'px-3 py-1 text-sm rounded-md',
-                    projectsViewMode === 'grid'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                  ]"
-                >
-                  <GridIcon class="w-4 h-4" />
-                </button> -->
               </div>
             </div>
 
@@ -235,27 +224,6 @@
                 </div>
 
               </div>
-              <!-- Grid View -->
-              <div v-else-if="projectsViewMode === 'grid'" class="h-full flex flex-col">
-
-                <div class="flex-1 overflow-y-auto">
-                  <vue3-datagrid
-                    :columns="gridColumns"
-                    :source="paginatedProjects"
-                    :row-height="50"
-                    :virtual="false"
-                    :theme="isDarkMode ? 'darkCompact' : 'compact'"
-                    :resize="true"
-                    :autoSizeColumn="{ mode: 'autoSizeOnTextOverlap' }"
-                    :stretch="true"
-                    :pagination="false"
-                    class="w-full border-gray-200 dark:border-gray-700"
-                    style="height: 100%;"
-                    :readonly="true"
-                  >
-                  </vue3-datagrid>
-                </div>
-              </div>
 
               <!-- Deck View -->
               <div v-else-if="projectsViewMode === 'deck'" class="h-full flex flex-col">
@@ -285,7 +253,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useProjectStore } from '../stores/projects'
@@ -293,18 +261,13 @@ import { useTagStore } from '../stores/tags'
 import { useGraphStore } from '../stores/graph'
 import { useTaxonomyStore } from '../stores/taxonomies'
 import TreeNode from './TreeNode.vue'
-import TagsCell from './grid-cells/TagsCell.vue'
-import DateCell from './grid-cells/DateCell.vue'
-import StatusCell from './grid-cells/StatusCell.vue'
 import TreeTable from './TreeTable.vue'
 import { buildDTProjectUrl, buildDTProjectFindingsUrl } from '../config.js'
 import RiskScoreBadge from './RiskScoreBadge.vue'
 import VulnerabilityBar from './VulnerabilityBar.vue'
-import { AlertCircle, RefreshCw, Folder, FolderOpen, ListIcon, GridIcon, SquareIcon, Table, Share2, GitBranch } from 'lucide-vue-next'
-import Vue3Datagrid, { VGridVueTemplate } from '@revolist/vue3-datagrid'
+import { AlertCircle, RefreshCw, Folder, FolderOpen, ListIcon, SquareIcon, Table, Share2, GitBranch } from 'lucide-vue-next'
 import Pagination from './Pagination.vue'
 import ProjectCard from './ProjectCard.vue'
-import NameCell from './grid-cells/NameCell.vue'
 import SecurityOverview from './SecurityOverview.vue'
 import NavigationTreePanel from './NavigationTreePanel.vue'
 import { createLogger } from '../utils/logger'
@@ -318,22 +281,16 @@ export default {
     Folder,
     FolderOpen,
     ListIcon,
-    GridIcon,
     SquareIcon,
     Table,
     Share2,
     GitBranch,
-    Vue3Datagrid,
     Pagination,
     ProjectCard,
     RiskScoreBadge,
     VulnerabilityBar,
     TreeNode,
     TreeTable,
-    TagsCell,
-    DateCell,
-    StatusCell,
-    NameCell,
     SecurityOverview,
     NavigationTreePanel
   },
@@ -512,61 +469,6 @@ export default {
 
     // Local state for reachable nodes
     const allReachableNodes = ref(new Set())
-
-    // Grid columns for projects grid view
-    const gridColumns = computed(() => [
-      {
-        prop: 'name',
-        name: 'Project Name',
-        width: 200,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(NameCell)
-      },
-      {
-        prop: 'version',
-        name: 'Version',
-        width: 100,
-        sortable: true
-      },
-      {
-        prop: 'active',
-        name: 'Status',
-        width: 80,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(StatusCell)
-      },
-      {
-        prop: 'lastActivity',
-        name: 'Last Activity',
-        width: 120,
-        sortable: true,
-        cellTemplate: VGridVueTemplate(DateCell)
-      },
-      {
-        prop: 'tags',
-        name: 'Tags',
-        width: 250,
-        sortable: false,
-        cellTemplate: VGridVueTemplate(TagsCell)
-      }
-    ])
-
-    // Dark mode detection for grid
-    const isDarkMode = ref(document.documentElement.classList.contains('dark'))
-    const observer = new MutationObserver(() => {
-      isDarkMode.value = document.documentElement.classList.contains('dark')
-    })
-
-    onMounted(() => {
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      })
-    })
-
-    onUnmounted(() => {
-      observer.disconnect()
-    })
 
     const filteredSecurityData = computed(() => {
       const related = relatedProjects.value
