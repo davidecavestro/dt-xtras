@@ -58,8 +58,21 @@
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               ]"
+              title="Card view"
             >
               <Square class="w-4 h-4" />
+            </button>
+            <button
+              @click="tagsViewMode = 'table'"
+              :class="[
+                'px-3 py-1 text-sm rounded-md cursor-pointer hover:shadow-md transition-all',
+                tagsViewMode === 'table'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ]"
+              title="Table view (sortable)"
+            >
+              <Table class="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -204,6 +217,58 @@
           @save-edit="saveEditTag"
           @cancel-edit="cancelEditTag"
         />
+      </div>
+
+      <!-- Table View (sortable; tags are loaded fully, so sorting is client-side) -->
+      <div v-else-if="tagsViewMode === 'table'" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+              <th @click="setTagSort('name')" class="py-2 px-2 cursor-pointer select-none whitespace-nowrap" title="Sort by tag">
+                Tag<span class="ml-1">{{ tagSortIcon('name') }}</span>
+              </th>
+              <th @click="setTagSort('taxonomy')" class="py-2 px-2 cursor-pointer select-none whitespace-nowrap" title="Sort by taxonomy">
+                Taxonomy<span class="ml-1">{{ tagSortIcon('taxonomy') }}</span>
+              </th>
+              <th @click="setTagSort('projectsCount')" class="py-2 px-2 text-right cursor-pointer select-none whitespace-nowrap" title="Sort by project count">
+                Projects<span class="ml-1">{{ tagSortIcon('projectsCount') }}</span>
+              </th>
+              <th class="py-2 px-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="tag in tagTableRows"
+              :key="tag.name"
+              class="border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40"
+            >
+              <td class="py-2 px-2 font-medium text-gray-900 dark:text-white truncate max-w-xs" :title="tag.name">{{ tag.name }}</td>
+              <td class="py-2 px-2 whitespace-nowrap">
+                <span
+                  v-if="getTagTaxonomy(tag)"
+                  class="inline-flex items-center px-2 py-0.5 text-xs rounded-full border"
+                  :style="getTaxonomyBadgeStyle(getTagTaxonomy(tag))"
+                >
+                  {{ getTagTaxonomy(tag).name }}
+                </span>
+                <span v-else class="text-gray-400 dark:text-gray-600">—</span>
+              </td>
+              <td class="py-2 px-2 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ tag.projectsCount || 0 }}</td>
+              <td class="py-2 px-2 text-right whitespace-nowrap">
+                <div class="flex items-center justify-end gap-3">
+                  <button @click="viewTagProjects(tag)" class="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View</button>
+                  <button
+                    @click="startAidedEditTag(tag)"
+                    :disabled="!tagBelongsToTaxonomy(tag)"
+                    :title="tagBelongsToTaxonomy(tag) ? 'Aided edit' : 'No matching taxonomy — aided edit unavailable'"
+                    class="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:no-underline"
+                  >Edit</button>
+                  <button @click="handleDeleteTag(tag)" class="text-xs text-red-600 dark:text-red-400 hover:underline cursor-pointer">Delete</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- Deck View (Current Default) -->
@@ -542,7 +607,7 @@ import useToast from '../composables/useToast'
 import { createLogger } from '../utils/logger'
 import { useConfirmDialog } from '../composables/useConfirmDialog'
 import { createJsRegExp } from '../utils/taxonomyParser'
-import { RefreshCw, Edit2, Copy, Tag, List, Square, Folder, Trash2, AlertTriangle } from 'lucide-vue-next'
+import { RefreshCw, Edit2, Copy, Tag, List, Square, Table, Folder, Trash2, AlertTriangle } from 'lucide-vue-next'
 import Modal from './Modal.vue'
 import TagProjectsModal from './TagProjectsModal.vue'
 import CopyProjectsToTagModal from './CopyProjectsToTagModal.vue'
@@ -559,6 +624,7 @@ export default {
   components: {
     List,
     Square,
+    Table,
     Edit2,
     Copy,
     Tag,
@@ -635,7 +701,40 @@ export default {
     const showProjectsModal = ref(false)
     const selectedTag = ref(null)
     const tagProjects = ref([])
-    const tagsViewMode = ref('deck') // 'list', 'grid', or 'deck'
+    const tagsViewMode = ref('deck') // 'list', 'deck', or 'table'
+
+    // Table view sort (client-side: the full tag list is already loaded). Sorts
+    // the whole filtered set, then paginates - so it isn't limited to one page.
+    const tagSortName = ref('name')
+    const tagSortOrder = ref('asc')
+    const setTagSort = (field) => {
+      if (tagSortName.value === field) {
+        tagSortOrder.value = tagSortOrder.value === 'asc' ? 'desc' : 'asc'
+      } else {
+        tagSortName.value = field
+        tagSortOrder.value = 'asc'
+      }
+      currentPage.value = 1
+    }
+    const tagSortIcon = (field) => (tagSortName.value === field ? (tagSortOrder.value === 'asc' ? '▲' : '▼') : '')
+    const sortedTags = computed(() => {
+      const list = [...(filteredTags.value || [])]
+      const field = tagSortName.value
+      if (!field) return list
+      const dir = tagSortOrder.value === 'desc' ? -1 : 1
+      return list.sort((a, b) => {
+        if (field === 'projectsCount') {
+          return ((a.projectsCount || 0) - (b.projectsCount || 0)) * dir
+        }
+        const av = (a[field] ?? '').toString().toLowerCase()
+        const bv = (b[field] ?? '').toString().toLowerCase()
+        return av < bv ? -dir : av > bv ? dir : 0
+      })
+    })
+    const tagTableRows = computed(() => {
+      const start = (currentPage.value - 1) * pageSize.value
+      return sortedTags.value.slice(start, start + pageSize.value)
+    })
     const editingTagName = ref('')
 
     // Methods
@@ -1356,6 +1455,11 @@ export default {
       searchQuery,
       filteredTags,
       paginatedTags,
+      tagTableRows,
+      tagSortName,
+      tagSortOrder,
+      setTagSort,
+      tagSortIcon,
       hasPreviousPage,
       hasNextPage,
 
