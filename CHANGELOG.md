@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-06-02
+### :bug: Bug Fixes
+- [`74c8d3b`](https://github.com/davidecavestro/dt-xtras/commit/74c8d3b764cdd34d619b3b871e5352dc0e6b6aea) - use proper colors on security dashboard summary *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+
+
 ## [0.10.0] - 2026-06-02
 ### :bug: Bug Fixes
 - [`817851e`](https://github.com/davidecavestro/dt-xtras/commit/817851e9370f3b1a3a20a5f0258e43670e4b122e) - **deps**: update dependency cytoscape-dagre to v3 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
@@ -218,3 +223,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.8]: https://github.com/davidecavestro/dt-xtras/compare/v0.7...v0.8
 [v0.9]: https://github.com/davidecavestro/dt-xtras/compare/v0.8...v0.9
 [0.10.0]: https://github.com/davidecavestro/dt-xtras/compare/v0.9...0.10.0
+[0.10.1]: https://github.com/davidecavestro/dt-xtras/compare/0.10.0...0.10.1
