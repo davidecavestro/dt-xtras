@@ -21,7 +21,9 @@
 The project provides a set of features that complement Dependency-Track.
 
 The taxonomy system categorizes project tags and defines semantic relationships between them,
-enabling both direct categorization and inferred labeling through graph-based relationships. This is entirely dynamic.
+enabling both direct categorization and inferred labeling through graph-based relationships.
+<br>
+This is entirely dynamic: it's data you define, not hard-coded logic.
 
 Bulk actions provide a way to activate/deactivate/delete multiple projects at once, and to
 apply/remove/clone tags for multiple projects at once.
