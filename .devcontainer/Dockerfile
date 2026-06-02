@@ -39,10 +39,6 @@ RUN echo 'export PATH="/home/vscode/opt/venv/bin:$PATH"' >> /home/vscode/.bashrc
 
 RUN pip install --upgrade pip
 
-# Install Docker CLI
-RUN curl -fsSL https://get.docker.com | sh \
-    && usermod -aG docker vscode
-
 # Set the working directory
 WORKDIR /workspace
 
