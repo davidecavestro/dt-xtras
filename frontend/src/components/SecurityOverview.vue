@@ -14,25 +14,28 @@
     </div>
 
     <!-- Security overview cards -->
+    <!-- Severity colours match the rest of the UI: critical=red, high=orange,
+         medium=yellow, low=blue. Total is a neutral aggregate (gray), so blue
+         unambiguously means "low" everywhere. -->
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+      <div class="bg-gray-100 dark:bg-gray-700/40 p-3 rounded-lg">
         <div class="text-center">
-          <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ total }}</div>
-          <div class="text-sm text-blue-600 dark:text-blue-400">Total Vulnerabilities</div>
-        </div>
-      </div>
-
-      <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
-        <div class="text-center">
-          <div class="text-2xl font-bold text-orange-600 dark:text-orange-300">{{ critical }}</div>
-          <div class="text-sm text-orange-600 dark:text-orange-400">Critical</div>
+          <div class="text-2xl font-bold text-gray-700 dark:text-gray-200">{{ total }}</div>
+          <div class="text-sm text-gray-600 dark:text-gray-400">Total Vulnerabilities</div>
         </div>
       </div>
 
       <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
         <div class="text-center">
-          <div class="text-2xl font-bold text-red-600 dark:text-red-300">{{ high }}</div>
-          <div class="text-sm text-red-600 dark:text-red-400">High</div>
+          <div class="text-2xl font-bold text-red-600 dark:text-red-300">{{ critical }}</div>
+          <div class="text-sm text-red-600 dark:text-red-400">Critical</div>
+        </div>
+      </div>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
+        <div class="text-center">
+          <div class="text-2xl font-bold text-orange-600 dark:text-orange-300">{{ high }}</div>
+          <div class="text-sm text-orange-600 dark:text-orange-400">High</div>
         </div>
       </div>
 
@@ -43,10 +46,10 @@
         </div>
       </div>
 
-      <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
         <div class="text-center">
-          <div class="text-2xl font-bold text-green-600 dark:text-green-300">{{ low }}</div>
-          <div class="text-sm text-green-600 dark:text-green-400">Low</div>
+          <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ low }}</div>
+          <div class="text-sm text-blue-600 dark:text-blue-400">Low</div>
         </div>
       </div>
     </div>
