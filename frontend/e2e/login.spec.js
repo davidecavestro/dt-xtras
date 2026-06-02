@@ -20,9 +20,11 @@ test.describe('Login', () => {
   })
 
   test('shows error message on invalid credentials', async ({ page }) => {
+    // Use 400 not 401: a 401 triggers the axios response interceptor which calls
+    // window.location.href = '/login', navigating away before the error can render.
     await page.route(AUTH_LOGIN_PATTERN, async (route) => {
       await route.fulfill({
-        status: 401,
+        status: 400,
         contentType: 'application/json',
         body: JSON.stringify({ detail: 'Invalid credentials' })
       })
@@ -51,16 +53,16 @@ test.describe('Login', () => {
     })
 
     // Mock dashboard data so the page loads without network errors
-    await page.route('/api/project*', async (route) => {
+    await page.route('http://localhost:8000/api/project*', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     })
-    await page.route('/api/tag', async (route) => {
+    await page.route('http://localhost:8000/api/tag', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     })
-    await page.route('/api/taxonomies', async (route) => {
+    await page.route('http://localhost:8000/api/taxonomies', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     })
-    await page.route('/api/tree*', async (route) => {
+    await page.route('http://localhost:8000/api/tree*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

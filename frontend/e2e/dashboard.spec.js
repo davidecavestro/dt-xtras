@@ -4,12 +4,21 @@ test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     // Set auth token so the router guard passes
     await page.addInitScript(() => {
+      // index.html has an inline script that sets window.APP_CONFIG to literal
+      // "${BACKEND_API_URL}" (un-substituted by vite preview). Freeze it first so
+      // axios.defaults.baseURL gets the real value and our route mocks intercept.
+      const e2eConfig = {
+        BACKEND_API_URL: 'http://localhost:8000',
+        DT_API_URL: 'http://localhost:8080',
+        DT_FRONTEND_URL: 'http://localhost:3000'
+      }
+      Object.defineProperty(window, 'APP_CONFIG', { get: () => e2eConfig, set: () => {}, configurable: true })
       localStorage.setItem('auth_token', 'fake-test-token')
       localStorage.setItem('auth_username', 'testuser')
       localStorage.setItem('auth_permissions', '[]')
     })
 
-    await page.route('/api/project*', async (route) => {
+    await page.route('http://localhost:8000/api/project*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -27,7 +36,7 @@ test.describe('Dashboard', () => {
       })
     })
 
-    await page.route('/api/tag', async (route) => {
+    await page.route('http://localhost:8000/api/tag', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -37,7 +46,7 @@ test.describe('Dashboard', () => {
       })
     })
 
-    await page.route('/api/taxonomies', async (route) => {
+    await page.route('http://localhost:8000/api/taxonomies', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -55,7 +64,7 @@ test.describe('Dashboard', () => {
       })
     })
 
-    await page.route('/api/tree*', async (route) => {
+    await page.route('http://localhost:8000/api/tree*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -89,7 +98,7 @@ test.describe('Dashboard', () => {
 
   test('shows error state when API fails', async ({ page }) => {
     // Override the tree mock to simulate a failure
-    await page.route('/api/tree*', async (route) => {
+    await page.route('http://localhost:8000/api/tree*', async (route) => {
       await route.fulfill({ status: 500, body: 'Internal Server Error' })
     })
 

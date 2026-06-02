@@ -4,13 +4,22 @@ test.describe('Modal Component', () => {
   test.beforeEach(async ({ page }) => {
     // Set auth token so the router guard passes on protected routes
     await page.addInitScript(() => {
+      // index.html has an inline script that sets window.APP_CONFIG to literal
+      // "${BACKEND_API_URL}" (un-substituted by vite preview). Freeze it first so
+      // axios.defaults.baseURL gets the real value and our route mocks intercept.
+      const e2eConfig = {
+        BACKEND_API_URL: 'http://localhost:8000',
+        DT_API_URL: 'http://localhost:8080',
+        DT_FRONTEND_URL: 'http://localhost:3000'
+      }
+      Object.defineProperty(window, 'APP_CONFIG', { get: () => e2eConfig, set: () => {}, configurable: true })
       localStorage.setItem('auth_token', 'fake-test-token')
       localStorage.setItem('auth_username', 'testuser')
       localStorage.setItem('auth_permissions', '[]')
     })
 
     // Mock projects endpoint
-    await page.route('/api/project*', async (route) => {
+    await page.route('http://localhost:8000/api/project*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -30,7 +39,7 @@ test.describe('Modal Component', () => {
     })
 
     // Mock taxonomies
-    await page.route('/api/taxonomies', async (route) => {
+    await page.route('http://localhost:8000/api/taxonomies', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -39,7 +48,7 @@ test.describe('Modal Component', () => {
     })
 
     // Mock auth
-    await page.route('/api/auth/check', async (route) => {
+    await page.route('http://localhost:8000/api/auth/check', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -52,11 +61,9 @@ test.describe('Modal Component', () => {
   })
 
   test('modal opens without prop type warnings', async ({ page }) => {
-    // Select a project
-    await page.click('.cursor-pointer')
-
-    // Click delete to open modal
-    await page.click('button:has-text("Del")')
+    await page.waitForSelector('text=Test Project')
+    await page.locator('text=Test Project').first().click()
+    await page.click('[title="Delete selected"]')
 
     // Wait for modal to appear
     await page.waitForSelector('role=dialog')
@@ -86,25 +93,26 @@ test.describe('Modal Component', () => {
   })
 
   test('modal closes on backdrop click', async ({ page }) => {
-    // Select a project and open delete modal
-    await page.click('.cursor-pointer')
-    await page.click('button:has-text("Del")')
+    await page.waitForSelector('text=Test Project')
+    await page.locator('text=Test Project').first().click()
+    await page.click('[title="Delete selected"]')
 
     // Wait for modal
     await page.waitForSelector('role=dialog')
 
-    // Click backdrop (gray area outside modal)
-    const backdrop = page.locator('.bg-gray-500').first()
-    await backdrop.click()
+    // The backdrop is fixed inset-0 with @click.self="handleClose".
+    // Use dispatchEvent so the click fires directly on the element (bypassing
+    // the sidebar z-50 overlay that intercepts normal pointer events).
+    await page.locator('.bg-gray-500').first().dispatchEvent('click')
 
     // Modal should close
     await expect(page.locator('text=Delete Projects')).not.toBeVisible()
   })
 
   test('modal closes on cancel button', async ({ page }) => {
-    // Select a project and open delete modal
-    await page.click('.cursor-pointer')
-    await page.click('button:has-text("Del")')
+    await page.waitForSelector('text=Test Project')
+    await page.locator('text=Test Project').first().click()
+    await page.click('[title="Delete selected"]')
 
     // Wait for modal
     await page.waitForSelector('role=dialog')
@@ -117,9 +125,9 @@ test.describe('Modal Component', () => {
   })
 
   test('modal has correct z-index and appears above content', async ({ page }) => {
-    // Select a project and open delete modal
-    await page.click('.cursor-pointer')
-    await page.click('button:has-text("Del")')
+    await page.waitForSelector('text=Test Project')
+    await page.locator('text=Test Project').first().click()
+    await page.click('[title="Delete selected"]')
 
     // Wait for modal
     const modal = page.locator('role=dialog')
