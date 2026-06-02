@@ -13,8 +13,8 @@ This devcontainer provides a complete development environment for DT-Xtras with 
 
 - **Backend API**: http://localhost:8000
 - **Frontend Dev**: http://localhost:5173  
-- **DT API**: http://localhost:8081
-- **DT Frontend**: http://localhost:8080
+- **DT API**: http://localhost:8080
+- **DT Frontend**: http://localhost:3000
 
 ## Quick Start
 
@@ -38,8 +38,8 @@ docker volume rm dt-xtras_dtrack_db_data
 
 ## Environment Variables
 
-The devcontainer uses `.env.dev` for configuration. Key variables:
+Key variables used by the start scripts (see `scripts/start-backend.sh`):
 
-- `DT_API_URL`: Dependency Track API URL
-- `DT_API_KEY`: Your Dependency Track API key
-- `ENVIRONMENT`: Set to `development`
+- `DT_API_URL`: Dependency-Track API URL (defaults to `http://dtrack-apiserver:8080` within the devcontainer network)
+- `DT_FRONTEND_URL`: Dependency-Track web UI URL (defaults to `http://localhost:3000`)
+- `CORS_ORIGINS`: Comma-separated browser origins the backend accepts
