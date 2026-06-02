@@ -64,7 +64,7 @@ test.describe('Dashboard', () => {
     })
 
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('shows Security Dashboard heading', async ({ page }) => {
@@ -94,7 +94,7 @@ test.describe('Dashboard', () => {
     })
 
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     // Page should still render without crashing (error handled gracefully)
     await expect(page.locator('h2:has-text("Security Dashboard")')).toBeVisible()

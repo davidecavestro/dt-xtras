@@ -86,7 +86,7 @@ test.describe('Project Bulk Actions', () => {
     })
 
     await page.goto('/project-bulk-actions')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('should display projects with correct tag colors', async ({ page }) => {

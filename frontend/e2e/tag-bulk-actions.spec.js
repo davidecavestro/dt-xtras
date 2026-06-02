@@ -63,7 +63,7 @@ test.describe('Tag Bulk Actions', () => {
     })
 
     await page.goto('/tag-bulk-actions')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('shows Tag Bulk Actions heading', async ({ page }) => {

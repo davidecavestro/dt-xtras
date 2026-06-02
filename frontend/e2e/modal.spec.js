@@ -48,7 +48,7 @@ test.describe('Modal Component', () => {
     })
 
     await page.goto('/project-bulk-actions')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('modal opens without prop type warnings', async ({ page }) => {

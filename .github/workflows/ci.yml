@@ -87,6 +87,7 @@ jobs:
           npm run build
 
       - name: "Run E2E tests"
+        timeout-minutes: 10
         run: |
           cd frontend
           npx playwright test
