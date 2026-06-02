@@ -2,6 +2,13 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Project Bulk Actions', () => {
   test.beforeEach(async ({ page }) => {
+    // Set auth token so the router guard passes on protected routes
+    await page.addInitScript(() => {
+      localStorage.setItem('auth_token', 'fake-test-token')
+      localStorage.setItem('auth_username', 'testuser')
+      localStorage.setItem('auth_permissions', '[]')
+    })
+
     // Mock API responses for projects
     await page.route('/api/project*', async (route) => {
       await route.fulfill({
