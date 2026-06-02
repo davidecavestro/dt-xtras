@@ -119,7 +119,7 @@
 import { ref } from 'vue'
 import TreeNode from './TreeNode.vue'
 import TreeTable from './TreeTable.vue'
-import { ListIcon, Table, Share2, GitBranch } from 'lucide-vue-next'
+import { ListIcon, Table, Share2, GitBranch } from '@lucide/vue'
 
 export default {
   name: 'NavigationTreePanel',

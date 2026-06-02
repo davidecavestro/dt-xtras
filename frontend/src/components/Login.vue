@@ -79,7 +79,7 @@
 <script>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { AlertCircle } from 'lucide-vue-next'
+import { AlertCircle } from '@lucide/vue'
 import LogoCompact from './LogoCompact.vue'
 import authService from '../services/auth'
 

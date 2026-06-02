@@ -97,7 +97,7 @@
 <script>
 import { computed } from 'vue'
 import { useTaxonomyStore } from '../stores/taxonomies'
-import { Folder, ChevronRight, ChevronDown, Tag, Hash, Globe, Layers, Server, Package } from 'lucide-vue-next'
+import { Folder, ChevronRight, ChevronDown, Tag, Hash, Globe, Layers, Server, Package } from '@lucide/vue'
 import { createLogger } from '../utils/logger'
 import { createJsRegExp } from '../utils/taxonomyParser'
 

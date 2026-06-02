@@ -89,7 +89,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 export default {
   name: 'Pagination',

@@ -499,7 +499,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useTaxonomyStore } from '../stores/taxonomies'
 import { useTagStore } from '../stores/tags'
-import { Plus, Trash2, Edit2, Folder, Maximize2, Minimize2, AlertTriangle, ZoomIn, ZoomOut, Scan } from 'lucide-vue-next'
+import { Plus, Trash2, Edit2, Folder, Maximize2, Minimize2, AlertTriangle, ZoomIn, ZoomOut, Scan } from '@lucide/vue'
 import cytoscape from 'cytoscape'
 import Modal from './Modal.vue'
 import { useToast } from '../composables/useToast'

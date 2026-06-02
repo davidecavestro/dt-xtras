@@ -101,7 +101,7 @@
 
 <script>
 import { computed } from 'vue'
-import { RefreshCw } from 'lucide-vue-next'
+import { RefreshCw } from '@lucide/vue'
 
 export default {
   name: 'Modal',
