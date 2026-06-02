@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-06-02
+### :bug: Bug Fixes
+- [`817851e`](https://github.com/davidecavestro/dt-xtras/commit/817851e9370f3b1a3a20a5f0258e43670e4b122e) - **deps**: update dependency cytoscape-dagre to v3 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+
+### :wrench: Chores
+- [`301d128`](https://github.com/davidecavestro/dt-xtras/commit/301d128c8bf58a3a6e9010c07b95f184c3f8f1d2) - **deps**: update docker/setup-buildx-action digest to d7f5e7f *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`2948613`](https://github.com/davidecavestro/dt-xtras/commit/294861397c16a1be15c78313da4ee8a1f1ac2f28) - **deps**: update docker/setup-qemu-action digest to 0611638 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`5d69448`](https://github.com/davidecavestro/dt-xtras/commit/5d69448cd0e347fe3212e389015d4d8a3bba4d64) - **deps**: update dependency fastapi to v0.136.3 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`d20395b`](https://github.com/davidecavestro/dt-xtras/commit/d20395b2d0d68179e5f5d4d2723a36908619fa6a) - use tags without the v prefix *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+- [`e63ae89`](https://github.com/davidecavestro/dt-xtras/commit/e63ae899a7a885500b91343a8bd0a81e9751a3c1) - **deps**: update dependency uvicorn to v0.48.0 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`0e42664`](https://github.com/davidecavestro/dt-xtras/commit/0e4266495491c90ac57a6ff662352dcb7517ddf6) - **deps**: update zizmorcore/zizmor-action action to v0.5.6 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`2619e8b`](https://github.com/davidecavestro/dt-xtras/commit/2619e8b839bcd91e25ef542d48be94a32a23a272) - **deps**: update dependency pytest-asyncio to v1.4.0 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`d5b864e`](https://github.com/davidecavestro/dt-xtras/commit/d5b864e31cf8d1f94ab7e3d6e5382fb9c9f7ba08) - trigger release on semver tags *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+- [`7890ca5`](https://github.com/davidecavestro/dt-xtras/commit/7890ca52434beaad87bbc09c236b8608a9aac2e9) - **deps**: update dependency axios to v1.16.1 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`1c54e30`](https://github.com/davidecavestro/dt-xtras/commit/1c54e30d2ac41aa93b3a7f25037136e9503bfb41) - **deps**: update dependency cytoscape to v3.33.4 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`68cc7a0`](https://github.com/davidecavestro/dt-xtras/commit/68cc7a050aa8afb55544406dd45d8095559f1083) - **deps**: update dependency postcss to v8.5.15 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`ed2e1e3`](https://github.com/davidecavestro/dt-xtras/commit/ed2e1e3add037382be3f949c7a5f643fa83087e9) - **deps**: update dependency vite to v8.0.16 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`40761fc`](https://github.com/davidecavestro/dt-xtras/commit/40761fc115ef1bd3226f10000073dd92a37c9c5a) - **deps**: update vitest monorepo to v4.1.8 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`2d7ca99`](https://github.com/davidecavestro/dt-xtras/commit/2d7ca995ab3a85738a6cd95a7481e5e66119446f) - **deps**: update tailwindcss monorepo to v4.3.0 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`8573b95`](https://github.com/davidecavestro/dt-xtras/commit/8573b9534ab8ab6ffdd594ac6f5ade92309c1b71) - **deps**: update dependency pyjwt to v2.13.0 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`9de4e04`](https://github.com/davidecavestro/dt-xtras/commit/9de4e0476a51ec0ada5c91cf0404495444e80b8f) - **deps**: update dependency @playwright/test to v1.60.0 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`5459dc9`](https://github.com/davidecavestro/dt-xtras/commit/5459dc9d21f75467402b6a4fe729a788de5b6efe) - enhance project lists dialog for tag *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+- [`bce099a`](https://github.com/davidecavestro/dt-xtras/commit/bce099a61fdb3d1289e0d2f59143e3b041862c77) - **deps**: update dependency @vitejs/plugin-vue to v6.0.7 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`3c0a3df`](https://github.com/davidecavestro/dt-xtras/commit/3c0a3dfea2c9192e4133079ad15eb8c6f6446bf5) - use @lucide/vue *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+- [`5275a7c`](https://github.com/davidecavestro/dt-xtras/commit/5275a7c51b00cdaa894a331d6b20cb9c6caee71a) - **deps**: update dependency python-multipart to v0.0.30 *(commit by [@renovate[bot]](https://github.com/apps/renovate))*
+- [`cdd9a2a`](https://github.com/davidecavestro/dt-xtras/commit/cdd9a2a47296f98242c0173ace0cdd24278e9028) - update screenshot *(commit by [@davidecavestro](https://github.com/davidecavestro))*
+
+
 ## [v0.9] - 2026-06-01
 ### :boom: BREAKING CHANGES
 - due to [`5002871`](https://github.com/davidecavestro/dt-xtras/commit/5002871c2591171c87218b38402fb0154e55bb06) - bump up devcontainer pg to 18 *(commit by [@davidecavestro](https://github.com/davidecavestro))*:
@@ -189,3 +217,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.7]: https://github.com/davidecavestro/dt-xtras/compare/v0.6...v0.7
 [v0.8]: https://github.com/davidecavestro/dt-xtras/compare/v0.7...v0.8
 [v0.9]: https://github.com/davidecavestro/dt-xtras/compare/v0.8...v0.9
+[0.10.0]: https://github.com/davidecavestro/dt-xtras/compare/v0.9...0.10.0
