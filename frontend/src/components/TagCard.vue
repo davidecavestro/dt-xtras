@@ -103,7 +103,7 @@
 </template>
 
 <script>
-import { Folder, Edit2, Trash2 } from 'lucide-vue-next'
+import { Folder, Edit2, Trash2 } from '@lucide/vue'
 
 export default {
   name: 'TagCard',

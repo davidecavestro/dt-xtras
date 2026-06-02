@@ -20,11 +20,11 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
+    "@lucide/vue": "^1.17.0",
     "@tailwindcss/postcss": "^4.2.2",
     "axios": "^1.15.0",
     "cytoscape": "^3.33.2",
     "cytoscape-dagre": "^2.5.0",
-    "lucide-vue-next": "^1.0.0",
     "pinia": "^3.0.4",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",

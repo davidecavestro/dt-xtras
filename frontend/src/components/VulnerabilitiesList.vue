@@ -193,7 +193,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { AlertCircle, RefreshCw, Shield } from 'lucide-vue-next'
+import { AlertCircle, RefreshCw, Shield } from '@lucide/vue'
 import Pagination from './Pagination.vue'
 import { usePaginatedData } from '../composables/usePagination'
 import { useVulnerabilityStore } from '../stores/vulnerabilities.js'

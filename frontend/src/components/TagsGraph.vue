@@ -337,7 +337,7 @@
 <script>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { List, Grid3X3, Square, Maximize2, Minimize2, ZoomIn, ZoomOut, Scan } from 'lucide-vue-next';
+import { List, Grid3X3, Square, Maximize2, Minimize2, ZoomIn, ZoomOut, Scan } from '@lucide/vue';
 import cytoscape from 'cytoscape';
 import { buildDTProjectUrl } from '../config.js';
 import dagre from 'cytoscape-dagre';

@@ -54,7 +54,7 @@
 </template>
 
 <script>
-import { AlertCircle } from 'lucide-vue-next'
+import { AlertCircle } from '@lucide/vue'
 
 export default {
   name: 'SecurityOverview',

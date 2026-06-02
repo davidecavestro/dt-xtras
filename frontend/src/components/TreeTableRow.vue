@@ -71,7 +71,7 @@
 
 <script>
 import { computed } from 'vue'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronRight } from '@lucide/vue'
 
 export default {
   name: 'TreeTableRow',

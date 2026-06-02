@@ -379,7 +379,7 @@
 <script>
 import { ref, onMounted, watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { RefreshCw, FolderOpen, List as ListIcon, Table as TableIcon, Square as SquareIcon } from 'lucide-vue-next'
+import { RefreshCw, FolderOpen, List as ListIcon, Table as TableIcon, Square as SquareIcon } from '@lucide/vue'
 import ProjectCard from './ProjectCard.vue'
 import SearchableSelect from './SearchableSelect.vue'
 import { createLogger } from '../utils/logger'
