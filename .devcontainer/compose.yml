@@ -5,6 +5,10 @@ services:
       dockerfile: .devcontainer/Dockerfile
     volumes:
       - ..:/workspace:cached
+      # - ./.home_vscode_claude:/home/vscode/.claude
+      # docker-outside-of-docker: share the host daemon so we can run the
+      # dt-xtras compose stack (official images) from inside the dev container.
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8000:8000"
       - "5173:5173"

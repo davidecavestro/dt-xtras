@@ -19,3 +19,4 @@ backend/.coverage
 backend/coverage.xml
 backend/coverage.json
 scripts/__pycache__/
+.home_vscode_claude/

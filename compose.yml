@@ -14,6 +14,7 @@ services:
       - TAXONOMIES_FILE=${TAXONOMIES_FILE:-/app/data/taxonomies.yaml}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - CORS_ALLOW_METHODS=${CORS_ALLOW_METHODS}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
     volumes:
       - ./data:/app/data
     env_file:

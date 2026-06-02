@@ -18,14 +18,14 @@
 
 ## 🎯 About
 
-The project provides a set of features that complement Dependency-Track.
+The project provides a set of features that complement [Dependency-Track](https://dependencytrack.org/).
 
-The taxonomy system categorizes project tags and defines semantic relationships between them,
+The **taxonomy system** categorizes project tags and defines semantic relationships between them,
 enabling both direct categorization and inferred labeling through graph-based relationships.
 <br>
 This is entirely dynamic: it's data you define, not hard-coded logic.
 
-Bulk actions provide a way to activate/deactivate/delete multiple projects at once, and to
+**Bulk actions** provide a way to activate/deactivate/delete multiple projects at once, and to
 apply/remove/clone tags for multiple projects at once.
 
 ### How it fits
@@ -72,7 +72,9 @@ it will probably be deprecated in favor of a more integrated approach.
 
 #### Tag Patterns (Examples)
 
-Combine bundles on regions for brands:
+Define your taxonomies from *Taxonomy Center* view.
+
+An example to combine bundles on regions for brands:
 - `brand:qualcoz` → Brand classification: *QUALCOZ Ltd*
 - `region:eu` → Region classification: *EU*
 - `bee:2026.05` → Bundle version classification: *BEE* software having version *2026.05*
@@ -112,6 +114,60 @@ In the example above, the tag `deploy:acme:prod:myapp:1.0.0` provides all projec
 - **Risk Score**: Average inherited risk score from child nodes
 - **DT-style Bars**: Visual representation matching Dependency-Track UI
 
+## 🚀 Getting Started
+
+dt-xtras is an **extension**, so it needs a running Dependency-Track instance to point at. You log
+in to dt-xtras with your existing Dependency-Track credentials — it never stores them.
+
+The published images on GHCR make a from-scratch run just a few commands — no build required:
+
+1. **Get the compose file and a data directory** (the easiest way is to clone the repo):
+
+   ```bash
+   git clone https://github.com/davidecavestro/dt-xtras.git
+   cd dt-xtras
+   ```
+
+2. **Create your `.env`** from the template and point it at your Dependency-Track:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then edit `.env`:
+
+   ```bash
+   # DT API server base URL — the backend appends /api/v1 itself, so do NOT add it here
+   DT_API_URL=http://host.docker.internal:8080
+   # DT web UI (used for "view in DT" links)
+   DT_FRONTEND_URL=http://localhost:8080
+   ```
+
+   (Use `host.docker.internal` to reach a Dependency-Track running on your own machine.)
+
+3. **Start it** — this pulls the official images from GHCR:
+
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Open** http://localhost:3001 and log in with your Dependency-Track username and password.
+
+To stop: `docker compose down`.
+
+> **Before exposing it to anyone else,** set `JWT_SECRET_KEY` in `.env` to a long random value
+> (e.g. `openssl rand -hex 32`). The backend ships with an insecure default that's fine for a
+> local trial but must not be used in a shared or production deployment.
+
+> **Pin a version.** `compose.yml` tracks the latest `main` build (`…/backend:main`,
+> `…/frontend:main`). For a stable deployment, change those tags to a published
+> [release](https://github.com/davidecavestro/dt-xtras/releases) (e.g. `:0.10.1`).
+>
+> **Build locally instead of pulling:**
+> `docker compose -f compose.yml -f compose.build.yml up -d --build`.
+
+See [docker-setup.md](docker-setup.md) for ports, volumes and configuration details.
+
 ## License
 
 This project complements Dependency-Track, hence follows the same licensing terms.
@@ -122,7 +178,7 @@ This is a personal project that strives to be a community project:
 it is **not endorsed by, affiliated with, or officially supported by Dependency-Track or any of its associated projects, companies, or organizations.**
 
 ### Project Status
-- **Alpha**: This project is in early development (raw implementation, missing paging, missing tests, missing documentation)
+- **Alpha**: This project is in early development (raw implementation, partial paging, partial test coverage, missing documentation)
 - **Community Driven**: Developed and maintained by the open-source community
 - **Independent Addition**: Complements Dependency-Track functionality but is not part of the official Dependency-Track codebase
 - **Use at Your Own Risk**: Users should thoroughly test and evaluate this extension before using in production environments
