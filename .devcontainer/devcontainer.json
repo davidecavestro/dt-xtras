@@ -3,6 +3,9 @@
   "dockerComposeFile": "compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.home_vscode_claude,target=/home/vscode/.claude,type=bind"
+  ],
   "runServices": [
     "app",
     "dtrack-db",
@@ -39,7 +42,12 @@
     }
   },
   "features": {
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "latest",
+      "moby": false,
+      "installDockerBuildx": false
+    }
   },
   "customizations": {
     "vscode": {
@@ -51,9 +59,7 @@
         "ms-azuretools.vscode-docker",
         "bradlc.vscode-tailwindcss",
         "ms-vscode.vscode-json",
-        "github.vscode-github-actions" /*,
-        "codeium.windsurfPyright",
-        "openai.chatgpt"*/
+        "github.vscode-github-actions"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/home/vscode/opt/venv/bin/python"
