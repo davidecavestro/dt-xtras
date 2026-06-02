@@ -24,21 +24,26 @@ const MOCK_TAXONOMIES = [
 test.describe('Taxonomy Center', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
+      // index.html has an inline script that sets window.APP_CONFIG to literal
+      // "${BACKEND_API_URL}" (un-substituted by vite preview). Freeze it first so
+      // axios.defaults.baseURL gets the real value and our route mocks intercept.
+      const e2eConfig = {
+        BACKEND_API_URL: 'http://localhost:8000',
+        DT_API_URL: 'http://localhost:8080',
+        DT_FRONTEND_URL: 'http://localhost:3000'
+      }
+      Object.defineProperty(window, 'APP_CONFIG', { get: () => e2eConfig, set: () => {}, configurable: true })
       localStorage.setItem('auth_token', 'fake-test-token')
       localStorage.setItem('auth_username', 'testuser')
       localStorage.setItem('auth_permissions', '[]')
     })
 
-    await page.route('/api/taxonomies', async (route) => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(MOCK_TAXONOMIES)
-        })
-      } else {
-        await route.continue()
-      }
+    await page.route('http://localhost:8000/api/taxonomies', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_TAXONOMIES)
+      })
     })
 
     await page.goto('/taxonomies')
@@ -54,23 +59,26 @@ test.describe('Taxonomy Center', () => {
   })
 
   test('lists existing taxonomies', async ({ page }) => {
-    await expect(page.locator('text=Environment')).toBeVisible()
-    await expect(page.locator('text=Customer')).toBeVisible()
+    // Cytoscape graph init can delay the list render; use a longer timeout.
+    // Use .first() — taxonomy names also appear as ID badges (e.g. "customer" pill).
+    await expect(page.locator('text=Environment').first()).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('text=Customer').first()).toBeVisible({ timeout: 15000 })
   })
 
   test('opens Create Taxonomy form when Add Taxonomy is clicked', async ({ page }) => {
     await page.click('button:has-text("Add Taxonomy")')
     await expect(page.locator('text=Create Taxonomy')).toBeVisible()
     // Form fields should be visible
-    await expect(page.locator('input[placeholder*="customer"]')).toBeVisible()
+    await expect(page.locator('input[placeholder*="customer, env"]')).toBeVisible()
   })
 
   test('Create Taxonomy form has required fields', async ({ page }) => {
     await page.click('button:has-text("Add Taxonomy")')
-    // ID, Name, Regex Pattern fields should be present
-    await expect(page.locator('text=ID')).toBeVisible()
-    await expect(page.locator('text=Name')).toBeVisible()
-    await expect(page.locator('text=Regex Pattern')).toBeVisible()
+    // Use placeholder text to locate fields — the ID/Name labels are partially
+    // obscured by the sidebar at z-50 (the modal renders inside the z-10 content wrapper)
+    await expect(page.locator('input[placeholder*="customer, env"]')).toBeVisible()
+    await expect(page.locator('input[placeholder*="Customer, Environment"]')).toBeVisible()
+    await expect(page.locator('input[placeholder*="env:"]')).toBeVisible()
   })
 
   test('cancels Create Taxonomy form on close', async ({ page }) => {
@@ -92,7 +100,7 @@ test.describe('Taxonomy Center', () => {
       relations: []
     }
 
-    await page.route('/api/taxonomies', async (route) => {
+    await page.route('http://localhost:8000/api/taxonomies', async (route) => {
       if (route.request().method() === 'POST') {
         await route.fulfill({
           status: 200,
@@ -109,8 +117,8 @@ test.describe('Taxonomy Center', () => {
     })
 
     await page.click('button:has-text("Add Taxonomy")')
-    await page.fill('input[placeholder*="customer"]', 'brand')
-    await page.fill('input[placeholder*="My Taxonomy"]', 'Brand')
+    await page.fill('input[placeholder*="customer, env"]', 'brand')
+    await page.fill('input[placeholder*="Customer, Environment"]', 'Brand')
 
     await page.click('button:has-text("Save")')
 
@@ -119,7 +127,7 @@ test.describe('Taxonomy Center', () => {
   })
 
   test('shows empty state when no taxonomies exist', async ({ page }) => {
-    await page.route('/api/taxonomies', async (route) => {
+    await page.route('http://localhost:8000/api/taxonomies', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

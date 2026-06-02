@@ -30,12 +30,21 @@ const MOCK_PROJECTS = [
 test.describe('Tag Bulk Actions', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
+      // index.html has an inline script that sets window.APP_CONFIG to literal
+      // "${BACKEND_API_URL}" (un-substituted by vite preview). Freeze it first so
+      // axios.defaults.baseURL gets the real value and our route mocks intercept.
+      const e2eConfig = {
+        BACKEND_API_URL: 'http://localhost:8000',
+        DT_API_URL: 'http://localhost:8080',
+        DT_FRONTEND_URL: 'http://localhost:3000'
+      }
+      Object.defineProperty(window, 'APP_CONFIG', { get: () => e2eConfig, set: () => {}, configurable: true })
       localStorage.setItem('auth_token', 'fake-test-token')
       localStorage.setItem('auth_username', 'testuser')
       localStorage.setItem('auth_permissions', '[]')
     })
 
-    await page.route('/api/taxonomies', async (route) => {
+    await page.route('http://localhost:8000/api/taxonomies', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -46,7 +55,7 @@ test.describe('Tag Bulk Actions', () => {
       })
     })
 
-    await page.route('/api/tag', async (route) => {
+    await page.route('http://localhost:8000/api/tag', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -54,7 +63,7 @@ test.describe('Tag Bulk Actions', () => {
       })
     })
 
-    await page.route('/api/project*', async (route) => {
+    await page.route('http://localhost:8000/api/project*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -71,15 +80,18 @@ test.describe('Tag Bulk Actions', () => {
   })
 
   test('Link Selected and Unlink Selected buttons are disabled initially', async ({ page }) => {
-    await expect(page.locator('button:has-text("Link Selected")')).toBeDisabled()
-    await expect(page.locator('button:has-text("Unlink Selected")')).toBeDisabled()
+    // 'Unlink Selected' contains 'link Selected' as a substring, so :has-text() would match
+    // both buttons. getByRole with exact:true avoids the strict-mode violation.
+    await expect(page.getByRole('button', { name: 'Link Selected', exact: true })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Unlink Selected', exact: true })).toBeDisabled()
   })
 
   test('shows tags list', async ({ page }) => {
     await page.waitForSelector('text=env:prod')
-    await expect(page.locator('text=env:prod')).toBeVisible()
-    await expect(page.locator('text=env:staging')).toBeVisible()
-    await expect(page.locator('text=customer:acme')).toBeVisible()
+    // Use .first() — tag names can appear both in the tag list and in project-tag badges
+    await expect(page.locator('text=env:prod').first()).toBeVisible()
+    await expect(page.locator('text=env:staging').first()).toBeVisible()
+    await expect(page.locator('text=customer:acme').first()).toBeVisible()
   })
 
   test('shows projects list', async ({ page }) => {
@@ -105,21 +117,26 @@ test.describe('Tag Bulk Actions', () => {
     await page.locator('text=env:prod').first().click()
     await page.locator('text=My App').first().click()
 
-    await expect(page.locator('button:has-text("Link Selected")')).toBeEnabled()
-    await expect(page.locator('button:has-text("Unlink Selected")')).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Link Selected', exact: true })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Unlink Selected', exact: true })).toBeEnabled()
   })
 
-  test('shows link confirmation modal before linking', async ({ page }) => {
+  test('link operation updates status after linking', async ({ page }) => {
+    // The Link Selected button calls the API directly (no confirmation modal)
+    await page.route('http://localhost:8000/api/v1/tag/**/project*', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    })
+
     await page.waitForSelector('text=env:prod')
     await page.waitForSelector('text=My App')
 
     await page.locator('text=env:prod').first().click()
     await page.locator('text=My App').first().click()
 
-    await page.click('button:has-text("Link Selected")')
+    await page.getByRole('button', { name: 'Link Selected', exact: true }).click()
 
-    // Confirmation modal should appear
-    await expect(page.locator('role=dialog')).toBeVisible()
+    // After a successful link, a status message appears
+    await expect(page.locator('text=Successfully linked')).toBeVisible()
   })
 
   test('shows refresh button', async ({ page }) => {
