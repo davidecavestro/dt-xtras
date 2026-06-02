@@ -2,7 +2,7 @@ fastapi==0.136.3
 uvicorn[standard]==0.48.0
 httpx==0.28.1
 pydantic==2.13.4
-python-multipart==0.0.29
+python-multipart==0.0.30
 PyYAML==6.0.3
 PyJWT==2.13.0
 regex==2026.5.9
