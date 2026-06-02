@@ -46,29 +46,29 @@ it will probably be deprecated in favor of a more integrated approach.
 #### Tag Patterns (Examples)
 
 Combine bundles on regions for brands:
-- `brand:qualcoz` → Brand classification: QUALCOZ Ltd
-- `region:eu` → Region classification: EU
-- `bee:2026.05` → Bundle version classification: BEE version 2026.05
-- `site:qualcoz:eu:bee:2026.05` → A site serving Brand QUALCOZ Ltd for
-Region EU using the software Bundle BEE version 2026.05
+- `brand:qualcoz` → Brand classification: *QUALCOZ Ltd*
+- `region:eu` → Region classification: *EU*
+- `bee:2026.05` → Bundle version classification: *BEE* software having version *2026.05*
+- `site:qualcoz:eu:bee:2026.05` → A site serving *Brand QUALCOZ* Ltd for
+Region *EU* using the software Bundle *BEE* at version *2026.05*
 
 In the example above, the tag `brand:qualcoz:eu:bee:2026.05` provides all projects tagged as `bee:2026.05` with the following classifications:
-- Brand: QUALCOZ Ltd
-- Region: EU
-- Bundle: BEE
-- Version: 2026.05
+- Brand: *QUALCOZ Ltd*
+- Region: *EU*
+- Bundle: *BEE*
+- Version: *2026.05*
 
 Combine environments, customers, and product versions:
-- `env:staging` → Environment classification: staging
-- `customer:acme` → Customer classification: ACME Inc
-- `myapp:1.0.0` → Product version classification: MYAPP version 1.0.0
-- `deploy:acme:prod:myapp:1.0.0` → Customer ACME Inc + Environment PROD + Product MYAPP version 1.0.0
+- `env:staging` → Environment classification: *staging*
+- `customer:acme` → Customer classification: *ACME Inc*
+- `myapp:1.0.0` → Product version classification: *MYAPP* version *1.0.0*
+- `deploy:acme:prod:myapp:1.0.0` → Customer *ACME Inc* + Environment *PROD* + Product *MYAPP* version *1.0.0*
 
 In the example above, the tag `deploy:acme:prod:myapp:1.0.0` provides all projects tagged as `myapp:1.0.0` with the following classifications:
-- Customer: ACME Inc
-- Environment: PROD
-- Product: MYAPP
-- Version: 1.0.0
+- Customer: *ACME Inc*
+- Environment: *PROD*
+- Product: *MYAPP*
+- Version: *1.0.0*
 
 ### Hierarchy Building
 
