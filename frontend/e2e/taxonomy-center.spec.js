@@ -42,7 +42,7 @@ test.describe('Taxonomy Center', () => {
     })
 
     await page.goto('/taxonomies')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('shows Taxonomy Center heading', async ({ page }) => {
@@ -128,7 +128,7 @@ test.describe('Taxonomy Center', () => {
     })
 
     await page.goto('/taxonomies')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     // Add Taxonomy button should still be there
     await expect(page.locator('button:has-text("Add Taxonomy")')).toBeVisible()

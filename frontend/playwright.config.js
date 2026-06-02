@@ -13,8 +13,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI */
   workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use */
-  reporter: 'html',
+  /* Reporter to use — list gives per-test stdout in CI; html is the artifact */
+  reporter: process.env.CI ? [['list'], ['html']] : 'html',
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
