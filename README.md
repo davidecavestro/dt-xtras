@@ -28,6 +28,31 @@ This is entirely dynamic: it's data you define, not hard-coded logic.
 Bulk actions provide a way to activate/deactivate/delete multiple projects at once, and to
 apply/remove/clone tags for multiple projects at once.
 
+### How it fits
+
+dt-xtras sits *beside* Dependency-Track, not in front of it. It adds new features on top of
+DT's **public REST API** and keeps its own minimal state (a single `taxonomies.yaml`). It does
+**not** modify or replace Dependency-Track — DT's own UI and API stay exactly as they are, and
+you keep using them directly for everything they already do.
+
+```text
+                         extra features          ┌──────────────────────────────────┐
+                      ┌────────────────────────▶ │ dt-xtras  (adds features)        │
+                      │                          │ frontend + backend               │
+  ┌────────┐          │                          │ (+ taxonomies.yaml)              │
+  │  User  │──────────┤                          └────────────────┬─────────────────┘
+  └────────┘          │                               │ reads / writes via
+                      │                               │ DT's public API only
+                      │                               ▼
+                      │ core features, as always ┌──────────────────────────────────┐
+                      └────────────────────────▶ │ Dependency-Track  (unchanged)    │
+                                                 │ Web UI  ───────▶  REST API       │
+                                                 └──────────────────────────────────┘
+```
+
+So the only thing routed "through" dt-xtras is its own added functionality; core Dependency-Track
+workflows continue to go straight to DT.
+
 ![Dashboard Screenshot](docs/dashboard-screenshot.png)
 
 ### Rationale
