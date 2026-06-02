@@ -1,7 +1,7 @@
 # Use a Python base image
 FROM mcr.microsoft.com/devcontainers/python:3.14
 
-# Install Node.js (Version 20) for the Vue.js Frontend and Docker
+# Install Node.js (Version 24) for the Vue.js Frontend
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get update && apt-get install -y nodejs python3-venv \
     && rm -rf /var/lib/apt/lists/*

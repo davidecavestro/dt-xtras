@@ -25,3 +25,4 @@ globs: **/*(.vue|.js|.py)
 # Tests are your friends, write tests asserting every specific condition you have to fix, so that this remains verified over time
 # Use linters to check sources validity
 # For markup sources, never try to count the open/closed markup elements
+# Both tests and services can be run from scripts udner /workspace/scripts/
