@@ -10,6 +10,36 @@ from tests.conftest import DT_API_URL
 
 
 @pytest.mark.asyncio
+async def test_enriched_tags_cache_dedupes_and_refresh_bypasses(respx_mock):
+    """fetch_enriched_tags_for_tree caches per token within the TTL; refresh=True bypasses."""
+    import main
+
+    main.clear_enriched_tags_cache()
+
+    tag_route = respx_mock.get(f"{DT_API_URL}/api/v1/tag").mock(
+        return_value=httpx.Response(200, json=[{"name": "env:prod"}])
+    )
+    proj_route = respx_mock.get(f"{DT_API_URL}/api/v1/project").mock(
+        return_value=httpx.Response(200, json=[], headers={"X-Total-Count": "0"})
+    )
+
+    try:
+        first = await main.fetch_enriched_tags_for_tree("tok")
+        second = await main.fetch_enriched_tags_for_tree("tok")  # served from cache
+        assert first == second
+        assert tag_route.call_count == 1, "second call should hit the cache, not DT"
+
+        await main.fetch_enriched_tags_for_tree("tok", refresh=True)  # bypass
+        assert tag_route.call_count == 2
+
+        # A different token must not share the first token's cached result.
+        await main.fetch_enriched_tags_for_tree("other-token")
+        assert tag_route.call_count == 3
+    finally:
+        main.clear_enriched_tags_cache()
+
+
+@pytest.mark.asyncio
 async def test_get_all_tags_pages_to_completion(respx_mock):
     """get_all_tags must follow pagination, not stop at the first page."""
     page1 = [{"name": f"tag-{i}"} for i in range(100)]  # full page -> there is more

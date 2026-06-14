@@ -20,6 +20,20 @@ from main import app
 DT_API_URL = "http://dtrack-apiserver:8080"
 
 
+@pytest.fixture(autouse=True)
+def _clear_tree_cache():
+    """Reset the per-token enriched-tags cache between tests.
+
+    The cache is module-level and tests reuse the same mock DT token, so without
+    this a value cached by one test would leak into the next.
+    """
+    import main
+
+    main.clear_enriched_tags_cache()
+    yield
+    main.clear_enriched_tags_cache()
+
+
 @pytest.fixture
 def client():
     """Return a FastAPI test client."""

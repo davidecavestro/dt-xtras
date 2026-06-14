@@ -5,6 +5,9 @@ Business logic is in services.py, models in models.py, auth in auth.py.
 """
 
 import os
+import hashlib
+import time
+import asyncio
 import httpx
 import regex
 from datetime import datetime, timezone
@@ -672,11 +675,12 @@ async def get_tree(
     dt_token: str = Depends(get_dt_token_from_request),
     root_taxonomy: Optional[str] = None,
     associative_mode: bool = False,
+    refresh: bool = False,
 ):
     """Build and return taxonomy tree with aggregated project data (network/graph view)"""
     # Load taxonomies and fetch enriched tags with project UUIDs and metrics
     taxonomies = load_taxonomies()
-    enriched_tags = await fetch_enriched_tags_for_tree(dt_token)
+    enriched_tags = await fetch_enriched_tags_for_tree(dt_token, refresh=refresh)
 
     # Build simple tree from tags
     nodes = []
@@ -812,6 +816,7 @@ async def get_tree(
 async def get_hierarchical_tree(
     dt_token: str = Depends(get_dt_token_from_request),
     root_taxonomy: Optional[str] = None,
+    refresh: bool = False,
 ):
     """Build and return hierarchical tree from hierarchical taxonomies with relations"""
     taxonomies = load_taxonomies()
@@ -836,7 +841,7 @@ async def get_hierarchical_tree(
             return {"nodes": [], "edges": [], "tree": []}
 
     # Fetch enriched tags with project UUIDs and metrics
-    enriched_tags = await fetch_enriched_tags_for_tree(dt_token)
+    enriched_tags = await fetch_enriched_tags_for_tree(dt_token, refresh=refresh)
 
     # Build hierarchical tree
     tree_data = build_hierarchical_tree(enriched_tags, hierarchical_taxonomies, taxonomies, root_taxonomy)
@@ -973,7 +978,62 @@ async def proxy_dt_api(
     )
 
 
-async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
+# Short-lived cache of the (expensive) enriched-tags computation. Keyed by a hash
+# of the caller's DT token so users with different ACLs never share results, and
+# bounded by a TTL so DT changes surface quickly. Taxonomies are applied DOWNSTREAM
+# of this in the tree endpoints, so cached enrichment stays correct across taxonomy
+# edits (no invalidation needed for those). Set TREE_CACHE_TTL_SECONDS=0 to disable.
+ENRICHED_TAGS_TTL_SECONDS = float(os.getenv("TREE_CACHE_TTL_SECONDS", "15"))
+_enriched_tags_cache: Dict[str, "tuple[float, List[Dict]]"] = {}
+_enriched_tags_locks: Dict[str, asyncio.Lock] = {}
+
+
+def clear_enriched_tags_cache() -> None:
+    """Drop all cached enrichment (used between tests and on demand)."""
+    _enriched_tags_cache.clear()
+    _enriched_tags_locks.clear()
+
+
+async def fetch_enriched_tags_for_tree(dt_token: str, refresh: bool = False) -> List[Dict]:
+    """Return enriched tags, served from a short-lived per-token cache when possible.
+
+    `refresh=True` bypasses and repopulates the cache (used by an explicit user
+    refresh). The cache collapses the two near-simultaneous calls the dashboard
+    makes (/api/tree and /api/tree/hierarchical) into a single DT fetch.
+    """
+    if ENRICHED_TAGS_TTL_SECONDS <= 0:
+        return await _compute_enriched_tags_for_tree(dt_token)
+
+    key = hashlib.sha256((dt_token or "").encode()).hexdigest()
+    now = time.monotonic()
+
+    if not refresh:
+        cached = _enriched_tags_cache.get(key)
+        if cached and cached[0] > now:
+            return cached[1]
+
+    # Serialize concurrent misses for the same token so we fetch once, not N times.
+    lock = _enriched_tags_locks.setdefault(key, asyncio.Lock())
+    async with lock:
+        now = time.monotonic()
+        if not refresh:
+            cached = _enriched_tags_cache.get(key)
+            if cached and cached[0] > now:
+                return cached[1]
+
+        data = await _compute_enriched_tags_for_tree(dt_token)
+
+        # Drop expired entries opportunistically so the cache can't grow without bound.
+        expired = [k for k, (exp, _) in _enriched_tags_cache.items() if exp <= now]
+        for k in expired:
+            _enriched_tags_cache.pop(k, None)
+            _enriched_tags_locks.pop(k, None)
+
+        _enriched_tags_cache[key] = (now + ENRICHED_TAGS_TTL_SECONDS, data)
+        return data
+
+
+async def _compute_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
     """Fetch all tags enriched with project UUIDs and vulnerability metrics."""
     # Fetch all tags
     tags = await get_all_tags(dt_token)
