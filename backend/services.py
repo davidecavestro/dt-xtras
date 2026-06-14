@@ -5,6 +5,9 @@ This module contains taxonomy management, DT API client, graph/tree building log
 
 import os
 import asyncio
+import shutil
+import tempfile
+import threading
 import yaml
 import regex
 import httpx
@@ -18,6 +21,12 @@ from models import Taxonomy
 # Configuration
 DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
 TAXONOMIES_FILE = os.getenv("TAXONOMIES_FILE", "../data/taxonomies.yaml")
+
+# Serializes writes to the taxonomies file. It is the only persistent state, and
+# concurrent edits (e.g. reorder + update) would otherwise interleave and corrupt
+# it. Sync lock (not asyncio) because save_taxonomies is synchronous and may run
+# in a threadpool when called from sync paths.
+_taxonomies_write_lock = threading.Lock()
 
 
 def build_dt_headers(dt_token: str) -> Dict[str, str]:
@@ -56,8 +65,6 @@ def load_taxonomies() -> List[Taxonomy]:
         example_file = os.path.join(os.path.dirname(TAXONOMIES_FILE), "taxonomies.example.yaml")
         if os.path.exists(example_file):
             logger.info(f"No taxonomies file found at {TAXONOMIES_FILE}, copying from example template")
-            import shutil
-
             shutil.copy2(example_file, TAXONOMIES_FILE)
             return []
         else:
@@ -108,14 +115,44 @@ def load_taxonomies() -> List[Taxonomy]:
 
 
 def save_taxonomies(taxonomies: List[Taxonomy]):
-    """Save taxonomies to YAML file"""
-    os.makedirs(os.path.dirname(TAXONOMIES_FILE), exist_ok=True)
-    with open(TAXONOMIES_FILE, "w") as f:
-        taxonomy_data = []
-        for t in taxonomies:
-            item = t.model_dump()
-            taxonomy_data.append(item)
-        yaml.dump({"taxonomies": taxonomy_data}, f, default_flow_style=False)
+    """Save taxonomies to YAML file atomically.
+
+    Writes to a temporary file in the same directory and os.replace()s it into
+    place (atomic on POSIX), so a crash mid-write can never leave a truncated or
+    half-written taxonomies file. The previous version is kept as a `.bak`. A
+    process-wide lock serializes concurrent writers.
+    """
+    directory = os.path.dirname(TAXONOMIES_FILE)
+    os.makedirs(directory, exist_ok=True)
+
+    taxonomy_data = [t.model_dump() for t in taxonomies]
+    payload = yaml.dump({"taxonomies": taxonomy_data}, default_flow_style=False)
+
+    with _taxonomies_write_lock:
+        # Write to a temp file in the same directory so os.replace stays atomic
+        # (rename is only atomic within a filesystem).
+        fd, tmp_path = tempfile.mkstemp(dir=directory, prefix=".taxonomies-", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(payload)
+                f.flush()
+                os.fsync(f.fileno())
+
+            # Copy (not move) the prior good copy to .bak so the main file is
+            # never momentarily absent for a concurrent reader.
+            if os.path.exists(TAXONOMIES_FILE):
+                try:
+                    shutil.copy2(TAXONOMIES_FILE, TAXONOMIES_FILE + ".bak")
+                except OSError as e:
+                    logger.warning(f"Could not back up taxonomies file: {e}")
+
+            # Atomic swap: the destination always points at a complete file.
+            os.replace(tmp_path, TAXONOMIES_FILE)
+        except Exception:
+            # Never leave the temp file behind on failure.
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            raise
 
 
 # DT API Client
