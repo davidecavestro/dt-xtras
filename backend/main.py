@@ -57,6 +57,8 @@ from services import (
     deactivate_project,
     save_taxonomies,
     validate_taxonomy_pattern,
+    record_taxonomy_audit,
+    read_taxonomy_audit,
     logger,
     DT_API_URL,
 )
@@ -105,6 +107,15 @@ def get_user_permissions_from_request(
     payload = decode_jwt_token(token)
     permissions_str = payload.get("permissions", "")
     return [p.strip() for p in permissions_str.split(",") if p.strip()]
+
+
+def get_username_from_request(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> str:
+    """Extract the authenticated username (JWT `sub`) for audit attribution."""
+    token = credentials.credentials
+    payload = decode_jwt_token(token)
+    return payload.get("sub", "unknown")
 
 
 def require_edit_permissions(
@@ -174,6 +185,20 @@ async def get_taxonomies(dt_token: str = Depends(get_dt_token_from_request)):
     return load_taxonomies()
 
 
+@app.get("/api/taxonomies/audit")
+async def get_taxonomy_audit(
+    limit: int = 100,
+    permissions: List[str] = Depends(require_edit_permissions),
+):
+    """Return recent taxonomy change history (newest first).
+
+    Gated to editors since it reveals who changed what. Declared before the
+    dynamic `/{taxonomy_id}/tag` route is irrelevant here (no path overlap), but
+    kept next to the list endpoint for clarity.
+    """
+    return read_taxonomy_audit(limit=limit)
+
+
 @app.get("/api/taxonomies/{taxonomy_id}/tag")
 async def get_taxonomy_tags(taxonomy_id: str, dt_token: str = Depends(get_dt_token_from_request)):
     """Get all tags that match a specific taxonomy pattern"""
@@ -198,7 +223,11 @@ async def get_taxonomy_tags(taxonomy_id: str, dt_token: str = Depends(get_dt_tok
 
 
 @app.post("/api/taxonomies", response_model=Taxonomy)
-async def create_taxonomy(taxonomy: Taxonomy, permissions: List[str] = Depends(require_edit_permissions)):
+async def create_taxonomy(
+    taxonomy: Taxonomy,
+    permissions: List[str] = Depends(require_edit_permissions),
+    username: str = Depends(get_username_from_request),
+):
     try:
         validate_taxonomy_pattern(taxonomy.regex_pattern)
     except ValueError as e:
@@ -208,6 +237,7 @@ async def create_taxonomy(taxonomy: Taxonomy, permissions: List[str] = Depends(r
         raise HTTPException(status_code=400, detail="Taxonomy with this ID already exists")
     taxonomies.append(taxonomy)
     save_taxonomies(taxonomies)
+    record_taxonomy_audit("create", taxonomy.id, username, {"after": taxonomy.model_dump()})
     return taxonomy
 
 
@@ -220,6 +250,7 @@ async def create_taxonomy(taxonomy: Taxonomy, permissions: List[str] = Depends(r
 async def reorder_taxonomies(
     taxonomy_order: List[TaxonomyPriority] = Body(...),
     permissions: List[str] = Depends(require_edit_permissions),
+    username: str = Depends(get_username_from_request),
 ):
     """Reorder taxonomies based on the provided order"""
     taxonomies = load_taxonomies()
@@ -230,6 +261,7 @@ async def reorder_taxonomies(
             taxonomy.priority = order_map[taxonomy.id]
 
     save_taxonomies(taxonomies)
+    record_taxonomy_audit("reorder", "*", username, {"order": order_map})
     return {"message": "Taxonomies reordered successfully"}
 
 
@@ -238,6 +270,7 @@ async def update_taxonomy(
     taxonomy_id: str,
     taxonomy: Taxonomy,
     permissions: List[str] = Depends(require_edit_permissions),
+    username: str = Depends(get_username_from_request),
 ):
     try:
         validate_taxonomy_pattern(taxonomy.regex_pattern)
@@ -247,19 +280,26 @@ async def update_taxonomy(
     index = next((i for i, t in enumerate(taxonomies) if t.id == taxonomy_id), None)
     if index is None:
         raise HTTPException(status_code=404, detail="Taxonomy not found")
+    before = taxonomies[index].model_dump()
     taxonomies[index] = taxonomy
     save_taxonomies(taxonomies)
+    record_taxonomy_audit("update", taxonomy_id, username, {"before": before, "after": taxonomy.model_dump()})
     return taxonomy
 
 
 @app.delete("/api/taxonomies/{taxonomy_id}")
-async def delete_taxonomy(taxonomy_id: str, permissions: List[str] = Depends(require_edit_permissions)):
+async def delete_taxonomy(
+    taxonomy_id: str,
+    permissions: List[str] = Depends(require_edit_permissions),
+    username: str = Depends(get_username_from_request),
+):
     taxonomies = load_taxonomies()
     index = next((i for i, t in enumerate(taxonomies) if t.id == taxonomy_id), None)
     if index is None:
         raise HTTPException(status_code=404, detail="Taxonomy not found")
-    taxonomies.pop(index)
+    removed = taxonomies.pop(index)
     save_taxonomies(taxonomies)
+    record_taxonomy_audit("delete", taxonomy_id, username, {"before": removed.model_dump()})
     return {"message": "Taxonomy deleted successfully"}
 
 

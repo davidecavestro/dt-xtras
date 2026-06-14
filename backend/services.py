@@ -4,6 +4,7 @@ This module contains taxonomy management, DT API client, graph/tree building log
 """
 
 import os
+import json
 import asyncio
 import shutil
 import tempfile
@@ -11,7 +12,7 @@ import threading
 import yaml
 import regex
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional, List, Tuple
 from urllib.parse import quote
 from logger_config import logger
@@ -21,6 +22,12 @@ from models import Taxonomy
 # Configuration
 DT_API_URL = os.getenv("DT_API_URL", "http://dtrack-apiserver:8080")
 TAXONOMIES_FILE = os.getenv("TAXONOMIES_FILE", "../data/taxonomies.yaml")
+# Append-only audit trail of taxonomy edits. Defaults next to the taxonomies file.
+AUDIT_LOG_FILE = os.getenv(
+    "TAXONOMY_AUDIT_FILE",
+    os.path.join(os.path.dirname(TAXONOMIES_FILE) or ".", "taxonomies-audit.jsonl"),
+)
+_audit_log_lock = threading.Lock()
 
 # Serializes writes to the taxonomies file. It is the only persistent state, and
 # concurrent edits (e.g. reorder + update) would otherwise interleave and corrupt
@@ -140,6 +147,55 @@ def validate_taxonomy_pattern(pattern: str) -> None:
         regex.compile(pattern)
     except regex.error as e:
         raise ValueError(f"Invalid regex pattern: {e}")
+
+
+def record_taxonomy_audit(action: str, taxonomy_id: str, username: str, details: Optional[Dict] = None) -> None:
+    """Append one entry to the taxonomy audit trail (best-effort).
+
+    Records who changed which taxonomy, when, and how. Auditing must never break
+    the edit itself, so failures are logged and swallowed rather than raised.
+    """
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": action,
+        "taxonomy_id": taxonomy_id,
+        "user": username,
+    }
+    if details:
+        entry["details"] = details
+
+    try:
+        directory = os.path.dirname(AUDIT_LOG_FILE)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+        with _audit_log_lock:
+            with open(AUDIT_LOG_FILE, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+    except OSError as e:
+        logger.warning(f"Could not write taxonomy audit entry: {e}")
+
+
+def read_taxonomy_audit(limit: int = 100) -> List[Dict]:
+    """Return the most recent audit entries, newest first."""
+    if not os.path.exists(AUDIT_LOG_FILE):
+        return []
+
+    entries: List[Dict] = []
+    with _audit_log_lock:
+        with open(AUDIT_LOG_FILE, "r") as f:
+            lines = f.readlines()
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            logger.warning("Skipping malformed audit log line")
+
+    entries.reverse()  # newest first
+    return entries[: max(0, limit)]
 
 
 def save_taxonomies(taxonomies: List[Taxonomy]):

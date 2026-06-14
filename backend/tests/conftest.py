@@ -34,6 +34,14 @@ def _clear_tree_cache():
     main.clear_enriched_tags_cache()
 
 
+@pytest.fixture(autouse=True)
+def _isolate_audit_log(tmp_path, monkeypatch):
+    """Redirect the taxonomy audit log to a temp file so tests don't pollute ../data."""
+    import services
+
+    monkeypatch.setattr(services, "AUDIT_LOG_FILE", str(tmp_path / "audit.jsonl"))
+
+
 @pytest.fixture
 def client():
     """Return a FastAPI test client."""
@@ -288,3 +296,12 @@ def auth_token(mock_jwt_secret):
 def auth_headers(auth_token):
     """Return headers with authorization token."""
     return {"Authorization": f"Bearer {auth_token}"}
+
+
+@pytest.fixture
+def auth_headers_readonly(mock_jwt_secret):
+    """Auth headers for a view-only user (no edit permissions)."""
+    import main
+
+    token = main.create_jwt_token("viewer", "mock-dt-token-12345", ["VIEW_PORTFOLIO"])
+    return {"Authorization": f"Bearer {token}"}
