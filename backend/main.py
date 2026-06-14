@@ -968,16 +968,6 @@ def passthrough_response_headers(response: httpx.Response) -> Dict[str, str]:
     return {k: v for k, v in response.headers.items() if k.lower() not in _STRIPPED_RESPONSE_HEADERS}
 
 
-@app.get("/api/v1/test")
-async def test_proxy():
-    return {"message": "Proxy is working"}
-
-
-@app.post("/api/v1/test")
-async def test_proxy_post(request: Request):
-    return {"message": "Proxy POST working", "method": request.method}
-
-
 def _validate_proxy_path(path: str) -> None:
     """Reject proxy paths that try to escape the /api/v1/ prefix.
 
