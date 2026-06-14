@@ -56,6 +56,7 @@ from services import (
     load_taxonomies,
     deactivate_project,
     save_taxonomies,
+    validate_taxonomy_pattern,
     logger,
     DT_API_URL,
 )
@@ -198,6 +199,10 @@ async def get_taxonomy_tags(taxonomy_id: str, dt_token: str = Depends(get_dt_tok
 
 @app.post("/api/taxonomies", response_model=Taxonomy)
 async def create_taxonomy(taxonomy: Taxonomy, permissions: List[str] = Depends(require_edit_permissions)):
+    try:
+        validate_taxonomy_pattern(taxonomy.regex_pattern)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     taxonomies = load_taxonomies()
     if any(t.id == taxonomy.id for t in taxonomies):
         raise HTTPException(status_code=400, detail="Taxonomy with this ID already exists")
@@ -234,6 +239,10 @@ async def update_taxonomy(
     taxonomy: Taxonomy,
     permissions: List[str] = Depends(require_edit_permissions),
 ):
+    try:
+        validate_taxonomy_pattern(taxonomy.regex_pattern)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     taxonomies = load_taxonomies()
     index = next((i for i, t in enumerate(taxonomies) if t.id == taxonomy_id), None)
     if index is None:

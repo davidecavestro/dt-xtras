@@ -130,6 +130,18 @@ def load_taxonomies() -> List[Taxonomy]:
             return []
 
 
+def validate_taxonomy_pattern(pattern: str) -> None:
+    """Raise ValueError if a taxonomy's regex doesn't compile.
+
+    Called before persisting so a malformed pattern is rejected up front rather
+    than blowing up later, on every tag-matching pass, for every reader.
+    """
+    try:
+        regex.compile(pattern)
+    except regex.error as e:
+        raise ValueError(f"Invalid regex pattern: {e}")
+
+
 def save_taxonomies(taxonomies: List[Taxonomy]):
     """Save taxonomies to YAML file atomically.
 

@@ -50,6 +50,30 @@ class TestTaxonomyCRUD:
         response = client.post("/api/taxonomies", json=taxonomy_data, headers=auth_headers)
         assert response.status_code == 400
 
+    def test_create_taxonomy_invalid_regex_rejected(self, client, auth_headers):
+        """A taxonomy with a regex that doesn't compile is rejected with 400, not persisted."""
+        taxonomy_data = {
+            "id": "bad-regex",
+            "name": "Bad Regex",
+            "regex_pattern": "^(unclosed:(?P<value>.+)$",  # unbalanced paren
+            "priority": 100,
+        }
+        response = client.post("/api/taxonomies", json=taxonomy_data, headers=auth_headers)
+        assert response.status_code == 400
+        assert "regex" in response.json()["detail"].lower()
+
+    def test_update_taxonomy_invalid_regex_rejected(self, client, auth_headers):
+        """Updating a taxonomy with an invalid regex is rejected with 400."""
+        taxonomy_data = {
+            "id": "brand",
+            "name": "Brand",
+            "regex_pattern": "^brand:(?P<value>.+$",  # unbalanced paren
+            "priority": 1,
+        }
+        response = client.put("/api/taxonomies/brand", json=taxonomy_data, headers=auth_headers)
+        assert response.status_code == 400
+        assert "regex" in response.json()["detail"].lower()
+
     def test_update_taxonomy_success(self, client, auth_headers):
         """Test updating an existing taxonomy."""
         taxonomy_data = {
