@@ -10,6 +10,42 @@ from tests.conftest import DT_API_URL
 
 
 @pytest.mark.asyncio
+async def test_get_all_tags_pages_to_completion(respx_mock):
+    """get_all_tags must follow pagination, not stop at the first page."""
+    page1 = [{"name": f"tag-{i}"} for i in range(100)]  # full page -> there is more
+    page2 = [{"name": "tag-100"}]  # short page -> end
+
+    def respond(request):
+        page = request.url.params.get("pageNumber")
+        return httpx.Response(200, json=page1 if page == "1" else page2)
+
+    route = respx_mock.get(f"{DT_API_URL}/api/v1/tag").mock(side_effect=respond)
+
+    tags = await services.get_all_tags("dt-token")
+
+    assert len(tags) == 101
+    assert route.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_get_all_projects_pages_to_completion(respx_mock):
+    """get_all_projects must follow pagination across the whole portfolio."""
+    full_page = [{"uuid": f"p{i}", "name": f"P{i}", "version": "1", "tags": []} for i in range(500)]
+    last_page = [{"uuid": "p500", "name": "P500", "version": "1", "tags": []}]
+
+    def respond(request):
+        page = request.url.params.get("pageNumber")
+        return httpx.Response(200, json=full_page if page == "1" else last_page)
+
+    route = respx_mock.get(f"{DT_API_URL}/api/v1/project").mock(side_effect=respond)
+
+    projects = await services.get_all_projects("dt-token")
+
+    assert len(projects) == 501
+    assert route.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_get_dt_projects_sends_filters_and_enriches_timestamps(respx_mock):
     route = respx_mock.get(f"{DT_API_URL}/api/v1/project").mock(
         return_value=httpx.Response(

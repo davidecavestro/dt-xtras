@@ -285,18 +285,52 @@ async def get_dt_projects(
     return enriched_projects, total_count
 
 
-async def get_all_tags(dt_token: str, page: int = 1, limit: int = 50):
-    """Get all tags from the system"""
-    headers = build_dt_headers(dt_token)
+async def get_all_tags(dt_token: str, page_size: int = 100):
+    """Get every tag from DT, paging through the endpoint to completion.
 
-    params = {"pageNumber": str(page), "pageSize": str(limit)}
+    DT's tag endpoint is paginated; callers here (taxonomy matching, tag lookup,
+    tree enrichment) all need the complete set, so a single page would silently
+    drop tags past the first `page_size` and produce wrong results.
+    """
+    headers = build_dt_headers(dt_token)
+    tags: List[Dict] = []
+    page_number = 1
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{DT_API_URL}/api/v1/tag", headers=headers, params=params, timeout=30.0)
-        response.raise_for_status()
-        tags = response.json()
+        while True:
+            response = await client.get(
+                f"{DT_API_URL}/api/v1/tag",
+                headers=headers,
+                params={"pageNumber": str(page_number), "pageSize": str(page_size)},
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            batch = response.json()
+            tags.extend(batch)
+            if len(batch) < page_size:
+                break
+            page_number += 1
 
     return tags
+
+
+async def get_all_projects(dt_token: str, page_size: int = 500) -> List[Dict]:
+    """Get every project from DT, paging through the list endpoint to completion.
+
+    Used by tree enrichment, which must see the whole portfolio. The previous
+    single-call `limit=10000` silently truncated portfolios larger than that.
+    """
+    projects: List[Dict] = []
+    page_number = 1
+
+    while True:
+        batch, _ = await get_dt_projects(dt_token, page=page_number, limit=page_size)
+        projects.extend(batch)
+        if len(batch) < page_size:
+            break
+        page_number += 1
+
+    return projects
 
 
 async def get_projects_with_tag(dt_token: str, tag_name: str) -> List[Dict]:
@@ -327,7 +361,7 @@ async def get_projects_with_tag(dt_token: str, tag_name: str) -> List[Dict]:
 
 async def get_tag_by_name(tag_name: str, dt_token: str) -> Optional[Dict]:
     """Get a specific tag by name"""
-    tags = await get_all_tags(dt_token, limit=100)
+    tags = await get_all_tags(dt_token)
     return next((tag for tag in tags if tag.get("name") == tag_name), None)
 
 

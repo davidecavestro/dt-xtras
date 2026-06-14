@@ -41,6 +41,7 @@ from auth import (
 from services import (
     get_dt_projects,
     get_all_tags,
+    get_all_projects,
     get_projects_with_tag,
     get_tag_by_name,
     add_projects_to_tag,
@@ -975,8 +976,9 @@ async def fetch_enriched_tags_for_tree(dt_token: str) -> List[Dict]:
     tags = await get_all_tags(dt_token)
     logger.info(f"Fetched {len(tags)} tags from DT")
 
-    # Fetch all projects to build tag-to-project mapping
-    projects, _ = await get_dt_projects(dt_token, limit=10000)
+    # Fetch all projects to build tag-to-project mapping (paged to completion,
+    # not a single capped call, so large portfolios aren't silently truncated)
+    projects = await get_all_projects(dt_token)
     logger.info(f"Fetched {len(projects)} projects from DT")
 
     # Build project tag mapping
