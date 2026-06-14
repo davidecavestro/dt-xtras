@@ -88,7 +88,7 @@ def get_dt_token_from_request(
     """Extract DT JWT token from our wrapper JWT"""
     token = credentials.credentials
     payload = decode_jwt_token(token)
-    return payload.get("dt_api_key")
+    return payload.get("dt_token")
 
 
 def get_user_permissions_from_request(

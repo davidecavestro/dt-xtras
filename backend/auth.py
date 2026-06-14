@@ -16,11 +16,15 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
 
-def create_jwt_token(username: str, dt_api_key: str, permissions: List[str]) -> str:
-    """Create JWT token with user info and permissions"""
+def create_jwt_token(username: str, dt_token: str, permissions: List[str]) -> str:
+    """Create JWT token with user info and permissions
+
+    `dt_token` is the DT JWT session token returned by DT's login endpoint; it is
+    carried inside our own JWT and replayed as the Bearer credential on DT calls.
+    """
     payload = {
         "sub": username,
-        "dt_api_key": dt_api_key,
+        "dt_token": dt_token,
         "permissions": ",".join(permissions),
         "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
         "iat": datetime.now(timezone.utc)

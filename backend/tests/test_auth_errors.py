@@ -19,7 +19,7 @@ class TestAuthErrors:
         """Test that expired tokens are rejected."""
         payload = {
             "sub": "testuser",
-            "dt_api_key": "test-key",
+            "dt_token": "test-key",
             "permissions": "VIEW_PORTFOLIO",
             "exp": datetime.utcnow() - timedelta(hours=1),  # Expired
             "iat": datetime.utcnow() - timedelta(hours=2)
