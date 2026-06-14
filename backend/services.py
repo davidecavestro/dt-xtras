@@ -56,6 +56,22 @@ def chunk_items(items: List[str], size: int):
         yield items[index : index + size]
 
 
+# Cap concurrent calls to Dependency-Track during batch operations so we speed
+# them up without flooding DT with hundreds of simultaneous requests.
+DEFAULT_BATCH_CONCURRENCY = 10
+
+
+async def gather_bounded(coros, concurrency: int = DEFAULT_BATCH_CONCURRENCY):
+    """Run awaitables concurrently with a ceiling, preserving input order in results."""
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def _run(coro):
+        async with semaphore:
+            return await coro
+
+    return await asyncio.gather(*(_run(c) for c in coros))
+
+
 # Taxonomy management
 
 

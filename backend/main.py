@@ -39,6 +39,7 @@ from auth import (
     JWT_ALGORITHM,
 )
 from services import (
+    gather_bounded,
     get_dt_projects,
     get_all_tags,
     get_all_projects,
@@ -301,48 +302,44 @@ async def batch_delete_projects(
 
     headers = build_dt_headers(dt_token)
 
-    results = {"success": [], "failed": []}
-
     async with httpx.AsyncClient() as client:
-        for uuid in project_uuids:
+
+        async def process(uuid):
             try:
                 # Get project first to check if it's active
                 get_response = await client.get(f"{DT_API_URL}/api/v1/project/{uuid}", headers=headers, timeout=10.0)
 
                 if get_response.status_code == 404:
-                    results["failed"].append({"uuid": uuid, "error": "Project not found"})
-                    continue
+                    return "failed", {"uuid": uuid, "error": "Project not found"}
 
                 if get_response.status_code != 200:
-                    results["failed"].append(
-                        {"uuid": uuid, "error": f"Failed to get project: {get_response.status_code}"}
-                    )
-                    continue
+                    return "failed", {"uuid": uuid, "error": f"Failed to get project: {get_response.status_code}"}
 
                 project_data = get_response.json()
 
                 # Check if project is active - deactivate it first if needed
                 if project_data.get("active", True):
-                    # Deactivate project using the proper service
                     try:
                         await deactivate_project(uuid, dt_token)
                     except httpx.HTTPError as e:
-                        results["failed"].append(
-                            {"uuid": uuid, "error": f"Failed to deactivate project: {str(e)}"}
-                        )
-                        continue
+                        return "failed", {"uuid": uuid, "error": f"Failed to deactivate project: {str(e)}"}
 
                 # Delete project via DT API
                 response = await client.delete(f"{DT_API_URL}/api/v1/project/{uuid}", headers=headers, timeout=10.0)
 
                 if response.status_code == 204:
-                    results["success"].append(uuid)
-                else:
-                    results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
+                    return "success", uuid
+                return "failed", {"uuid": uuid, "error": f"HTTP {response.status_code}"}
 
             except httpx.HTTPError as e:
                 logger.error(f"Error deleting project {uuid}: {e}")
-                results["failed"].append({"uuid": uuid, "error": str(e)})
+                return "failed", {"uuid": uuid, "error": str(e)}
+
+        outcomes = await gather_bounded([process(uuid) for uuid in project_uuids])
+
+    results = {"success": [], "failed": []}
+    for status_, payload in outcomes:
+        results[status_].append(payload)
 
     return {"message": f"Deleted {len(results['success'])} of {len(project_uuids)} projects", "results": results}
 
@@ -361,23 +358,25 @@ async def batch_activate_projects(
 
     headers = build_dt_headers(dt_token)
 
-    results = {"success": [], "failed": []}
-
     async with httpx.AsyncClient() as client:
-        for uuid in project_uuids:
+
+        async def process(uuid):
             try:
                 response = await client.patch(
                     f"{DT_API_URL}/api/v1/project/{uuid}", json={"active": True}, headers=headers, timeout=10.0
                 )
-
                 if response.status_code == 200:
-                    results["success"].append(uuid)
-                else:
-                    results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
-
+                    return "success", uuid
+                return "failed", {"uuid": uuid, "error": f"HTTP {response.status_code}"}
             except httpx.HTTPError as e:
                 logger.error(f"Error activating project {uuid}: {e}")
-                results["failed"].append({"uuid": uuid, "error": str(e)})
+                return "failed", {"uuid": uuid, "error": str(e)}
+
+        outcomes = await gather_bounded([process(uuid) for uuid in project_uuids])
+
+    results = {"success": [], "failed": []}
+    for status_, payload in outcomes:
+        results[status_].append(payload)
 
     return {"message": f"Activated {len(results['success'])} of {len(project_uuids)} projects", "results": results}
 
@@ -396,23 +395,25 @@ async def batch_deactivate_projects(
 
     headers = build_dt_headers(dt_token)
 
-    results = {"success": [], "failed": []}
-
     async with httpx.AsyncClient() as client:
-        for uuid in project_uuids:
+
+        async def process(uuid):
             try:
                 response = await client.patch(
                     f"{DT_API_URL}/api/v1/project/{uuid}", json={"active": False}, headers=headers, timeout=10.0
                 )
-
                 if response.status_code == 200:
-                    results["success"].append(uuid)
-                else:
-                    results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
-
+                    return "success", uuid
+                return "failed", {"uuid": uuid, "error": f"HTTP {response.status_code}"}
             except httpx.HTTPError as e:
                 logger.error(f"Error deactivating project {uuid}: {e}")
-                results["failed"].append({"uuid": uuid, "error": str(e)})
+                return "failed", {"uuid": uuid, "error": str(e)}
+
+        outcomes = await gather_bounded([process(uuid) for uuid in project_uuids])
+
+    results = {"success": [], "failed": []}
+    for status_, payload in outcomes:
+        results[status_].append(payload)
 
     return {"message": f"Deactivated {len(results['success'])} of {len(project_uuids)} projects", "results": results}
 
@@ -431,23 +432,25 @@ async def batch_refresh_projects(
 
     headers = build_dt_headers(dt_token)
 
-    results = {"success": [], "failed": []}
-
     async with httpx.AsyncClient() as client:
-        for uuid in project_uuids:
+
+        async def process(uuid):
             try:
                 response = await client.post(
                     f"{DT_API_URL}/api/v1/project/{uuid}/analysis", headers=headers, timeout=10.0
                 )
-
                 if response.status_code in [200, 202]:
-                    results["success"].append(uuid)
-                else:
-                    results["failed"].append({"uuid": uuid, "error": f"HTTP {response.status_code}"})
-
+                    return "success", uuid
+                return "failed", {"uuid": uuid, "error": f"HTTP {response.status_code}"}
             except httpx.HTTPError as e:
                 logger.error(f"Error refreshing project {uuid}: {e}")
-                results["failed"].append({"uuid": uuid, "error": str(e)})
+                return "failed", {"uuid": uuid, "error": str(e)}
+
+        outcomes = await gather_bounded([process(uuid) for uuid in project_uuids])
+
+    results = {"success": [], "failed": []}
+    for status_, payload in outcomes:
+        results[status_].append(payload)
 
     return {
         "message": f"Refresh triggered for {len(results['success'])} of {len(project_uuids)} projects",
