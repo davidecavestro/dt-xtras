@@ -197,6 +197,7 @@ import { AlertCircle, RefreshCw, Shield } from '@lucide/vue'
 import Pagination from './Pagination.vue'
 import { usePaginatedData } from '../composables/usePagination'
 import { useVulnerabilityStore } from '../stores/vulnerabilities.js'
+import { useToast } from '../composables/useToast'
 import { createLogger } from '../utils/logger'
 
 export default {
@@ -209,6 +210,7 @@ export default {
   },
   setup() {
     const logger = createLogger('VulnerabilitiesList')
+    const { showError } = useToast()
     const vulnerabilityStore = useVulnerabilityStore()
     const filters = ref({
       search: '',
@@ -271,12 +273,14 @@ export default {
 
     const handlePageChange = (page) => {
       pagination.setPage(page)
-      fetchVulnerabilities().catch(() => {}) // Ignore errors for page changes
+      // The error is already recorded on the pagination state by fetchVulnerabilities;
+      // also surface it as a toast so a failed page load isn't silent.
+      fetchVulnerabilities().catch(() => showError('Failed to load vulnerabilities'))
     }
 
     const handlePageSizeChange = (pageSize) => {
       pagination.setPageSize(pageSize)
-      fetchVulnerabilities().catch(() => {}) // Ignore errors for page size changes
+      fetchVulnerabilities().catch(() => showError('Failed to load vulnerabilities'))
     }
 
     const getSeverityClass = (severity) => {
@@ -307,7 +311,7 @@ export default {
     }
 
     onMounted(() => {
-      fetchVulnerabilities()
+      fetchVulnerabilities().catch(() => showError('Failed to load vulnerabilities'))
     })
 
     return {
