@@ -136,6 +136,29 @@ test.describe('Project Bulk Actions', () => {
     await expect(page.locator('[title="Deactivate selected"]')).toBeVisible()
   })
 
+  test('activate modal previews which projects will actually change', async ({ page }) => {
+    // Both mock projects are active, so activating them is a no-op — the dry-run
+    // preview should say so rather than implying a change.
+    await page.waitForSelector('text=Frontend App')
+    await page.locator('text=Frontend App').first().click()
+
+    await page.click('[title="Activate selected"]')
+
+    await expect(page.locator('text=Activate Projects')).toBeVisible()
+    await expect(page.locator('text=0 will be activated')).toBeVisible()
+    await expect(page.locator('text=already active — no change')).toBeVisible()
+  })
+
+  test('deactivate modal previews which projects will change', async ({ page }) => {
+    await page.waitForSelector('text=Frontend App')
+    await page.locator('text=Frontend App').first().click()
+
+    await page.click('[title="Deactivate selected"]')
+
+    await expect(page.locator('text=Deactivate Projects')).toBeVisible()
+    await expect(page.locator('text=1 will be deactivated')).toBeVisible()
+  })
+
   test('should bulk delete selected projects', async ({ page }) => {
     // Mock the batch delete endpoint. The store reads response.data.results
     // ({ success, failed }), so the mock must return that shape.

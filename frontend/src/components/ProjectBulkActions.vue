@@ -474,43 +474,89 @@
       :message="`Are you sure you want to delete ${selectedProjects.length} project(s)? This action cannot be undone.`"
       :icon="AlertCircle"
       icon-color="red"
-      :items="selectedProjects.map(getProjectName)"
       confirm-text="Delete"
       cancel-text="Cancel"
       :loading="isDeleting"
       @confirm="confirmDelete"
       @close="showDeleteConfirmation = false"
-    />
+    >
+      <template #content>
+        <div class="mt-2 max-h-48 overflow-y-auto text-sm">
+          <ul class="text-gray-600 dark:text-gray-400 mb-2">
+            <li v-for="p in selectedProjectObjects" :key="p.uuid" class="py-0.5">• {{ p.name }}</li>
+          </ul>
+          <p v-if="projectsActiveBeforeDelete.length" class="text-xs text-yellow-600 dark:text-yellow-400">
+            {{ projectsActiveBeforeDelete.length }} active project(s) will be deactivated first.
+          </p>
+        </div>
+      </template>
+    </Modal>
 
     <!-- Activate Confirmation Modal -->
     <Modal
       :show="showActivateConfirmation"
       title="Activate Projects"
-      :message="`Are you sure you want to activate ${selectedProjects.length} project(s)? This will make them visible and active in Dependency-Track.`"
+      message="Activating the selected projects makes them visible and active in Dependency-Track."
       :icon="Power"
       icon-color="green"
-      :items="selectedProjects.map(getProjectName)"
       confirm-text="Activate"
       cancel-text="Cancel"
       :loading="isActivating"
       @confirm="confirmActivate"
       @close="showActivateConfirmation = false"
-    />
+    >
+      <template #content>
+        <div class="mt-2 max-h-48 overflow-y-auto text-sm">
+          <p class="font-medium text-green-700 dark:text-green-300 mb-1">
+            {{ projectsToActivate.length }} will be activated
+          </p>
+          <ul class="text-gray-600 dark:text-gray-400 mb-3">
+            <li v-for="p in projectsToActivate" :key="p.uuid" class="py-0.5">• {{ p.name }}</li>
+          </ul>
+          <div v-if="projectsAlreadyActive.length">
+            <p class="font-medium text-gray-500 dark:text-gray-400 mb-1">
+              {{ projectsAlreadyActive.length }} already active — no change
+            </p>
+            <ul class="text-gray-400 dark:text-gray-500">
+              <li v-for="p in projectsAlreadyActive" :key="p.uuid" class="py-0.5 line-through">• {{ p.name }}</li>
+            </ul>
+          </div>
+        </div>
+      </template>
+    </Modal>
 
     <!-- Deactivate Confirmation Modal -->
     <Modal
       :show="showDeactivateConfirmation"
       title="Deactivate Projects"
-      :message="`Are you sure you want to deactivate ${selectedProjects.length} project(s)? This will make them inactive but they won't be deleted.`"
+      message="Deactivating makes the selected projects inactive in Dependency-Track; they are not deleted."
       :icon="PowerOff"
       icon-color="yellow"
-      :items="selectedProjects.map(getProjectName)"
       confirm-text="Deactivate"
       cancel-text="Cancel"
       :loading="isDeactivating"
       @confirm="confirmDeactivate"
       @close="showDeactivateConfirmation = false"
-    />
+    >
+      <template #content>
+        <div class="mt-2 max-h-48 overflow-y-auto text-sm">
+          <p class="font-medium text-yellow-700 dark:text-yellow-300 mb-1">
+            {{ projectsToDeactivate.length }} will be deactivated
+          </p>
+          <ul class="text-gray-600 dark:text-gray-400 mb-3">
+            <li v-for="p in projectsToDeactivate" :key="p.uuid" class="py-0.5">• {{ p.name }}</li>
+          </ul>
+          <div v-if="projectsAlreadyInactive.length">
+            <p class="font-medium text-gray-500 dark:text-gray-400 mb-1">
+              {{ projectsAlreadyInactive.length }} already inactive — no change
+            </p>
+            <ul class="text-gray-400 dark:text-gray-500">
+              <li v-for="p in projectsAlreadyInactive" :key="p.uuid" class="py-0.5 line-through">• {{ p.name }}</li>
+            </ul>
+          </div>
+        </div>
+      </template>
+    </Modal>
 
     <!-- Rename Modal -->
     <Modal
@@ -913,6 +959,22 @@ export default {
       return project ? project.name : 'Unknown'
     }
 
+    // Dry-run preview: resolve the current selection to full project objects and
+    // partition it by whether each action will actually change the project. All
+    // derived client-side from project.active, so the confirmation modals can show
+    // the real effect (e.g. "3 will be activated, 2 already active") before applying.
+    const selectedProjectObjects = computed(() =>
+      selectedProjects.value
+        .map(uuid => projects.value.find(p => p.uuid === uuid))
+        .filter(Boolean)
+    )
+    const projectsToActivate = computed(() => selectedProjectObjects.value.filter(p => !p.active))
+    const projectsAlreadyActive = computed(() => selectedProjectObjects.value.filter(p => p.active))
+    const projectsToDeactivate = computed(() => selectedProjectObjects.value.filter(p => p.active))
+    const projectsAlreadyInactive = computed(() => selectedProjectObjects.value.filter(p => !p.active))
+    // Active projects are deactivated before deletion, so flag how many that affects.
+    const projectsActiveBeforeDelete = computed(() => selectedProjectObjects.value.filter(p => p.active))
+
     const deleteProject = async (project) => {
       const confirmed = await showConfirm({
         title: 'Delete Project',
@@ -1131,6 +1193,12 @@ export default {
       getTagStyle,
       getTagDynamicStyle,
       getProjectName,
+      selectedProjectObjects,
+      projectsToActivate,
+      projectsAlreadyActive,
+      projectsToDeactivate,
+      projectsAlreadyInactive,
+      projectsActiveBeforeDelete,
       deleteProject,
       isDeleting,
       isActivating,
