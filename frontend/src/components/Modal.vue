@@ -5,6 +5,7 @@
     aria-labelledby="modal-title"
     role="dialog"
     aria-modal="true"
+    @keydown="onKeydown"
   >
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
       <!-- Backdrop -->
@@ -17,7 +18,9 @@
 
       <!-- Modal panel -->
       <div
-        class="relative z-10 inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+        ref="panelRef"
+        tabindex="-1"
+        class="relative z-10 inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full focus:outline-none"
         :class="sizeClasses"
       >
         <!-- Header with icon and title -->
@@ -100,8 +103,11 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { RefreshCw } from '@lucide/vue'
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export default {
   name: 'Modal',
@@ -166,6 +172,64 @@ export default {
   },
   emits: ['confirm', 'cancel', 'close'],
   setup(props, { emit }) {
+    const panelRef = ref(null)
+    // The element focused before the modal opened, so we can restore focus on close.
+    let previouslyFocused = null
+
+    const getFocusable = () => {
+      if (!panelRef.value) return []
+      return Array.from(panelRef.value.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement
+      )
+    }
+
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        emit('close')
+        return
+      }
+
+      // Trap Tab focus inside the dialog so keyboard users can't tab out to the
+      // page behind the modal.
+      if (event.key === 'Tab') {
+        const focusable = getFocusable()
+        if (focusable.length === 0) {
+          event.preventDefault()
+          panelRef.value?.focus()
+          return
+        }
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        const active = document.activeElement
+
+        if (event.shiftKey && (active === first || !panelRef.value?.contains(active))) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    // Move focus into the dialog on open; restore it to the trigger on close.
+    watch(
+      () => props.show,
+      (isOpen) => {
+        if (isOpen) {
+          previouslyFocused = document.activeElement
+          nextTick(() => {
+            const focusable = getFocusable()
+            ;(focusable[0] || panelRef.value)?.focus()
+          })
+        } else if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+          previouslyFocused.focus()
+          previouslyFocused = null
+        }
+      }
+    )
+
     const sizeClasses = computed(() => {
       const sizes = {
         sm: 'sm:max-w-sm',
@@ -229,6 +293,8 @@ export default {
     }
 
     return {
+      panelRef,
+      onKeydown,
       sizeClasses,
       iconBgClass,
       iconClass,

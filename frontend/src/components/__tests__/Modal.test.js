@@ -74,6 +74,19 @@ describe('Modal', () => {
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
+  it('emits close when Escape is pressed', async () => {
+    const wrapper = mount(Modal, {
+      props: {
+        show: true,
+        title: 'Test'
+      }
+    })
+
+    await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Escape' })
+
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
   it('does not close on backdrop click when closeOnBackdrop is false', async () => {
     const wrapper = mount(Modal, {
       props: {
