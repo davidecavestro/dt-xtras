@@ -12,7 +12,7 @@ echo "=================================="
 show_env() {
     echo "📋 Current Environment:"
     echo "  DT_API_URL: ${DT_API_URL:-not set}"
-    echo "  DT_API_KEY: ${DT_API_KEY:+configured}"
+    echo "  JWT_SECRET_KEY: ${JWT_SECRET_KEY:+configured}"
     echo "  ENVIRONMENT: ${ENVIRONMENT:-not set}"
     echo ""
 }
@@ -48,7 +48,7 @@ setup_prod() {
 
     cp .env.example .env
     echo "✅ Copied .env.example to .env"
-    echo "⚠️  Please edit .env with your actual DT_API_KEY"
+    echo "⚠️  Please edit .env: set DT_API_URL and a long random JWT_SECRET_KEY"
     echo "🐳 Then run: docker compose up -d"
     echo ""
 }
@@ -62,9 +62,9 @@ start_prod() {
         exit 1
     fi
 
-    # Check if API key is set
-    if grep -q "your-dt-api-key-here" .env; then
-        echo "❌ Please set your actual DT_API_KEY in .env file"
+    # Refuse to start with the insecure default secret still in place
+    if grep -q "change-me-to-a-long-random-secret" .env; then
+        echo "❌ Please set a real JWT_SECRET_KEY in .env file (e.g. openssl rand -hex 32)"
         exit 1
     fi
 

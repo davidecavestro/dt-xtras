@@ -89,7 +89,6 @@ jobs:
       - name: "Generate OpenAPI JSON"
         env:
           DT_API_URL: "http://localhost:8080"
-          DT_API_KEY: "dummy"
           JWT_SECRET_KEY: "dummy"
         run: |
           cd backend

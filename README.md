@@ -156,8 +156,10 @@ The published images on GHCR make a from-scratch run just a few commands — no 
 To stop: `docker compose down`.
 
 > **Before exposing it to anyone else,** set `JWT_SECRET_KEY` in `.env` to a long random value
-> (e.g. `openssl rand -hex 32`). The backend ships with an insecure default that's fine for a
-> local trial but must not be used in a shared or production deployment.
+> (e.g. `openssl rand -hex 32`). When you log in, dt-xtras issues its own session token — signed
+> with this key — that carries your Dependency-Track permissions. With the shipped default (or any
+> known value) anyone could forge a token granting themselves edit access, so it's fine for a local
+> trial but must not be used in a shared or production deployment.
 
 > **Pin a version.** `compose.yml` tracks the latest `main` build (`…/backend:main`,
 > `…/frontend:main`). For a stable deployment, change those tags to a published
