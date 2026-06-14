@@ -485,7 +485,10 @@ export default {
 
     // Initialize data on component mount
     onMounted(() => {
-      refreshData()
+      // Reuse store data loaded within the last 30s so re-navigating to the
+      // dashboard doesn't refetch the whole portfolio. The Refresh button calls
+      // refreshData() with no args, forcing a fresh load.
+      refreshData({ maxAgeMs: 30000 })
     })
 
     // Methods from stores - call directly on store instances to maintain context
@@ -735,7 +738,11 @@ export default {
       expandedNodes.value = expanded
     };
 
-    const refreshData = async () => {
+    // `maxAgeMs` > 0 lets the initial mount reuse store data loaded moments ago
+    // (e.g. when navigating back to the dashboard) instead of refetching the
+    // whole portfolio every time. The explicit Refresh button passes 0 to force
+    // a fresh load.
+    const refreshData = async ({ maxAgeMs = 0 } = {}) => {
       try {
         // Load tree based on current mode
         const treeLoader = treeMode.value === 'hierarchical'
@@ -744,9 +751,9 @@ export default {
 
         // Load all data in parallel for better performance
         const results = await Promise.all([
-          projectStore.loadProjects(),
-          tagStore.loadTags(),
-          taxonomyStore.loadTaxonomies(),
+          projectStore.loadProjects({ maxAgeMs }),
+          tagStore.loadTags({ maxAgeMs }),
+          taxonomyStore.loadTaxonomies({ maxAgeMs }),
           treeLoader
         ])
 

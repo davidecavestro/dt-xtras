@@ -58,8 +58,19 @@ export const useTagStore = defineStore('tags', () => {
   const hasNextPage = computed(() => currentPage.value < totalPages.value)
 
   // Methods
-  const loadTags = async () => {
+  // `maxAgeMs` (see taxonomies store) lets mount handlers reuse fresh data;
+  // explicit refreshes omit it to always refetch.
+  const loadTags = async ({ maxAgeMs = 0 } = {}) => {
     if (isLoading.value) return
+
+    if (
+      maxAgeMs > 0 &&
+      lastUpdate.value &&
+      Date.now() - lastUpdate.value < maxAgeMs &&
+      tags.value.length > 0
+    ) {
+      return tags.value
+    }
 
     isLoading.value = true
     error.value = null

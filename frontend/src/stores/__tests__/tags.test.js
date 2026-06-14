@@ -212,6 +212,27 @@ describe('useTagStore', () => {
       await store.loadTags()
       expect(axios.get).not.toHaveBeenCalled()
     })
+
+    it('reuses fresh data within maxAgeMs instead of refetching', async () => {
+      const { default: axios } = await import('axios')
+      axios.get.mockResolvedValue({ data: [makeTag({ name: 'brand:x' })] })
+
+      await store.loadTags()
+      expect(axios.get).toHaveBeenCalledTimes(1)
+
+      // Within the staleness window: served from memory, no second request.
+      await store.loadTags({ maxAgeMs: 60000 })
+      expect(axios.get).toHaveBeenCalledTimes(1)
+    })
+
+    it('always refetches when maxAgeMs is omitted (default force)', async () => {
+      const { default: axios } = await import('axios')
+      axios.get.mockResolvedValue({ data: [makeTag({ name: 'brand:x' })] })
+
+      await store.loadTags()
+      await store.loadTags()
+      expect(axios.get).toHaveBeenCalledTimes(2)
+    })
   })
 
   describe('createTag', () => {

@@ -41,8 +41,21 @@ export const useTaxonomyStore = defineStore('taxonomies', () => {
   )
 
   // Methods
-  const loadTaxonomies = async () => {
+  // `maxAgeMs` lets callers reuse recently-loaded data instead of refetching:
+  // mount handlers pass a window (e.g. 30s) so navigating away and back doesn't
+  // hit the API again, while explicit refresh actions omit it (default 0) to
+  // always fetch fresh.
+  const loadTaxonomies = async ({ maxAgeMs = 0 } = {}) => {
     if (loading.value) return
+
+    if (
+      maxAgeMs > 0 &&
+      lastUpdate.value &&
+      Date.now() - lastUpdate.value < maxAgeMs &&
+      taxonomies.value.length > 0
+    ) {
+      return taxonomies.value
+    }
 
     loading.value = true
     error.value = null

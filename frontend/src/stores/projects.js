@@ -118,8 +118,19 @@ export const useProjectStore = defineStore('projects', () => {
   }
 
   // Methods
-  const loadProjects = async () => {
+  // `maxAgeMs` (see taxonomies store) lets mount handlers reuse fresh data;
+  // explicit refreshes omit it to always refetch the full portfolio.
+  const loadProjects = async ({ maxAgeMs = 0 } = {}) => {
     if (isLoading.value) return
+
+    if (
+      maxAgeMs > 0 &&
+      lastUpdate.value &&
+      Date.now() - lastUpdate.value < maxAgeMs &&
+      projects.value.length > 0
+    ) {
+      return projects.value
+    }
 
     isLoading.value = true
     error.value = null
