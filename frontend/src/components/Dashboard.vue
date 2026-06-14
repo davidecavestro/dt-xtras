@@ -311,8 +311,8 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useProjectStore } from '../stores/projects'
 import { useTagStore } from '../stores/tags'
@@ -354,6 +354,7 @@ export default {
   },
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const logger = createLogger('app')
 
     // Use stores
@@ -481,10 +482,16 @@ export default {
     const treeSortBy = ref('name')
     const treeSortDesc = ref(false)
     const treeMode = ref('hierarchical') // 'network' or 'hierarchical'
+    // Node id to re-focus once the tree has loaded, restored from the URL (a
+    // shared link can deep-link to a focused node, which only exists after fetch).
+    const pendingNodeId = ref(null)
 
 
     // Initialize data on component mount
     onMounted(() => {
+      // Restore mode/associativity/focused-node from the URL before loading so a
+      // shared link lands on the intended view.
+      applyQueryToState()
       // Reuse store data loaded within the last 30s so re-navigating to the
       // dashboard doesn't refetch the whole portfolio. The Refresh button calls
       // refreshData() with no args, forcing a fresh load.
@@ -818,6 +825,53 @@ export default {
     const clearSelection = () => {
       selectedTreeNode.value = null;
     };
+
+    // --- Shareable views: reflect the dashboard's view state in the URL query so
+    // a bookmarked or shared link restores the same mode and focused node.
+    const findNodeById = (nodes, id) => {
+      if (!Array.isArray(nodes)) return null
+      for (const node of nodes) {
+        if (node.id === id) return node
+        const found = findNodeById(node.children, id)
+        if (found) return found
+      }
+      return null
+    }
+
+    const applyQueryToState = () => {
+      const q = route.query
+      if (q.mode === 'network' || q.mode === 'hierarchical') treeMode.value = q.mode
+      if (q.assoc === 'false') {
+        associativeMode.value = false
+        graphStore.setAssociativeMode(false)
+      }
+      // The node only exists after the tree loads; remember it and select later.
+      pendingNodeId.value = typeof q.node === 'string' ? q.node : null
+    }
+
+    // Once tree data is present, focus the node from the URL (one-shot).
+    const restorePendingNode = () => {
+      if (!pendingNodeId.value || selectedTreeNode.value) return
+      const node = findNodeById(treeData.value, pendingNodeId.value)
+      if (node) {
+        selectedTreeNode.value = node
+        pendingNodeId.value = null
+      }
+    }
+
+    const syncStateToQuery = () => {
+      const query = {}
+      if (treeMode.value !== 'hierarchical') query.mode = treeMode.value
+      if (!associativeMode.value) query.assoc = 'false'
+      if (selectedTreeNode.value?.id) query.node = selectedTreeNode.value.id
+      router.replace({ query }).catch(() => {})
+    }
+
+    watch(treeData, restorePendingNode)
+    watch(
+      () => [treeMode.value, associativeMode.value, selectedTreeNode.value?.id],
+      syncStateToQuery
+    )
 
     const getSeverityColor = (severity) => {
       switch (severity) {

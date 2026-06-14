@@ -378,6 +378,7 @@
 
 <script>
 import { ref, onMounted, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { RefreshCw, FolderOpen, List as ListIcon, Table as TableIcon, Square as SquareIcon } from '@lucide/vue'
 import ProjectCard from './ProjectCard.vue'
@@ -403,6 +404,8 @@ export default {
   },
   setup() {
     const logger = createLogger('ProjectCenter')
+    const route = useRoute()
+    const router = useRouter()
     const projectStore = useProjectStore()
     const { error } = storeToRefs(projectStore)
     const { showSuccess, showError } = useToast()
@@ -605,6 +608,41 @@ export default {
       }
     }
 
+    // --- Shareable views: reflect the filter/view state in the URL query so a
+    // bookmarked or shared link restores the same view. Defaults are omitted to
+    // keep links clean (deck view, page 1, page size 20, ascending sort).
+    const DEFAULT_PAGE_SIZE = 20
+
+    const applyQueryToState = () => {
+      const q = route.query
+      if (typeof q.q === 'string') filters.value.search = q.q
+      if (typeof q.tag === 'string') selectedTag.value = q.tag
+      filters.value.showInactive = q.inactive === '1'
+      if (['list', 'deck', 'table'].includes(q.view)) projectsViewMode.value = q.view
+      if (typeof q.sort === 'string') sortName.value = q.sort
+      if (q.order === 'asc' || q.order === 'desc') sortOrder.value = q.order
+      const page = parseInt(q.page, 10)
+      if (page > 0) projectStore.currentPage = page
+      const size = parseInt(q.size, 10)
+      if (size > 0) projectStore.pageSize = size
+    }
+
+    const syncStateToQuery = () => {
+      const query = {}
+      if (filters.value.search) query.q = filters.value.search
+      if (selectedTag.value) query.tag = selectedTag.value
+      if (filters.value.showInactive) query.inactive = '1'
+      if (projectsViewMode.value !== 'deck') query.view = projectsViewMode.value
+      if (sortName.value) {
+        query.sort = sortName.value
+        if (sortOrder.value !== 'asc') query.order = sortOrder.value
+      }
+      if (projectStore.currentPage > 1) query.page = String(projectStore.currentPage)
+      if (projectStore.pageSize !== DEFAULT_PAGE_SIZE) query.size = String(projectStore.pageSize)
+      // replace (not push) so filter tweaks don't spam browser history.
+      router.replace({ query }).catch(() => {})
+    }
+
     // The active filter and tag filter refetch immediately (resetting to page 1).
     // Name search is debounced separately via debouncedSearch().
     watch(() => filters.value.showInactive, () => {
@@ -616,7 +654,25 @@ export default {
       fetchProjects().catch(() => {})
     })
 
+    // Mirror any view/filter change into the URL.
+    watch(
+      () => [
+        filters.value.search,
+        selectedTag.value,
+        filters.value.showInactive,
+        projectsViewMode.value,
+        sortName.value,
+        sortOrder.value,
+        projectStore.currentPage,
+        projectStore.pageSize
+      ],
+      syncStateToQuery
+    )
+
     onMounted(async () => {
+      // Restore state from the URL before the first fetch so shared links land
+      // on the intended page/filters.
+      applyQueryToState()
       fetchProjects().catch(() => {})
       loadTaxonomies()
       // Load the tag list for the filter dropdown.
