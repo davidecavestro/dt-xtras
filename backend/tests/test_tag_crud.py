@@ -182,3 +182,22 @@ def test_proxy_write_methods_require_edit_permissions(client, mock_jwt_secret, r
 
     assert response.status_code == 403
     assert not proxied.called
+
+
+def test_validate_proxy_path_rejects_traversal_and_absolute():
+    """The proxy-path guard rejects `..` segments and absolute prefixes.
+
+    Plain URLs are normalized by the HTTP layer before they reach the handler,
+    so this guards the residual case of percent-encoded `..` decoded post-routing.
+    """
+    import main
+    from fastapi import HTTPException
+
+    # Safe paths pass through untouched.
+    main._validate_proxy_path("project/abc-123")
+    main._validate_proxy_path("tag/foo/project")
+
+    for bad in ["..", "../admin", "project/../admin", "/etc/passwd", "\\windows"]:
+        with pytest.raises(HTTPException) as exc:
+            main._validate_proxy_path(bad)
+        assert exc.value.status_code == 400

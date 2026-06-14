@@ -75,6 +75,20 @@ cors_allow_headers = os.getenv("CORS_ALLOW_HEADERS", "*").split(",")
 # Expose pagination headers so the browser lets the frontend read them cross-origin.
 cors_expose_headers = os.getenv("CORS_EXPOSE_HEADERS", "X-Total-Count").split(",")
 
+if "*" in cors_origins:
+    logger.warning(
+        "CORS_ORIGINS is not set, defaulting to '*' (any origin). This is fine for local "
+        "use but must be set to your frontend origin(s) before exposing dt-xtras."
+    )
+    # Credentials + wildcard origin is forbidden by the CORS spec and silently
+    # ignored by browsers; disable credentials so the config is coherent.
+    if cors_allow_credentials:
+        logger.warning(
+            "CORS_ALLOW_CREDENTIALS=true is incompatible with wildcard origins; disabling "
+            "credentials. Set explicit CORS_ORIGINS to use credentialed requests."
+        )
+        cors_allow_credentials = False
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -964,8 +978,22 @@ async def test_proxy_post(request: Request):
     return {"message": "Proxy POST working", "method": request.method}
 
 
+def _validate_proxy_path(path: str) -> None:
+    """Reject proxy paths that try to escape the /api/v1/ prefix.
+
+    The {path:path} capture is forwarded verbatim to DT, so a path containing
+    `..` segments or an absolute/scheme-relative prefix could be used to reach a
+    different DT path than intended. Reject those up front with a 400.
+    """
+    if path.startswith("/") or path.startswith("\\"):
+        raise HTTPException(status_code=400, detail="Invalid proxy path")
+    if ".." in path.split("/"):
+        raise HTTPException(status_code=400, detail="Invalid proxy path")
+
+
 @app.api_route("/api/v1/{path:path}", methods=["GET"])
 async def proxy_dt_api_get(path: str, request: Request, dt_token: str = Depends(get_dt_token_from_request)):
+    _validate_proxy_path(path)
     # Note: request headers are intentionally NOT logged here - they carry the DT bearer token.
     logger.info(f"Proxy GET request: /api/v1/{path}")
 
@@ -993,6 +1021,7 @@ async def proxy_dt_api(
 ):
     """Proxy mutating API requests to DT API. Requires edit permissions, matching the
     explicit write endpoints - the generic proxy must not be a way to bypass them."""
+    _validate_proxy_path(path)
     data = await request.body()
     # Note: request headers are intentionally NOT logged here - they carry the DT bearer token.
     logger.info(f"Proxy {request.method} request: /api/v1/{path}")
